@@ -8,8 +8,8 @@ import process from 'node:process';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
-const VERSION = '0.1.0-alpha.2';
-const PYTHON_VERSION = '0.1.0a2';
+const VERSION = '0.1.0-alpha.3';
+const PYTHON_VERSION = '0.1.0a3';
 const REPOSITORY = 'https://github.com/YuxiaoMa66/antigravity-mission-control.git';
 const DEFAULT_SOURCE = `git+${REPOSITORY}@v${PYTHON_VERSION}`;
 const AGY_INSTALL_URL = 'https://antigravity.google/cli/install.sh';
@@ -58,7 +58,7 @@ function language(requested) {
 
 const messages = {
   en: {
-    subtitle: 'Route · Guard · Verify', install: 'Install', update: 'Update', uninstall: 'Uninstall',
+    subtitle: 'Route / Guard / Verify', install: 'Install', update: 'Update', uninstall: 'Uninstall',
     status: 'Status', doctor: 'Doctor', target: 'Skill target', runtime: 'Managed runtime',
     source: 'Package source', confirm: 'Continue with these exact changes?', canceled: 'Canceled; nothing changed.',
     complete: 'Mission accomplished', missingPython: 'Python 3.10+ is required.', missingAgy: 'AGY was not found; install it before running workers.',
@@ -68,7 +68,7 @@ const messages = {
     agyReady: 'AGY installed', agyLogin: 'First AGY setup: run `agy`, complete Google sign-in, then run `agy-mc doctor`.',
   },
   zh: {
-    subtitle: '调度 · 守界 · 验收', install: '安装', update: '更新', uninstall: '卸载',
+    subtitle: '调度 / 守界 / 验收', install: '安装', update: '更新', uninstall: '卸载',
     status: '状态', doctor: '诊断', target: 'Skill 目标', runtime: '托管运行环境',
     source: '安装来源', confirm: '确认执行以上精确修改吗？', canceled: '已取消，未修改任何文件。',
     complete: '任务完成', missingPython: '需要 Python 3.10 或更高版本。', missingAgy: '未找到 AGY；运行 worker 前请先安装。',
@@ -110,7 +110,7 @@ function assertSafePath(path, home) {
 function banner() {
   console.log(`${c.violet}╭────────────────────────────────────────────────────────────╮${c.reset}`);
   console.log(`${c.violet}│${c.reset}  ${c.bold}ANTIGRAVITY MISSION CONTROL${c.reset}  ${c.cyan}◉${c.reset}  v${VERSION}             ${c.violet}│${c.reset}`);
-  console.log(`${c.violet}│${c.reset}  ${c.muted}Route · Guard · Verify${c.reset}                                  ${c.violet}│${c.reset}`);
+  console.log(`${c.violet}│${c.reset}  ${c.muted}Route / Guard / Verify${c.reset}                                  ${c.violet}│${c.reset}`);
   console.log(`${c.violet}╰────────────────────────────────────────────────────────────╯${c.reset}`);
 }
 
@@ -227,6 +227,19 @@ async function installOfficialAgy(p) {
   return installed;
 }
 
+function resolveSkillAction(args, p) {
+  const targetExists = existsSync(p.skillTarget);
+  const managedMarker = `${p.skillTarget}/.agy-mc-install.json`;
+  if (args.command === 'update' && !targetExists) {
+    throw new Error(`Skill is not installed: ${p.skillTarget}; use install`);
+  }
+  if (targetExists && !existsSync(managedMarker) && !args.force) {
+    throw new Error(`Existing Skill is not managed by agy-mc: ${p.skillTarget}; inspect it or rerun with --force`);
+  }
+  if (args.command === 'install' && targetExists && existsSync(managedMarker)) return 'update';
+  return args.command === 'install' ? 'install' : 'update';
+}
+
 async function installOrUpdate(args, p, msg) {
   let agy = locateAgy(p);
   if (agy) args.installAgy = false;
@@ -248,6 +261,10 @@ async function installOrUpdate(args, p, msg) {
     return;
   }
   if (args.dryRun) return;
+  // Resolve target compatibility before installing AGY or mutating the managed
+  // Python runtime. A pre-existing managed Skill makes `install` idempotent and
+  // follows the recoverable update path; an unmanaged collision fails cleanly.
+  const skillAction = resolveSkillAction(args, p);
   let installedAgy = false;
   if (!agy && args.installAgy) {
     agy = await installOfficialAgy(p);
@@ -258,7 +275,6 @@ async function installOrUpdate(args, p, msg) {
   if (!existsSync(p.venv)) run(python.command, ['-m', 'venv', p.venv]);
   const venvPython = process.platform === 'win32' ? `${p.venv}/Scripts/python.exe` : `${p.venv}/bin/python`;
   run(venvPython, ['-m', 'pip', 'install', '--disable-pip-version-check', '--no-deps', '--upgrade', '--force-reinstall', args.source]);
-  const skillAction = args.command === 'install' ? 'install' : 'update';
   const skillArgs = ['skill', skillAction, '--target', p.skillTarget, '--lang', args.lang, '--format', 'pretty'];
   if (args.force) skillArgs.push('--force');
   run(managedAgyMc(p), skillArgs);

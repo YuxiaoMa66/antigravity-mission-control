@@ -15,6 +15,21 @@ Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact 
 
 > **Alpha:** ready for public pre-release evaluation, not a stable security boundary. Independent community project; not affiliated with Google or Antigravity.
 
+## See the flight deck
+
+These are faithful renders of the real CLI format. Home paths, signatures, job IDs and quota values are sanitized examples.
+
+<table>
+  <tr>
+    <td width="50%"><img src="assets/interfaces/guided-install.svg" alt="Guided Mission Control installation showing exact targets"><br><sub><strong>Guided install.</strong> Exact targets and dependencies are shown before anything changes.</sub></td>
+    <td width="50%"><img src="assets/interfaces/live-quota.svg" alt="Live quota terminal table with sanitized sample values"><br><sub><strong>Live quota.</strong> Watch model groups, windows, remaining quota and reset state.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/interfaces/bound-approval.svg" alt="Signed approval manifest in the terminal"><br><sub><strong>Bound approval.</strong> Model, role, workspace, prompt and expiry travel together.</sub></td>
+    <td width="50%"><img src="assets/interfaces/background-job.svg" alt="Background worker status and wait commands"><br><sub><strong>Background control.</strong> Dispatch, inspect and collect durable jobs without confusing worker output with acceptance.</sub></td>
+  </tr>
+</table>
+
 ## Put the quota you already have to work
 
 If your account includes a Google One AI plan or an eligible student offer, you may already have a year of Gemini access. That quota can sit idle while Antigravity's desktop client breaks your rhythm and its CLI never quite becomes home. Codex has become muscle memory, but its allowance can vanish before lunch and a slow turn may take the scenic route. Gemini Flash brings the speed you wanted to use.
@@ -63,7 +78,7 @@ npx antigravity-mission-control@next status
 Direct Python installation is also supported:
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a2"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a3"
 agy-mc skill install
 agy-mc doctor
 ```

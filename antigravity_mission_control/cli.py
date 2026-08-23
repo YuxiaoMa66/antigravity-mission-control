@@ -45,7 +45,7 @@ STRATEGY_PATTERNS = {
 }
 
 ROLES = tuple(STRATEGY_PATTERNS["A"])
-VERSION = "0.1.0a2"
+VERSION = "0.1.0a3"
 AGY_BIN = os.environ.get("AGY_MC_BIN", os.environ.get("AGY_ORCHESTRATOR_BIN", "agy"))
 SETTINGS_PATH = Path(
     os.environ.get(
@@ -741,7 +741,7 @@ def render_skill_result(payload: dict, language: str) -> str:
     }
     title = labels.get(payload["status"], (payload["status"], payload["status"]))[0 if zh else 1]
     border = "─" * 60
-    lines = [f"╭{border}╮", "│  ANTIGRAVITY MISSION CONTROL · Route · Guard · Verify       │", f"╰{border}╯", "", f"  ✓ {title}"]
+    lines = [f"╭{border}╮", "│  ANTIGRAVITY MISSION CONTROL / Route / Guard / Verify       │", f"╰{border}╯", "", f"  ✓ {title}"]
     if payload.get("target"):
         label = "目标" if zh else "Target"
         lines.extend([f"  ◇ {label}", f"    {payload['target']}"])

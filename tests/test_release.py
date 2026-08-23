@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 import re
+import subprocess
+import sys
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -16,12 +18,12 @@ class ReleaseIntegrityTests(unittest.TestCase):
         package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         npm_cli = (ROOT / "npm" / "cli.mjs").read_text(encoding="utf-8")
-        self.assertEqual(cli.VERSION, "0.1.0a2")
+        self.assertEqual(cli.VERSION, "0.1.0a3")
         self.assertEqual(__version__, cli.VERSION)
-        self.assertIn('version = "0.1.0a2"', pyproject)
-        self.assertEqual(package["version"], "0.1.0-alpha.2")
-        self.assertIn("const VERSION = '0.1.0-alpha.2'", npm_cli)
-        self.assertIn("const PYTHON_VERSION = '0.1.0a2'", npm_cli)
+        self.assertIn('version = "0.1.0a3"', pyproject)
+        self.assertEqual(package["version"], "0.1.0-alpha.3")
+        self.assertIn("const VERSION = '0.1.0-alpha.3'", npm_cli)
+        self.assertIn("const PYTHON_VERSION = '0.1.0a3'", npm_cli)
         self.assertIn("assets/", package["files"])
         self.assertIn('skill_bundle/**/__pycache__/*', pyproject)
 
@@ -33,6 +35,7 @@ class ReleaseIntegrityTests(unittest.TestCase):
             ("docs/RELEASING.md", "docs/RELEASING.zh-CN.md"),
             ("docs/releases/v0.1.0a1.md", "docs/releases/v0.1.0a1.zh-CN.md"),
             ("docs/releases/v0.1.0a2.md", "docs/releases/v0.1.0a2.zh-CN.md"),
+            ("docs/releases/v0.1.0a3.md", "docs/releases/v0.1.0a3.zh-CN.md"),
         )
         for english, chinese in pairs:
             with self.subTest(english=english):
@@ -68,6 +71,16 @@ class ReleaseIntegrityTests(unittest.TestCase):
             with self.subTest(asset=str(asset.relative_to(ROOT))):
                 root = ET.parse(asset).getroot()
                 self.assertTrue(root.tag.endswith("svg"))
+
+    def test_interface_assets_match_renderer(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "render_interface_assets.py"), "--check"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

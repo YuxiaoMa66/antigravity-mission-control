@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0a3 - 2026-08-23
+
+- Made npm `install` idempotent when a managed Mission Control Skill already exists.
+- Added an early unmanaged-target check so collisions cannot leave a partial Python runtime.
+- Added regression coverage for both managed and unmanaged pre-existing Skill targets.
+- Added four consistent interface captures for guided installation, live quota, bound approvals and background jobs.
+- Expanded both READMEs with a truthful CLI interface gallery using sanitized examples.
+
 ## 0.1.0a2 - 2026-08-23
 
 - Added an explicit `--install-agy` path backed by Google's official installer.

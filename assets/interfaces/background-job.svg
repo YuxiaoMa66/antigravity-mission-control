@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+  <title id="title">Background job control</title>
+  <desc id="desc">A bounded worker running in the background with durable status and collection commands. Paths and values are sanitized examples rendered from the real CLI format.</desc>
+  <defs>
+    <linearGradient id="page" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e8edf5"/><stop offset="1" stop-color="#d7e2ea"/></linearGradient>
+    <linearGradient id="terminal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#111827"/><stop offset="1" stop-color="#08151d"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#0f172a" flood-opacity=".28"/></filter>
+  </defs>
+  <rect width="1280" height="720" rx="30" fill="url(#page)"/>
+  <rect x="42" y="34" width="1196" height="652" rx="20" fill="url(#terminal)" filter="url(#shadow)"/>
+  <rect x="42" y="34" width="1196" height="58" rx="20" fill="#172033"/>
+  <path d="M42 72h1196v20H42z" fill="#172033"/>
+  <circle cx="76" cy="63" r="7" fill="#fb7185"/><circle cx="100" cy="63" r="7" fill="#fbbf24"/><circle cx="124" cy="63" r="7" fill="#4ade80"/>
+  <text x="640" y="69" text-anchor="middle" fill="#cbd5e1" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">status</text>
+  <g xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">
+    <text x="92" y="145" fill="#67e8f9" font-weight="500">$ agy-mc run ... --background</text>
+    <text x="92" y="176" fill="#e6edf7" font-weight="500"></text>
+    <text x="92" y="207" fill="#94a3b8" font-weight="500">{  &quot;status&quot;: &quot;queued&quot;,</text>
+    <text x="92" y="238" fill="#22d3ee" font-weight="500">   &quot;job_id&quot;: &quot;job-20260823-8f31&quot;,</text>
+    <text x="92" y="269" fill="#e6edf7" font-weight="500">   &quot;role&quot;: &quot;implementer&quot;,</text>
+    <text x="92" y="300" fill="#e6edf7" font-weight="500">   &quot;model&quot;: &quot;gemini-3.7-flash-high&quot;,</text>
+    <text x="92" y="331" fill="#e6edf7" font-weight="500">   &quot;mode&quot;: &quot;accept-edits&quot;  }</text>
+    <text x="92" y="362" fill="#e6edf7" font-weight="500"></text>
+    <text x="92" y="393" fill="#67e8f9" font-weight="500">$ agy-mc status job-20260823-8f31</text>
+    <text x="92" y="424" fill="#22d3ee" font-weight="500">{  &quot;status&quot;: &quot;running&quot;,  &quot;pid&quot;: 48317  }</text>
+    <text x="92" y="455" fill="#e6edf7" font-weight="500"></text>
+    <text x="92" y="486" fill="#67e8f9" font-weight="500">$ agy-mc wait job-20260823-8f31 --timeout 10m</text>
+    <text x="92" y="517" fill="#86efac" font-weight="700">{  &quot;status&quot;: &quot;done&quot;,  &quot;exit_code&quot;: 0  }</text>
+    <text x="92" y="548" fill="#e6edf7" font-weight="500"></text>
+    <text x="92" y="579" fill="#f8fafc" font-weight="700">Worker result is evidence, not acceptance.</text>
+    <text x="92" y="610" fill="#94a3b8" font-weight="500">Codex still checks the real diff, tests and task criteria.</text>
+  </g>
+</svg>

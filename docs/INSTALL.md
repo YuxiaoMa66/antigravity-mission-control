@@ -79,7 +79,7 @@ The Skill is moved to Codex's backup directory. The managed Python environment i
 ## Direct Python installation
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a2"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a3"
 agy-mc skill install
 ```
 

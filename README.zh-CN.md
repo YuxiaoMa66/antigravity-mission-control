@@ -15,6 +15,21 @@
 
 > **Alpha：** 已适合公开预发布测试，但还不是稳定安全边界。本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
 
+## 看看实际操作界面
+
+下面的图片忠实呈现真实 CLI 格式。HOME 路径、签名、任务 ID 和额度数字使用了脱敏示例。
+
+<table>
+  <tr>
+    <td width="50%"><img src="assets/interfaces/guided-install.svg" alt="展示精确目标的 Mission Control 引导安装界面"><br><sub><strong>引导安装。</strong> 修改前先展示精确目标、运行环境和依赖。</sub></td>
+    <td width="50%"><img src="assets/interfaces/live-quota.svg" alt="使用脱敏示例数值的实时额度终端表格"><br><sub><strong>实时额度。</strong> 持续查看模型组、额度窗口、剩余比例和重置状态。</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/interfaces/bound-approval.svg" alt="终端中的签名批准清单"><br><sub><strong>绑定批准。</strong> 模型、角色、工作区、prompt 和有效期一起绑定。</sub></td>
+    <td width="50%"><img src="assets/interfaces/background-job.svg" alt="后台 worker 状态与等待命令"><br><sub><strong>后台控制。</strong> 调度、检查和收集持久任务，同时保持 worker 输出与最终验收分离。</sub></td>
+  </tr>
+</table>
+
 ## 别让已经薅到的 Gemini 在账号里吃灰
 
 如果你手里正好有 Google One AI 订阅，或者拿到了符合条件的学生一年福利，账号里可能已经躺着一批 Gemini 额度。Antigravity 客户端像写到一半换键盘，CLI 也未必顺手；Codex 倒是已经用出肌肉记忆，可额度常常午饭前就见底，模型偶尔还爱走观光路线。Gemini Flash 跑得快，这份速度值得派上用场。
@@ -63,7 +78,7 @@ npx antigravity-mission-control@next status --lang zh
 也支持直接使用 Python：
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a2"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a3"
 agy-mc skill install --lang zh
 agy-mc doctor
 ```
