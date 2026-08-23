@@ -9,32 +9,61 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a78bfa" alt="MIT License"></a>
 </p>
 
-Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota—while Codex remains responsible for acceptance.
+Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota. Codex remains responsible for acceptance.
 
 <p align="center"><img src="assets/terminal-preview.svg" width="920" alt="Mission Control terminal preview"></p>
 
 > **Alpha:** ready for public pre-release evaluation, not a stable security boundary. Independent community project; not affiliated with Google or Antigravity.
 
+## Put the quota you already have to work
+
+If your account includes a Google One AI plan or an eligible student offer, you may already have a year of Gemini access. That quota can sit idle while Antigravity's desktop client breaks your rhythm and its CLI never quite becomes home. Codex has become muscle memory, but its allowance can vanish before lunch and a slow turn may take the scenic route. Gemini Flash brings the speed you wanted to use.
+
+Install Mission Control in the Codex harness you already know. Let Codex act as product manager, supervising editor, and suspicious acceptance reviewer. Give the implementation tickets to Antigravity. Codex defines scope, approves authority, inspects diffs, and runs the checks; AGY workers do the typing.
+
+Bring your own eligible Google account and quota. Mission Control neither creates a subscription nor increases provider limits.
+
+### The control loop keeps the work on course
+
+| Stage | Who owns it | Guardrail |
+|---|---|---|
+| Structure | Codex | Converts the request into scope, constraints, acceptance criteria, and bounded roles |
+| Choices | Codex + you | Offers A/B/C model rosters and meaningful design alternatives; you select or revise the consequential choices |
+| Execution | AGY workers | Plans and implements inside the approved objective without asking for permission on every harmless step |
+| Supervision | Reviewer + Codex | Checks drift, evidence, tests, and delivery quality; Codex accepts, corrects, or rejects the result |
+
+The planner can choose its own route inside the approved objective. It surfaces alternatives when a choice changes scope, cost, reversibility, or product behavior. The reviewer receives the original brief and the real artifacts, so it can catch a polished answer that solved the wrong problem.
+
 ## Install
 
-Install AGY first and verify `agy --version`. Then use the npm bootstrapper:
+Already have AGY? Verify it, launch it once to finish Google sign-in, then install Mission Control:
 
 ```bash
-npx antigravity-mission-control install
+agy --version
+agy
+npx antigravity-mission-control@next install
 ```
 
-It shows every target before writing, creates a private managed Python environment, installs `agy-mc`, deploys the Codex Skill, and runs without shell interpolation. For CI or agents, add `--yes`; inspect first with `--dry-run`.
+No AGY yet? The installer can fetch Google's official installer first:
 
 ```bash
-npx antigravity-mission-control install --dry-run
-npx antigravity-mission-control install --yes
-npx antigravity-mission-control status
+npx antigravity-mission-control@next install --install-agy
+```
+
+Interactive installation asks before adding AGY when it is missing. Non-interactive installation requires the explicit `--install-agy` flag. After a fresh AGY install, run `agy` to complete Google sign-in. Mission Control never reads or copies that login state.
+
+The bootstrapper shows every target before writing, creates a private managed Python environment, installs `agy-mc`, deploys the Codex Skill, and runs without shell interpolation. For CI or agents, add `--yes`; inspect first with `--dry-run`.
+
+```bash
+npx antigravity-mission-control@next install --dry-run
+npx antigravity-mission-control@next install --yes
+npx antigravity-mission-control@next status
 ```
 
 Direct Python installation is also supported:
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a1"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a2"
 agy-mc skill install
 agy-mc doctor
 ```

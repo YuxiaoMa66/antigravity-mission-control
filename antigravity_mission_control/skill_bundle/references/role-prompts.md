@@ -27,7 +27,7 @@ Use for a small, well-defined read-only question. Ask for concrete observations,
 
 ## Planner
 
-Use when the work is ambiguous, unfamiliar, or has meaningful risk. Require a bounded plan, dependencies, risks, alternatives considered, and verification points. Planning is read-only: no implementation, refactor, generated files, commits, or configuration changes.
+Use when the work is ambiguous, unfamiliar, or has meaningful risk. Require a bounded plan, dependencies, risks, alternatives considered, and verification points. Let the planner choose its own route inside the approved objective. It should offer explicit options when a decision changes scope, cost, reversibility, or product behavior. Planning is read-only: no implementation, refactor, generated files, commits, or configuration changes.
 
 ## Implementer
 
@@ -37,7 +37,7 @@ Use only for a confirmed write scope. Require a minimal diff, existing project c
 
 Use as an independent second opinion. State the review subject precisely (working tree, ref, PR, patch, files, plan, or decision); if it is ambiguous, the reviewer must stop and report what is missing. Do not forward the implementer's verdict as evidence.
 
-For code reviews, require findings ranked `critical`, `high`, `medium`, `low`, or `nit`, each with a path/line (or hunk), concrete failure mode, and inspected evidence. Cover correctness, project standards, specification alignment, security, and relevant callers/error/concurrency paths. Drop an axis only when the subject plainly has none and say so.
+For code reviews, require findings ranked `critical`, `high`, `medium`, `low`, or `nit`, each with a path/line (or hunk), concrete failure mode, and inspected evidence. Check the original objective and acceptance criteria before judging implementation details. Cover scope drift, completion quality, correctness, project standards, specification alignment, security, and relevant callers/error/concurrency paths. Drop an axis only when the subject plainly has none and say so.
 
 For plan/design reviews, require concrete challenges from first principles, hidden assumptions, simpler alternatives, realistic failure modes/blast radius, evidence quality, and any domain-specific cost, timeline, reversibility, or security concern. Avoid generic caution and manufactured objections.
 

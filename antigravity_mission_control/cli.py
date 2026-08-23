@@ -45,7 +45,7 @@ STRATEGY_PATTERNS = {
 }
 
 ROLES = tuple(STRATEGY_PATTERNS["A"])
-VERSION = "0.1.0a1"
+VERSION = "0.1.0a2"
 AGY_BIN = os.environ.get("AGY_MC_BIN", os.environ.get("AGY_ORCHESTRATOR_BIN", "agy"))
 SETTINGS_PATH = Path(
     os.environ.get(
@@ -678,6 +678,24 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     help_text = help_result.stdout + "\n" + help_result.stderr
     missing = [flag for flag in required if flag not in help_text]
     checks.append({"name": "headless-capabilities", "ok": help_result.returncode == 0 and not missing, "missing": missing})
+    session = run_capture([AGY_BIN, "--output-format", "json", "models"], timeout=30)
+    session_ok = False
+    model_count = 0
+    if session.returncode == 0:
+        try:
+            payload = json.loads(session.stdout)
+            models = _command_data(payload).get("models", [])
+            session_ok = isinstance(models, list) and bool(models)
+            model_count = len(models) if isinstance(models, list) else 0
+        except (json.JSONDecodeError, TypeError):
+            pass
+    checks.append(
+        {
+            "name": "agy-session",
+            "ok": session_ok,
+            "detail": f"authenticated model catalog: {model_count} models" if session_ok else "run `agy` and complete Google sign-in",
+        }
+    )
     state_ok = True
     detail = str(STATE_ROOT)
     try:
@@ -1480,7 +1498,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", action="version", version=f"agy-mc {VERSION}")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    doctor_parser = subparsers.add_parser("doctor", help="Check AGY and Mission Control runtime capabilities")
+    doctor_parser = subparsers.add_parser("doctor", help="Check AGY, authenticated model access, and Mission Control runtime capabilities")
     doctor_parser.set_defaults(func=cmd_doctor)
     skill_parser = subparsers.add_parser("skill", help="Install, update, inspect, or uninstall the bundled Codex skill")
     skill_parser.add_argument("action", choices=["install", "update", "status", "uninstall"])

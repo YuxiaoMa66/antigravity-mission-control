@@ -15,26 +15,55 @@
 
 > **Alpha：** 已适合公开预发布测试，但还不是稳定安全边界。本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
 
+## 别让已经薅到的 Gemini 在账号里吃灰
+
+如果你手里正好有 Google One AI 订阅，或者拿到了符合条件的学生一年福利，账号里可能已经躺着一批 Gemini 额度。Antigravity 客户端像写到一半换键盘，CLI 也未必顺手；Codex 倒是已经用出肌肉记忆，可额度常常午饭前就见底，模型偶尔还爱走观光路线。Gemini Flash 跑得快，这份速度值得派上用场。
+
+把 Mission Control 装进你熟悉的 Codex harness。让 Codex 当产品经理、总监和爱挑刺的验收官，把实现工单交给 Antigravity。Codex 定范围、批权限、看 diff、跑测试；AGY worker 负责干活。
+
+Google 账号资格和额度由你自己提供。Mission Control 不送订阅，也不会把提供商额度凭空变多。
+
+### 用结构和审核把任务拉回正轨
+
+| 阶段 | 谁负责 | 防偏离设计 |
+|---|---|---|
+| 结构设计 | Codex | 把需求整理成范围、约束、验收标准和有边界的角色 |
+| 方案选择 | Codex + 你 | 提供 A/B/C 模型阵容和有实际差异的设计选项；关键选择由你确认或修改 |
+| 执行 | AGY worker | 在已批准目标内自己制定步骤并完成工作，不为每个无害动作反复请示 |
+| 监督验收 | reviewer + Codex | 检查范围漂移、证据、测试和交付质量；Codex 决定接受、纠正或退回 |
+
+planner 可以在批准目标内自己决定路线。某个选择会改变范围、成本、可逆性或产品行为时，它必须把可选方案摆出来。reviewer 会同时拿到原始任务书和真实产物，专门识别“答案写得很漂亮，完成的却是另一件事”。
+
 ## 安装
 
-先安装 AGY，并确认 `agy --version` 可用。然后运行 npm 一键安装器：
+已经有 AGY：先确认版本，运行一次 `agy` 完成 Google 登录，再安装 Mission Control：
 
 ```bash
-npx antigravity-mission-control install
+agy --version
+agy
+npx antigravity-mission-control@next install --lang zh
 ```
+
+还没有 AGY：让安装器先调用 Google 官方安装器：
+
+```bash
+npx antigravity-mission-control@next install --install-agy --lang zh
+```
+
+交互安装检测不到 AGY 时会先询问；非交互安装必须明确增加 `--install-agy`。新装 AGY 后运行 `agy` 完成 Google 登录。Mission Control 不读取、不复制登录材料。
 
 安装器会先展示所有目标，再创建私有 Python 运行环境、安装 `agy-mc`、部署 Codex Skill。全程使用参数数组，不使用 shell 拼接。CI 或 agent 环境需要加 `--yes`；可以先用 `--dry-run` 查看影响。
 
 ```bash
-npx antigravity-mission-control install --dry-run --lang zh
-npx antigravity-mission-control install --yes --lang zh
-npx antigravity-mission-control status --lang zh
+npx antigravity-mission-control@next install --dry-run --lang zh
+npx antigravity-mission-control@next install --yes --lang zh
+npx antigravity-mission-control@next status --lang zh
 ```
 
 也支持直接使用 Python：
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a1"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a2"
 agy-mc skill install --lang zh
 agy-mc doctor
 ```

@@ -53,7 +53,28 @@ class UsageTests(unittest.TestCase):
     def test_doctor_checks_capabilities(self):
         proc = self.run_cli("doctor")
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertEqual(json.loads(proc.stdout)["status"], "ok")
+        payload = json.loads(proc.stdout)
+        self.assertEqual(payload["status"], "ok")
+        self.assertTrue(next(check for check in payload["checks"] if check["name"] == "agy-session")["ok"])
+
+    def test_doctor_requires_authenticated_model_access(self):
+        env = os.environ.copy()
+        env["AGY_MC_BIN"] = str(FAKE)
+        env["AGY_MC_STATE_ROOT"] = str(ROOT / ".test-state")
+        env["FAKE_AGY_MODELS_ERROR"] = "1"
+        proc = subprocess.run(
+            [sys.executable, str(CLI), "doctor"],
+            cwd=ROOT,
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 1)
+        session = next(check for check in json.loads(proc.stdout)["checks"] if check["name"] == "agy-session")
+        self.assertFalse(session["ok"])
+        self.assertIn("Google sign-in", session["detail"])
 
     def test_prompt_transport_is_stdin_stream_json(self):
         from antigravity_mission_control import cli

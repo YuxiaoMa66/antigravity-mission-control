@@ -11,3 +11,4 @@ Only the newest alpha is supported while the project is pre-1.0. Do not open a p
 - Legacy boolean approval assertions remain temporarily available for Alpha migration and should not be used in new automation.
 - Editing serialization relies on Unix `flock`; this Alpha supports macOS and Linux, not Windows.
 - Quota output is normalized and account-free; diagnostic errors intentionally omit raw stderr.
+- `--install-agy` is a separate privileged choice. It downloads Google's official installer from `https://antigravity.google/cli/install.sh` into a private temporary file, rejects empty, oversized, or non-script responses, invokes `bash` with an argument array, and removes the temporary copy. The mutable upstream installer remains a supply-chain dependency and may update the user's shell PATH. `--yes` alone never enables this path.

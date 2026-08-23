@@ -6,7 +6,7 @@
 
 | Command | Purpose |
 |---|---|
-| `doctor` | Verify AGY version, headless flags and private state |
+| `doctor` | Verify AGY version, headless flags, authenticated model access and private state |
 | `models` | Discover exact current model IDs |
 | `usage [--watch]` | Sanitized quota snapshot or live terminal view |
 | `workspace` | Inspect or separately grant exact workspace trust |

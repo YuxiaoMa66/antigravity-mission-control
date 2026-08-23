@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0a2 - 2026-08-23
+
+- Added an explicit `--install-agy` path backed by Google's official installer.
+- Added interactive AGY detection and first-login guidance without reading OAuth state.
+- Reworked the English and Chinese project pitch around a familiar Codex harness supervising fast AGY workers.
+- Kept existing-AGY and new-AGY installation paths distinct for automation and auditability.
+
 ## 0.1.0a1 - 2026-08-23
 
 - Renamed the project to Antigravity Mission Control.

@@ -30,8 +30,9 @@ For a reviewer, explicitly say: “Read-only review. Do not edit files. Look for
 1. Codex establishes the minimal read-only baseline needed to define acceptance criteria and propose roles.
 2. Codex presents A, B, and C with complete role/model rosters and waits for the user to select or revise one.
 3. A confirmed planner is optional. Use one when the design is ambiguous or the code area is unfamiliar; require a plan with risks and verification points, not edits.
+   The planner may choose its own steps inside the approved objective. Require explicit alternatives only when a choice changes scope, cost, reversibility, or product behavior.
 4. The confirmed implementer owns named paths. Codex inspects the actual resulting diff immediately after the run.
-5. A confirmed reviewer is optional for meaningful risk. Give it the original criteria and the actual diff/current files, not the implementer's conclusions.
+5. A confirmed reviewer is optional for meaningful risk. Give it the original objective, criteria, and actual diff/current files, not the implementer's conclusions. Require it to check both scope drift and completion quality.
 6. Codex triages reviewer findings against source evidence. Do not forward every speculative comment into a correction loop.
 7. Corrections use a new prompt-bound approval and resume the exact implementer conversation with `--conversation`, or require roster reconfirmation if ownership, executor, model, or permission profile changes.
 8. Codex runs final tests and checks repository cleanliness/scope before reporting completion.

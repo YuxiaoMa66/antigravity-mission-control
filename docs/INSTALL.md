@@ -7,30 +7,44 @@
 - macOS or Linux
 - Node.js 18+ for the npm bootstrapper
 - Python 3.10+
-- Antigravity CLI (`agy`), authenticated through its normal interactive flow
+- Antigravity CLI (`agy`); the bootstrapper can install it from Google's official script when missing
 - Codex for the bundled Skill
 
-Mission Control never reads or copies AGY OAuth material.
+Mission Control never reads or copies AGY OAuth material. A fresh AGY installation still requires you to run `agy` and complete Google's interactive sign-in.
 
 ## Recommended: npm bootstrap
 
 Preview exact paths without writing:
 
 ```bash
-npx antigravity-mission-control install --dry-run
+npx antigravity-mission-control@next install --dry-run
 ```
 
 Interactive install:
 
 ```bash
-npx antigravity-mission-control install
+npx antigravity-mission-control@next install
 ```
 
-Non-interactive install:
+If AGY is already installed, the bootstrapper uses it. If AGY is missing, interactive mode asks whether it should run Google's official installer from `https://antigravity.google/cli/install.sh`.
+
+Install both AGY and Mission Control:
 
 ```bash
-npx antigravity-mission-control install --yes
+npx antigravity-mission-control@next install --install-agy
+agy
+agy-mc doctor
 ```
+
+The bootstrapper downloads the official script to a private temporary file, performs basic response checks, and invokes `bash` with an argument array. It does not pipe a network response into a shell. The Google installer may update your shell PATH. Mission Control removes its temporary copy afterward.
+
+Non-interactive installation requires separate flags for Mission Control confirmation and AGY installation:
+
+```bash
+npx antigravity-mission-control@next install --yes --install-agy
+```
+
+Omit `--install-agy` when automation has already provisioned and authenticated AGY.
 
 Default managed paths:
 
@@ -47,9 +61,9 @@ Add `~/.local/bin` to `PATH` if the installer reports that it is missing.
 ## Upgrade and status
 
 ```bash
-npx antigravity-mission-control status
-npx antigravity-mission-control update
-npx antigravity-mission-control doctor
+npx antigravity-mission-control@next status
+npx antigravity-mission-control@next update
+npx antigravity-mission-control@next doctor
 ```
 
 `update` refreshes the managed Python package first, then atomically deploys the bundled Skill and preserves the previous Skill as a timestamped backup.
@@ -57,7 +71,7 @@ npx antigravity-mission-control doctor
 ## Recoverable uninstall
 
 ```bash
-npx antigravity-mission-control uninstall
+npx antigravity-mission-control@next uninstall
 ```
 
 The Skill is moved to Codex's backup directory. The managed Python environment is renamed to a timestamped backup beside its original path. User-owned AGY settings, trust entries, OAuth state and Mission Control job evidence are not deleted.
@@ -65,7 +79,7 @@ The Skill is moved to Codex's backup directory. The managed Python environment i
 ## Direct Python installation
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a1"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a2"
 agy-mc skill install
 ```
 

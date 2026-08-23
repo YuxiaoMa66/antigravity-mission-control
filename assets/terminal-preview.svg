@@ -11,7 +11,7 @@
   <text x="560" y="72" text-anchor="middle" fill="#6f779b" font-family="ui-monospace, SFMono-Regular, Menlo" font-size="15">antigravity-mission-control</text>
   <g font-family="ui-monospace, SFMono-Regular, Menlo" font-size="20">
     <text x="85" y="120" fill="#a78bfa">╭────────────────────────────────────────────────────────────╮</text>
-    <text x="85" y="151" fill="#a78bfa">│</text><text x="110" y="151" fill="#f5f3ff" font-weight="700">ANTIGRAVITY MISSION CONTROL</text><text x="475" y="151" fill="#22d3ee">◉</text><text x="515" y="151" fill="#c4b5fd">v0.1.0-alpha.1</text><text x="817" y="151" fill="#a78bfa">│</text>
+    <text x="85" y="151" fill="#a78bfa">│</text><text x="110" y="151" fill="#f5f3ff" font-weight="700">ANTIGRAVITY MISSION CONTROL</text><text x="475" y="151" fill="#22d3ee">◉</text><text x="515" y="151" fill="#c4b5fd">v0.1.0-alpha.2</text><text x="817" y="151" fill="#a78bfa">│</text>
     <text x="85" y="182" fill="#a78bfa">│</text><text x="110" y="182" fill="#7f89a9">Route · Guard · Verify</text><text x="817" y="182" fill="#a78bfa">│</text>
     <text x="85" y="213" fill="#a78bfa">╰────────────────────────────────────────────────────────────╯</text>
     <text x="85" y="261" fill="#4ade80">✓</text><text x="120" y="261" fill="#f5f3ff" font-weight="700">AGY 1.1.19 · runtime ready</text>

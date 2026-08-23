@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, mkdirSync, readlinkSync, realpathSync, renameSync, symlinkSync, unlinkSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, realpathSync, renameSync, rmdirSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, resolve, sep } from 'node:path';
 import process from 'node:process';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
-const VERSION = '0.1.0-alpha.1';
-const PYTHON_VERSION = '0.1.0a1';
+const VERSION = '0.1.0-alpha.2';
+const PYTHON_VERSION = '0.1.0a2';
 const REPOSITORY = 'https://github.com/YuxiaoMa66/antigravity-mission-control.git';
 const DEFAULT_SOURCE = `git+${REPOSITORY}@v${PYTHON_VERSION}`;
+const AGY_INSTALL_URL = 'https://antigravity.google/cli/install.sh';
 const colorEnabled = process.stdout.isTTY && !process.env.NO_COLOR;
 
 const c = {
@@ -25,7 +26,7 @@ const c = {
 };
 
 function parseArgs(argv) {
-  const args = { command: 'help', lang: 'auto', yes: false, dryRun: false, force: false, source: DEFAULT_SOURCE };
+  const args = { command: 'help', lang: 'auto', yes: false, dryRun: false, force: false, installAgy: false, source: DEFAULT_SOURCE };
   const rest = [...argv];
   if (rest[0] && !rest[0].startsWith('-')) args.command = rest.shift();
   while (rest.length) {
@@ -33,6 +34,7 @@ function parseArgs(argv) {
     if (flag === '--yes' || flag === '-y') args.yes = true;
     else if (flag === '--dry-run') args.dryRun = true;
     else if (flag === '--force') args.force = true;
+    else if (flag === '--install-agy') args.installAgy = true;
     else if (flag === '--lang') {
       if (!rest.length) throw new Error('--lang requires a value');
       args.lang = rest.shift();
@@ -61,6 +63,9 @@ const messages = {
     source: 'Package source', confirm: 'Continue with these exact changes?', canceled: 'Canceled; nothing changed.',
     complete: 'Mission accomplished', missingPython: 'Python 3.10+ is required.', missingAgy: 'AGY was not found; install it before running workers.',
     pathWarning: 'Add this directory to PATH to call agy-mc directly', dryRun: 'Dry run — no files will change',
+    installAgy: 'Official AGY installer', installAgyPrompt: 'AGY is missing. Install the official Antigravity CLI first?',
+    installAgyRequired: 'AGY was not found. Install it first, or rerun with --install-agy to use Google’s official installer.',
+    agyReady: 'AGY installed', agyLogin: 'First AGY setup: run `agy`, complete Google sign-in, then run `agy-mc doctor`.',
   },
   zh: {
     subtitle: '调度 · 守界 · 验收', install: '安装', update: '更新', uninstall: '卸载',
@@ -68,6 +73,9 @@ const messages = {
     source: '安装来源', confirm: '确认执行以上精确修改吗？', canceled: '已取消，未修改任何文件。',
     complete: '任务完成', missingPython: '需要 Python 3.10 或更高版本。', missingAgy: '未找到 AGY；运行 worker 前请先安装。',
     pathWarning: '请将此目录加入 PATH，以便直接调用 agy-mc', dryRun: '预演模式——不会修改文件',
+    installAgy: 'AGY 官方安装器', installAgyPrompt: '没有检测到 AGY。先安装官方 Antigravity CLI 吗？',
+    installAgyRequired: '没有检测到 AGY。请先安装，或增加 --install-agy 使用 Google 官方安装器。',
+    agyReady: 'AGY 安装完成', agyLogin: '首次配置：运行 `agy` 完成 Google 登录，然后执行 `agy-mc doctor`。',
   },
 };
 
@@ -157,6 +165,7 @@ function showPlan(args, p, msg) {
   row('◇', msg.target, p.skillTarget);
   row('◇', msg.runtime, p.venv);
   if (['install', 'update'].includes(args.command)) row('◇', msg.source, args.source);
+  if (args.installAgy) row('◇', msg.installAgy, AGY_INSTALL_URL);
 }
 
 function managedShim(p) {
@@ -179,18 +188,72 @@ function lstatSafe(path) {
   try { return lstatSync(path); } catch { return null; }
 }
 
+function locateAgy(p) {
+  const pathVersion = commandExists('agy');
+  if (pathVersion) return { command: 'agy', version: pathVersion };
+  const managedCandidate = `${p.home}/.local/bin/agy`;
+  if (existsSync(managedCandidate)) {
+    const version = commandExists(managedCandidate);
+    if (version) {
+      process.env.PATH = `${dirname(managedCandidate)}:${process.env.PATH || ''}`;
+      return { command: managedCandidate, version };
+    }
+  }
+  return null;
+}
+
+async function installOfficialAgy(p) {
+  const response = await fetch(AGY_INSTALL_URL, { redirect: 'follow', signal: AbortSignal.timeout(30_000) });
+  if (!response.ok) throw new Error(`Official AGY installer download failed: HTTP ${response.status}`);
+  const finalUrl = new URL(response.url);
+  if (finalUrl.protocol !== 'https:' || !['antigravity.google', 'www.antigravity.google'].includes(finalUrl.hostname)) {
+    throw new Error(`Official AGY installer redirected to an unapproved host: ${finalUrl.hostname}`);
+  }
+  const payload = Buffer.from(await response.arrayBuffer());
+  if (payload.length === 0 || payload.length > 2 * 1024 * 1024 || !payload.toString('utf8', 0, 2).startsWith('#!')) {
+    throw new Error('Official AGY installer response failed safety checks');
+  }
+  const temporary = mkdtempSync(resolve(tmpdir(), 'agy-mc-agy-installer-'));
+  const script = `${temporary}/install.sh`;
+  try {
+    writeFileSync(script, payload, { mode: 0o700 });
+    run('bash', [script]);
+  } finally {
+    if (existsSync(script)) unlinkSync(script);
+    rmdirSync(temporary);
+  }
+  const installed = locateAgy(p);
+  if (!installed) throw new Error('The official installer finished, but `agy --version` is still unavailable');
+  return installed;
+}
+
 async function installOrUpdate(args, p, msg) {
+  let agy = locateAgy(p);
+  if (agy) args.installAgy = false;
+  if (!agy && !args.installAgy && !args.dryRun) {
+    if (!args.yes && process.stdin.isTTY) {
+      banner();
+      row('!', 'AGY', msg.missingAgy, c.amber);
+      args.installAgy = await confirmChange(args, msg.installAgyPrompt);
+    }
+    if (!args.installAgy) throw new Error(msg.installAgyRequired);
+  }
   showPlan(args, p, msg);
   const python = pythonCommand();
   if (!python) throw new Error(msg.missingPython);
   row('✓', 'Python', `${python.command} ${python.version}`, c.green);
-  const agyVersion = commandExists('agy');
-  row(agyVersion ? '✓' : '!', 'AGY', agyVersion || msg.missingAgy, agyVersion ? c.green : c.amber);
+  row(agy ? '✓' : '!', 'AGY', agy?.version || msg.missingAgy, agy ? c.green : c.amber);
   if (!(await confirmChange(args, msg.confirm))) {
     console.log(msg.canceled);
     return;
   }
   if (args.dryRun) return;
+  let installedAgy = false;
+  if (!agy && args.installAgy) {
+    agy = await installOfficialAgy(p);
+    installedAgy = true;
+    row('✓', msg.agyReady, agy.version, c.green);
+  }
   mkdirSync(p.dataRoot, { recursive: true, mode: 0o700 });
   if (!existsSync(p.venv)) run(python.command, ['-m', 'venv', p.venv]);
   const venvPython = process.platform === 'win32' ? `${p.venv}/Scripts/python.exe` : `${p.venv}/bin/python`;
@@ -202,6 +265,7 @@ async function installOrUpdate(args, p, msg) {
   ensureShim(p, args.force);
   console.log(`\n${c.green}✓ ${msg.complete}${c.reset}`);
   if (!(process.env.PATH || '').split(':').includes(p.binRoot)) console.log(`${c.amber}! ${msg.pathWarning}: ${p.binRoot}${c.reset}`);
+  if (installedAgy) console.log(`${c.amber}! ${msg.agyLogin}${c.reset}`);
 }
 
 function showStatus(p, msg) {
@@ -234,7 +298,7 @@ function help() {
   banner();
   console.log(`\n${c.bold}Usage${c.reset}\n  npx antigravity-mission-control <command> [options]\n`);
   console.log(`${c.bold}Commands${c.reset}\n  install      Install the managed Python CLI and Codex Skill\n  update       Upgrade both layers and preserve a backup\n  status       Show AGY, runtime, and Skill status\n  doctor       Run the installed Mission Control doctor\n  uninstall    Recoverably remove managed files\n`);
-  console.log(`${c.bold}Options${c.reset}\n  --lang auto|en|zh   Interface language\n  --source PATH|URL   Python package source\n  --dry-run           Show exact targets without writing\n  --yes, -y           Confirm non-interactively\n  --force             Back up and replace an unmanaged Skill target\n  --version, -v       Print version\n`);
+  console.log(`${c.bold}Options${c.reset}\n  --lang auto|en|zh   Interface language\n  --source PATH|URL   Python package source\n  --install-agy       Install AGY from Google’s official installer when missing\n  --dry-run           Show exact targets without writing\n  --yes, -y           Confirm non-interactively\n  --force             Back up and replace an unmanaged Skill target\n  --version, -v       Print version\n`);
 }
 
 async function main() {

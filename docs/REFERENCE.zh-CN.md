@@ -6,7 +6,7 @@
 
 | 命令 | 用途 |
 |---|---|
-| `doctor` | 验证 AGY 版本、headless 参数和私有状态目录 |
+| `doctor` | 验证 AGY 版本、headless 参数、登录后的模型访问和私有状态目录 |
 | `models` | 发现当前精确模型 ID |
 | `usage [--watch]` | 脱敏额度快照或实时终端视图 |
 | `workspace` | 检查或单独授予精确工作区信任 |

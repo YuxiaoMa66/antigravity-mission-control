@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 const cli = resolve(root, 'npm/cli.mjs');
+const python3 = spawnSync('which', ['python3'], { encoding: 'utf8' }).stdout.trim();
 
 function run(args, env = {}) {
   return spawnSync(process.execPath, [cli, ...args], {
@@ -23,6 +24,27 @@ test('help presents the product and command surface', () => {
   assert.match(result.stdout, /ANTIGRAVITY MISSION CONTROL/);
   assert.match(result.stdout, /install/);
   assert.match(result.stdout, /uninstall/);
+  assert.match(result.stdout, /--install-agy/);
+});
+
+test('AGY installation is a separate explicit non-interactive choice', () => {
+  const home = mkdtempSync(resolve(tmpdir(), 'agy-mc-npm-no-agy-'));
+  const result = run(['install', '--yes', '--source', root], {
+    HOME: home,
+    PATH: dirname(process.execPath),
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--install-agy/);
+});
+
+test('AGY install dry-run names the official source without executing it', () => {
+  const home = mkdtempSync(resolve(tmpdir(), 'agy-mc-npm-agy-dry-'));
+  const bin = resolve(home, 'bin');
+  mkdirSync(bin);
+  symlinkSync(python3, resolve(bin, 'python3'));
+  const result = run(['install', '--dry-run', '--install-agy', '--lang', 'en', '--source', root], { HOME: home, PATH: bin });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /https:\/\/antigravity\.google\/cli\/install\.sh/);
 });
 
 test('status is read-only and reports missing managed components', () => {

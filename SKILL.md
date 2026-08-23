@@ -7,6 +7,17 @@ description: Coordinate Antigravity CLI workers with explicit model rosters, bou
 
 Codex is mission control; AGY models are bounded workers. A worker response is evidence, not acceptance. Codex retains scope, checks the real diff and tests, and makes the completion claim.
 
+## Control loop
+
+Preserve the user's objective through four distinct responsibilities:
+
+1. Codex translates the request into scope, constraints, acceptance criteria, and bounded roles.
+2. Codex proposes meaningful roster or design choices when they change cost, scope, reversibility, or product behavior. The user selects or revises consequential choices.
+3. The planner and implementer choose their own steps inside the approved objective. Do not turn harmless implementation details into repeated confirmation gates.
+4. A reviewer receives the original objective, acceptance criteria, and real artifacts. It checks scope drift and delivery quality; Codex independently accepts, corrects, or rejects the work.
+
+Do not let a worker silently redefine the objective. When ambiguity would produce materially different outcomes, present the alternatives and their tradeoffs before implementation. Review completion against the original task, not the implementer's summary.
+
 ## Preflight
 
 1. Run `agy-mc doctor` and `agy-mc models`. The compatibility launcher in `scripts/agy_delegate.py` delegates to the installed CLI.
@@ -28,7 +39,7 @@ The bundled `strict-yuxiao` policy preserves the mandatory three-roster flow. `b
 ## Dispatch and acceptance
 
 - Use [references/role-prompts.md](references/role-prompts.md) for scout, planner, implementer, and reviewer contracts.
-- Run editing workers serially in one workspace. Parallelize only read-only or genuinely disjoint work.
+- Run editing workers serially in one workspace. Parallelize only read-only or disjoint work.
 - Use `--mode plan` for read-only roles and `--mode accept-edits` only for an approved write scope.
 - Keep prompts outside the project. Mission Control sends them to AGY over standard input, not the process argument list.
 - Use `--background` for long work, then `status`, `wait`, `result`, or `cancel`. Read [references/job-lifecycle.md](references/job-lifecycle.md).

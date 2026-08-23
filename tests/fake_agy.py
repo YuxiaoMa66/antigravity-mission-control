@@ -23,6 +23,9 @@ elif "/usage" in sys.argv:
         ]}}
     }))
 elif "models" in sys.argv:
+    if os.environ.get("FAKE_AGY_MODELS_ERROR"):
+        print(json.dumps({"status": "ERROR", "error": "not authenticated"}), file=sys.stderr)
+        raise SystemExit(1)
     print(json.dumps({"command": {"data": {"models": [{"id": "gemini-3.7-flash-high"}]}}}))
 elif "stream-json" in sys.argv:
     request = sys.stdin.readline()
