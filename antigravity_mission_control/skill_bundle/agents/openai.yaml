@@ -1,0 +1,4 @@
+interface:
+  display_name: "Antigravity Mission Control"
+  short_description: "编排 AGY 多模型、验收交付并实时查看额度"
+  default_prompt: "Use $antigravity-mission-control to propose A/B/C role-model rosters, wait for my approval, then coordinate and independently verify the work."

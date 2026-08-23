@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="540" viewBox="0 0 1120 540" role="img" aria-labelledby="title desc">
+  <title id="title">Mission Control terminal interface</title>
+  <desc id="desc">A terminal preview showing installation and live AGY quota.</desc>
+  <defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#111027"/><stop offset="1" stop-color="#061820"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#020617" flood-opacity=".48"/></filter>
+  </defs>
+  <rect width="1120" height="540" rx="28" fill="#f3f1ff"/>
+  <rect x="45" y="35" width="1030" height="470" rx="22" fill="url(#shell)" filter="url(#shadow)"/>
+  <circle cx="78" cy="67" r="7" fill="#fb7185"/><circle cx="102" cy="67" r="7" fill="#fbbf24"/><circle cx="126" cy="67" r="7" fill="#4ade80"/>
+  <text x="560" y="72" text-anchor="middle" fill="#6f779b" font-family="ui-monospace, SFMono-Regular, Menlo" font-size="15">antigravity-mission-control</text>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo" font-size="20">
+    <text x="85" y="120" fill="#a78bfa">╭────────────────────────────────────────────────────────────╮</text>
+    <text x="85" y="151" fill="#a78bfa">│</text><text x="110" y="151" fill="#f5f3ff" font-weight="700">ANTIGRAVITY MISSION CONTROL</text><text x="475" y="151" fill="#22d3ee">◉</text><text x="515" y="151" fill="#c4b5fd">v0.1.0-alpha.1</text><text x="817" y="151" fill="#a78bfa">│</text>
+    <text x="85" y="182" fill="#a78bfa">│</text><text x="110" y="182" fill="#7f89a9">Route · Guard · Verify</text><text x="817" y="182" fill="#a78bfa">│</text>
+    <text x="85" y="213" fill="#a78bfa">╰────────────────────────────────────────────────────────────╯</text>
+    <text x="85" y="261" fill="#4ade80">✓</text><text x="120" y="261" fill="#f5f3ff" font-weight="700">AGY 1.1.19 · runtime ready</text>
+    <text x="85" y="307" fill="#22d3ee">◆</text><text x="120" y="307" fill="#f5f3ff">Gemini Models</text><text x="430" y="307" fill="#7f89a9">weekly</text><text x="590" y="307" fill="#22d3ee">68.40%</text><text x="730" y="307" fill="#7f89a9">reset 2026-08-25</text>
+    <text x="85" y="350" fill="#a78bfa">◆</text><text x="120" y="350" fill="#f5f3ff">Claude &amp; GPT</text><text x="430" y="350" fill="#7f89a9">5 hours</text><text x="590" y="350" fill="#a78bfa">92.10%</text><text x="730" y="350" fill="#7f89a9">reset 22:30</text>
+    <text x="85" y="408" fill="#7f89a9">$</text><text x="110" y="408" fill="#f5f3ff">npx antigravity-mission-control status</text>
+    <text x="85" y="452" fill="#4ade80">✓</text><text x="120" y="452" fill="#f5f3ff">Mission accomplished</text>
+  </g>
+</svg>

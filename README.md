@@ -1,69 +1,123 @@
-# Antigravity Mission Control
+<p align="center"><img src="assets/logo/mission-control.svg" width="720" alt="Antigravity Mission Control"></p>
 
-Mission Control is a policy-aware orchestration layer for the Antigravity CLI (`agy`). It gives Codex a disciplined way to route work to multiple models, keep permissions and ownership bounded, manage background jobs, independently accept results, and watch remaining AGY quota in real time.
+<p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
 
-> Alpha: the CLI and policy surface may change before 1.0. This is an independent community project, not an official Google or Antigravity product.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-7c3aed" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/Node.js-18%2B-0891b2" alt="Node.js 18+">
+  <img src="https://img.shields.io/badge/AGY-tested_1.1.19-22d3ee" alt="AGY tested 1.1.19">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a78bfa" alt="MIT License"></a>
+</p>
 
-## What it adds
+Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota—while Codex remains responsible for acceptance.
 
-- Dynamic model discovery and A/B/C role routing rather than stale model names.
-- Exact-workspace trust checks and separate unrestricted-execution confirmation.
-- Synchronous and background jobs with status, wait, result, cancel, and conversation continuation.
-- Prompts sent through AGY `stream-json` stdin, keeping task text out of process arguments.
-- Private local state (`0700` directories and `0600` evidence files).
-- Sanitized quota snapshots and a terminal watch mode.
-- A Codex skill with strict and balanced policy profiles.
+<p align="center"><img src="assets/terminal-preview.svg" width="920" alt="Mission Control terminal preview"></p>
 
-## Install for development
+> **Alpha:** ready for public pre-release evaluation, not a stable security boundary. Independent community project; not affiliated with Google or Antigravity.
 
-Requirements: Python 3.10+ and a working `agy` CLI. The current alpha was developed against AGY 1.1.19 on macOS.
+## Install
+
+Install AGY first and verify `agy --version`. Then use the npm bootstrapper:
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install -e .
+npx antigravity-mission-control install
+```
+
+It shows every target before writing, creates a private managed Python environment, installs `agy-mc`, deploys the Codex Skill, and runs without shell interpolation. For CI or agents, add `--yes`; inspect first with `--dry-run`.
+
+```bash
+npx antigravity-mission-control install --dry-run
+npx antigravity-mission-control install --yes
+npx antigravity-mission-control status
+```
+
+Direct Python installation is also supported:
+
+```bash
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a1"
+agy-mc skill install
 agy-mc doctor
 ```
 
-The compatibility entrypoint needs no package install:
+Full setup, upgrade, uninstall, local-source and PATH notes: [Installation guide](docs/INSTALL.md).
 
-```bash
-python3 scripts/agy_delegate.py doctor
-```
+## What Mission Control adds
 
-## Real-time quota display
+| Layer | Responsibility |
+|---|---|
+| Codex Skill | Roster choice, scope, permission boundaries, independent acceptance |
+| `agy-mc` core | Model discovery, signed approvals, AGY transport, jobs, locks, evidence, quota |
+| npm bootstrap | Managed Python environment, Skill deployment, update and recoverable uninstall |
+| AGY | Executes the exact bounded worker assignment |
+
+The npm layer is deliberately thin. The Python companion is the single behavioral implementation, so npm and direct Python installs cannot drift into different orchestration rules.
+
+## Live quota
 
 ```bash
 agy-mc usage
-agy-mc usage --watch
-agy-mc usage --watch --interval 30
+agy-mc usage --watch --interval 60
 agy-mc usage --format json
 ```
 
-The watch refreshes every 60 seconds by default. It displays each model group and quota window, remaining percentage, reset time, and disabled state. A failed or missing value is `unknown`, never a misleading `0%`. JSON uses the stable `agy-mc-usage.v1` envelope and excludes raw provider payloads and account identity.
+The normalized `agy-mc-usage.v1` output includes model groups, quota windows, remaining percentage, reset time and disabled state. Missing data stays `unknown`; it is never rewritten as `0%`. Raw provider payloads, OAuth material and account identity are excluded.
 
-`/usage` is a fixed built-in command; ordinary worker prompts use stdin. Quota telemetry does not replace explicit project call budgets.
+## Bound approvals
 
-## Skill installation
+After the user approves the exact roster and permission profile, create a short-lived manifest:
 
-Copy this directory to your Codex skills directory as `antigravity-mission-control`, restart or refresh Codex, then invoke `$antigravity-mission-control`. The bundled profiles are:
+```bash
+agy-mc approve \
+  --strategy A --role implementer --model gemini-3.7-flash-high \
+  --cwd /absolute/project --prompt-file /private/prompt.txt \
+  --mode accept-edits --expires-minutes 60 --confirmed
+```
 
-- `policies/strict-yuxiao.json`: mandatory A/B/C roster gate and Gemini High default.
-- `policies/balanced.json`: lighter roster process while retaining exact models and separate unrestricted approval.
+Pass the returned file to `run`. The machine-local HMAC binds strategy, role, model, canonical workspace, prompt hash, mode, permission profile, conversation and expiration. Changing any bound field invalidates the run.
 
-## Security model
+```bash
+agy-mc run \
+  --strategy A --role implementer --model gemini-3.7-flash-high \
+  --cwd /absolute/project --prompt-file /private/prompt.txt \
+  --mode accept-edits --approval-file ~/.local/state/antigravity-mission-control/approvals/<id>.json
+```
 
-Mission Control narrows orchestration mistakes and makes permission changes visible. Workspace trust edits AGY's user settings. `--dangerously-skip-permissions` is never implied by trust and requires separate confirmation. Do not delegate credentials, production mutation, publishing, or deletion without explicit authority.
+Legacy boolean approval flags remain for migration in this Alpha and are deprecated.
 
-Local job evidence may contain prompts and model responses. It is stored below `${XDG_STATE_HOME:-~/.local/state}/antigravity-mission-control` with private permissions. Override paths with `AGY_MC_STATE_ROOT`, `AGY_MC_JOB_ROOT`, `AGY_MC_SETTINGS_PATH`, and `AGY_MC_BIN`.
+## Background jobs
 
-See [SECURITY.md](SECURITY.md) for current alpha limitations.
+Add `--background`, then use:
+
+```bash
+agy-mc status [job-id]
+agy-mc wait <job-id> --timeout 10m
+agy-mc result <job-id>
+agy-mc cancel <job-id>
+agy-mc continue <job-id> --prompt-file /private/follow-up.txt
+```
+
+Editing jobs use an OS-level non-blocking lock per canonical workspace. `cancel` records `canceling`, waits after TERM, escalates to KILL if required, and reports `canceled` only after process exit is confirmed.
+
+## Design principles
+
+- Exact models are discovered from the current AGY session; no remembered slug is treated as truth.
+- Workspace trust and unrestricted execution are separate user-approved mutations.
+- Worker success is not task acceptance. Codex checks the real diff, diagnostics and tests.
+- Prompts travel over `stream-json` stdin, never in process arguments.
+- State directories are `0700`; prompts, manifests, locks and results are `0600`.
+- Installation and uninstall preserve recoverable backups.
+
+See [Reference](docs/REFERENCE.md), [Security](SECURITY.md), [Contributing](CONTRIBUTING.md), and [Release process](docs/RELEASING.md).
 
 ## Validate
 
 ```bash
 python3 -m unittest discover -s tests -v
+npm test
+npm pack --dry-run
 python3 -m compileall -q antigravity_mission_control scripts tests
 ```
 
-Remote repository creation, pushing, and package publication are intentionally separate user-authorized steps.
+## License
+
+MIT. Role-contract patterns were adapted from [keli-wen/agy-staff](https://github.com/keli-wen/agy-staff) under its MIT license; see [NOTICE](NOTICE).

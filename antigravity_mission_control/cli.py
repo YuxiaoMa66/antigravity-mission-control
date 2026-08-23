@@ -4,11 +4,17 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+import fcntl
+import hashlib
+import hmac
+from importlib import resources
 import json
 import os
 import re
+import secrets
 import signal
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -53,6 +59,9 @@ STATE_ROOT = Path(
         str(Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state")) / "antigravity-mission-control"),
     )
 ).expanduser()
+LOCK_ROOT = STATE_ROOT / "locks"
+APPROVAL_ROOT = STATE_ROOT / "approvals"
+APPROVAL_KEY_PATH = STATE_ROOT / "approval.key"
 JOB_ROOT = Path(
     os.environ.get(
         "AGY_MC_JOB_ROOT",
@@ -60,7 +69,17 @@ JOB_ROOT = Path(
     )
 ).expanduser()
 JOB_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{2,127}$")
-JOB_EXIT_CODES = {"done": 0, "done_with_warnings": 0, "running": 2, "error": 3, "crashed": 3, "canceled": 4}
+JOB_EXIT_CODES = {
+    "done": 0,
+    "done_with_warnings": 0,
+    "starting": 2,
+    "running": 2,
+    "canceling": 2,
+    "error": 3,
+    "crashed": 3,
+    "cancel_failed": 3,
+    "canceled": 4,
+}
 PERMISSION_NOTICE_RE = re.compile(
     r"soft[- ]?denied|permission[^\n]*(?:required|denied|not granted|unavailable)|"
     r"requires approval|approval[^\n]*(?:unavailable|cannot be obtained)|tool[^\n]*denied",
@@ -100,7 +119,6 @@ def utc_now() -> str:
 
 def atomic_write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    os.chmod(path.parent, 0o700)
     fd, temp_name = tempfile.mkstemp(prefix=f"{path.name}.", suffix=".tmp", dir=path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
@@ -113,6 +131,69 @@ def atomic_write_json(path: Path, payload: dict) -> None:
     finally:
         if os.path.exists(temp_name):
             os.unlink(temp_name)
+
+
+def atomic_write_private_bytes(path: Path, payload: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(path.parent, 0o700)
+    fd, temp_name = tempfile.mkstemp(prefix=f"{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        os.write(fd, payload)
+        os.fsync(fd)
+        os.close(fd)
+        fd = -1
+        os.chmod(temp_name, 0o600)
+        os.replace(temp_name, path)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        if os.path.exists(temp_name):
+            os.unlink(temp_name)
+
+
+def sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def approval_key(create: bool = False) -> bytes:
+    if APPROVAL_KEY_PATH.is_file():
+        key = APPROVAL_KEY_PATH.read_bytes()
+        if len(key) != 32:
+            raise RuntimeError(f"Approval key is invalid: {APPROVAL_KEY_PATH}")
+        return key
+    if not create:
+        raise RuntimeError("Approval key is missing; create a new approval manifest on this machine")
+    key = secrets.token_bytes(32)
+    atomic_write_private_bytes(APPROVAL_KEY_PATH, key)
+    return key
+
+
+def approval_signature(payload: dict, key: bytes) -> str:
+    unsigned = {name: value for name, value in payload.items() if name != "signature"}
+    encoded = json.dumps(unsigned, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hmac.new(key, encoded, hashlib.sha256).hexdigest()
+
+
+def load_approval(path: Path) -> dict:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise RuntimeError(f"Approval manifest does not exist: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Approval manifest is invalid JSON: {path}: {exc}") from exc
+    if not isinstance(payload, dict) or payload.get("schema") != "agy-mc-approval.v1":
+        raise RuntimeError(f"Unsupported approval manifest: {path}")
+    signature = payload.get("signature")
+    expected = approval_signature(payload, approval_key(create=False))
+    if not isinstance(signature, str) or not hmac.compare_digest(signature, expected):
+        raise RuntimeError("Approval manifest signature does not match this machine or its contents")
+    try:
+        expires_at = datetime.fromisoformat(str(payload["expires_at"]))
+    except (KeyError, ValueError) as exc:
+        raise RuntimeError("Approval manifest has an invalid expiration") from exc
+    if expires_at.tzinfo is None or datetime.now(timezone.utc) >= expires_at.astimezone(timezone.utc):
+        raise RuntimeError(f"Approval manifest expired at {payload.get('expires_at')}")
+    return payload
 
 
 def validate_job_id(job_id: str) -> str:
@@ -211,6 +292,49 @@ def active_edit_job(cwd: Path) -> dict | None:
         if job.get("status") == "running" and job.get("cwd") == canonical and job.get("mode") == "accept-edits":
             return job
     return None
+
+
+def workspace_lock_path(cwd: Path) -> Path:
+    canonical = str(cwd.expanduser().resolve())
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return LOCK_ROOT / f"{digest}.lock"
+
+
+def acquire_workspace_lock(cwd: Path, owner: dict) -> tuple[int, Path]:
+    """Atomically lock one canonical workspace for an editing process."""
+    LOCK_ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(LOCK_ROOT, 0o700)
+    path = workspace_lock_path(cwd)
+    fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        os.close(fd)
+        active = active_edit_job(cwd)
+        detail = f" job={active['job_id']}" if active else ""
+        raise RuntimeError(f"Workspace already has an active editing lock: {cwd}.{detail}") from exc
+    payload = {
+        "schema": "agy-mc-workspace-lock.v1",
+        "workspace": str(cwd.expanduser().resolve()),
+        "acquired_at": utc_now(),
+        **owner,
+    }
+    encoded = (json.dumps(payload, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    os.ftruncate(fd, 0)
+    os.lseek(fd, 0, os.SEEK_SET)
+    os.write(fd, encoded)
+    os.fsync(fd)
+    os.chmod(path, 0o600)
+    return fd, path
+
+
+def release_workspace_lock(fd: int | None) -> None:
+    if fd is None:
+        return
+    try:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
 
 
 def diagnostic_excerpt(stderr: str, log_path: Path, max_lines: int = 24) -> list[str]:
@@ -500,7 +624,13 @@ def fetch_usage(timeout_seconds: int = 15) -> tuple[dict, int]:
 
 
 def render_usage_table(snapshot: dict) -> str:
-    lines = [f"Antigravity quota  {snapshot['fetched_at']}  status={snapshot['status']}"]
+    lines = [
+        "╭────────────────────────────────────────────────────────────────────────────────╮",
+        "│  ANTIGRAVITY MISSION CONTROL · LIVE QUOTA                                       │",
+        "╰────────────────────────────────────────────────────────────────────────────────╯",
+        f"Fetched {snapshot['fetched_at']} · status={snapshot['status']}",
+        "",
+    ]
     lines.append("GROUP                    WINDOW        REMAINING   RESET / STATE")
     lines.append("-" * 82)
     groups = snapshot.get("groups")
@@ -561,6 +691,124 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     return 0 if result["status"] == "ok" else 1
 
 
+def default_skill_target() -> Path:
+    codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
+    return codex_home / "skills" / "antigravity-mission-control"
+
+
+def skill_backup_path(target: Path) -> Path:
+    codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    return codex_home / "skill-backups" / f"antigravity-mission-control-{stamp}"
+
+
+def skill_marker(target: Path) -> dict | None:
+    marker = target / ".agy-mc-install.json"
+    try:
+        payload = json.loads(marker.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def render_skill_result(payload: dict, language: str) -> str:
+    zh = language == "zh"
+    labels = {
+        "installed": ("安装完成", "Installed"),
+        "updated": ("更新完成", "Updated"),
+        "uninstalled": ("已卸载并保留备份", "Uninstalled with recoverable backup"),
+        "present": ("已安装", "Installed"),
+        "missing": ("未安装", "Not installed"),
+        "dry-run": ("预演完成，未修改文件", "Dry run complete; no files changed"),
+    }
+    title = labels.get(payload["status"], (payload["status"], payload["status"]))[0 if zh else 1]
+    border = "─" * 60
+    lines = [f"╭{border}╮", "│  ANTIGRAVITY MISSION CONTROL · Route · Guard · Verify       │", f"╰{border}╯", "", f"  ✓ {title}"]
+    if payload.get("target"):
+        label = "目标" if zh else "Target"
+        lines.extend([f"  ◇ {label}", f"    {payload['target']}"])
+    if payload.get("backup"):
+        label = "备份" if zh else "Backup"
+        lines.extend([f"  ↪ {label}", f"    {payload['backup']}"])
+    if payload.get("version"):
+        lines.extend(["  ◇ Version", f"    {payload['version']}"])
+    return "\n".join(lines)
+
+
+def emit_skill_result(payload: dict, args: argparse.Namespace) -> None:
+    if args.format == "json":
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+    language = args.lang
+    if language == "auto":
+        language = "zh" if any(token in os.environ.get("LANG", "").lower() for token in ("zh", "cn")) else "en"
+    print(render_skill_result(payload, language))
+
+
+def cmd_skill(args: argparse.Namespace) -> int:
+    requested = Path(args.target).expanduser().absolute() if args.target else default_skill_target().absolute()
+    if requested.is_symlink():
+        raise RuntimeError(f"Refusing a symlink Skill target: {requested}")
+    target = requested.parent.resolve() / requested.name
+    if target == Path.home().resolve() or target == Path(target.anchor):
+        raise RuntimeError(f"Refusing broad skill target: {target}")
+    marker = skill_marker(target)
+    if args.action == "status":
+        status = "present" if target.is_dir() else "missing"
+        payload = {"schema": "agy-mc-skill-operation.v1", "status": status, "target": str(target), "version": (marker or {}).get("version")}
+        emit_skill_result(payload, args)
+        return 0 if status == "present" else 1
+
+    if args.action == "uninstall":
+        if not target.is_dir():
+            raise RuntimeError(f"Skill is not installed: {target}")
+        backup = skill_backup_path(target)
+        payload = {"schema": "agy-mc-skill-operation.v1", "status": "dry-run" if args.dry_run else "uninstalled", "target": str(target), "backup": str(backup), "version": (marker or {}).get("version")}
+        if not args.dry_run:
+            backup.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            os.replace(target, backup)
+        emit_skill_result(payload, args)
+        return 0
+
+    exists = target.exists()
+    if args.action == "install" and exists and not args.force:
+        raise RuntimeError(f"Skill target already exists: {target}; use update or install --force")
+    if args.action == "update" and not exists:
+        raise RuntimeError(f"Skill is not installed: {target}; use install")
+    if exists and not target.is_dir():
+        raise RuntimeError(f"Skill target is not a directory: {target}")
+    if exists and marker is None and not args.force:
+        raise RuntimeError(f"Existing skill is not managed by agy-mc: {target}; use --force only after inspection")
+
+    status = "installed" if args.action == "install" else "updated"
+    backup = skill_backup_path(target) if exists else None
+    payload = {"schema": "agy-mc-skill-operation.v1", "status": "dry-run" if args.dry_run else status, "target": str(target), "backup": str(backup) if backup else None, "version": VERSION}
+    if args.dry_run:
+        emit_skill_result(payload, args)
+        return 0
+
+    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    staging = target.parent / f".{target.name}.staging-{uuid.uuid4().hex[:8]}"
+    bundle = resources.files("antigravity_mission_control").joinpath("skill_bundle")
+    with resources.as_file(bundle) as bundle_path:
+        shutil.copytree(bundle_path, staging)
+    atomic_write_json(
+        staging / ".agy-mc-install.json",
+        {"schema": "agy-mc-skill-install.v1", "version": VERSION, "installed_at": utc_now(), "source": "python-package"},
+    )
+    try:
+        if exists:
+            backup.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            os.replace(target, backup)
+        os.replace(staging, target)
+    except Exception:
+        if backup and backup.exists() and not target.exists():
+            os.replace(backup, target)
+        raise
+    emit_skill_result(payload, args)
+    return 0
+
+
 def cmd_select(args: argparse.Namespace) -> int:
     print(select_model(args.role, available_models(), args.avoid_family, args.strategy))
     return 0
@@ -578,8 +826,108 @@ def cmd_workspace(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_approve(args: argparse.Namespace) -> int:
+    if not args.confirmed:
+        raise RuntimeError("Creating an approval manifest requires --confirmed after explicit user confirmation")
+    if args.expires_minutes < 1 or args.expires_minutes > 1440:
+        raise RuntimeError("--expires-minutes must be between 1 and 1440")
+    if args.permission_profile == "unrestricted" and not args.unrestricted_confirmed:
+        raise RuntimeError("Unrestricted approval requires separate confirmation and --unrestricted-confirmed")
+    if args.unrestricted_confirmed and args.permission_profile != "unrestricted":
+        raise RuntimeError("--unrestricted-confirmed requires --permission-profile unrestricted")
+
+    cwd = canonical_workspace(args.cwd)
+    prompt_path = Path(args.prompt_file).expanduser().resolve()
+    if not prompt_path.is_file():
+        raise RuntimeError(f"Prompt file does not exist: {prompt_path}")
+    prompt_text = prompt_path.read_text(encoding="utf-8")
+    models = available_models()
+    model_ids = {model["id"] for model in models}
+    if args.model not in model_ids:
+        raise RuntimeError(f"Requested model is unavailable: {args.model}")
+    if args.strategy == "C":
+        required_model = select_model(args.role, models, strategy="C")
+        if args.model != required_model:
+            raise RuntimeError(f"Strategy C requires {required_model}; got {args.model}")
+    allow_non_high = bool(args.non_high_gemini_confirmed)
+    if is_non_high_gemini(args.model) and not allow_non_high:
+        raise RuntimeError("A Gemini medium/low approval requires --non-high-gemini-confirmed")
+
+    created = datetime.now(timezone.utc)
+    approval_id = f"approval-{created.strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
+    payload = {
+        "schema": "agy-mc-approval.v1",
+        "approval_id": approval_id,
+        "created_at": created.isoformat(),
+        "expires_at": (created + timedelta(minutes=args.expires_minutes)).isoformat(),
+        "strategy": args.strategy,
+        "role": args.role,
+        "model": args.model,
+        "cwd": str(cwd),
+        "prompt_sha256": sha256_text(prompt_text),
+        "mode": args.mode,
+        "permission_profile": args.permission_profile,
+        "allow_non_high_gemini": allow_non_high,
+        "conversation": args.conversation,
+    }
+    payload["signature"] = approval_signature(payload, approval_key(create=True))
+    if args.output:
+        output = Path(args.output).expanduser().resolve()
+    else:
+        APPROVAL_ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
+        os.chmod(APPROVAL_ROOT, 0o700)
+        output = APPROVAL_ROOT / f"{approval_id}.json"
+    atomic_write_json(output, payload)
+    print(
+        json.dumps(
+            {
+                "schema": "agy-mc-approval-created.v1",
+                "status": "created",
+                "approval_id": approval_id,
+                "approval_file": str(output),
+                "expires_at": payload["expires_at"],
+                "binding": {
+                    "strategy": args.strategy,
+                    "role": args.role,
+                    "model": args.model,
+                    "cwd": str(cwd),
+                    "prompt_sha256": payload["prompt_sha256"],
+                    "mode": args.mode,
+                    "permission_profile": args.permission_profile,
+                },
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    return 0
+
+
+def validate_approval_binding(args: argparse.Namespace, cwd: Path, prompt_text: str) -> dict | None:
+    raw_path = getattr(args, "approval_file", None)
+    if not raw_path:
+        return None
+    path = Path(raw_path).expanduser().resolve()
+    approval = load_approval(path)
+    expected = {
+        "strategy": args.strategy,
+        "role": args.role,
+        "model": args.model,
+        "cwd": str(cwd),
+        "prompt_sha256": sha256_text(prompt_text),
+        "mode": args.mode,
+        "permission_profile": "unrestricted" if args.unrestricted else "standard",
+        "conversation": getattr(args, "conversation", None),
+    }
+    mismatches = [name for name, value in expected.items() if approval.get(name) != value]
+    if mismatches:
+        raise RuntimeError("Approval manifest does not match this run: " + ", ".join(mismatches))
+    return approval
+
+
 def prepare_run(args: argparse.Namespace) -> dict:
-    if not args.roster_approved:
+    has_manifest = bool(getattr(args, "approval_file", None))
+    if not has_manifest and not args.roster_approved:
         raise RuntimeError(
             "Project roster is not approved; obtain explicit user confirmation and rerun with --roster-approved"
         )
@@ -587,12 +935,12 @@ def prepare_run(args: argparse.Namespace) -> dict:
         raise RuntimeError(
             "Execution requires the exact user-approved model slug via --model; automatic selection is proposal-only"
         )
-    if args.unrestricted and not args.unrestricted_approved:
+    if not has_manifest and args.unrestricted and not args.unrestricted_approved:
         raise RuntimeError(
             "Unrestricted AGY execution requires a separate explicit confirmation; rerun with "
             "--unrestricted-approved only after the user confirms that permission profile"
         )
-    if args.unrestricted_approved and not args.unrestricted:
+    if not has_manifest and args.unrestricted_approved and not args.unrestricted:
         raise RuntimeError("--unrestricted-approved requires --unrestricted")
 
     cwd = canonical_workspace(args.cwd)
@@ -600,6 +948,7 @@ def prepare_run(args: argparse.Namespace) -> dict:
     if not prompt_file.is_file():
         raise RuntimeError(f"Prompt file does not exist: {prompt_file}")
     prompt_text = prompt_file.read_text(encoding="utf-8")
+    approval = validate_approval_binding(args, cwd, prompt_text)
 
     trust_status = workspace_status(cwd, args.mode)
     if not trust_status["trusted"]:
@@ -619,7 +968,8 @@ def prepare_run(args: argparse.Namespace) -> dict:
             raise RuntimeError(
                 f"Strategy C requires the latest Gemini Flash High model {required_model}; got {model}"
             )
-    if is_non_high_gemini(model) and not args.allow_non_high_gemini:
+    non_high_allowed = bool(args.allow_non_high_gemini) if approval is None else bool(approval.get("allow_non_high_gemini"))
+    if is_non_high_gemini(model) and not non_high_allowed:
         raise RuntimeError(
             "Gemini medium/low requires explicit user confirmation; rerun with "
             "--allow-non-high-gemini only after the user confirms"
@@ -637,6 +987,8 @@ def prepare_run(args: argparse.Namespace) -> dict:
         "prompt_text": prompt_text,
         "schema_path": schema_path,
         "trust_added": False,
+        "approval_path": Path(args.approval_file).expanduser().resolve() if has_manifest else None,
+        "approval_id": approval.get("approval_id") if approval else None,
     }
 
 
@@ -681,6 +1033,20 @@ def cmd_run(args: argparse.Namespace) -> int:
         print(f"Added exact AGY workspace trust: {prepared['cwd']}", file=sys.stderr)
     if args.background:
         return start_background_job(args, prepared)
+
+    lock_fd = None
+    if args.mode == "accept-edits" and not getattr(args, "workspace_lock_held", False):
+        lock_fd, _ = acquire_workspace_lock(
+            prepared["cwd"],
+            {"kind": "foreground", "pid": os.getpid(), "role": args.role},
+        )
+    try:
+        return run_foreground(args, prepared)
+    finally:
+        release_workspace_lock(lock_fd)
+
+
+def run_foreground(args: argparse.Namespace, prepared: dict) -> int:
 
     with tempfile.TemporaryDirectory(prefix="agy-delegate-") as diagnostic_dir:
         diagnostic_log = Path(diagnostic_dir) / "agy.log"
@@ -741,7 +1107,13 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0 if proc.returncode == 0 and (provider_status == "SUCCESS" or event_success) else (proc.returncode or 1)
 
 
-def build_child_run_args(args: argparse.Namespace, prepared: dict, prompt_path: Path, schema_path: Path | None) -> list[str]:
+def build_child_run_args(
+    args: argparse.Namespace,
+    prepared: dict,
+    prompt_path: Path,
+    schema_path: Path | None,
+    approval_path: Path | None,
+) -> list[str]:
     command = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -754,6 +1126,7 @@ def build_child_run_args(args: argparse.Namespace, prepared: dict, prompt_path: 
         "--roster-approved",
         "--mode", args.mode,
         "--timeout-seconds", str(args.timeout_seconds),
+        "--workspace-lock-held",
     ]
     if args.allow_non_high_gemini:
         command.append("--allow-non-high-gemini")
@@ -763,21 +1136,42 @@ def build_child_run_args(args: argparse.Namespace, prepared: dict, prompt_path: 
         command.extend(["--conversation", args.conversation])
     if schema_path:
         command.extend(["--json-schema", str(schema_path)])
+    if approval_path:
+        command.extend(["--approval-file", str(approval_path)])
     return command
 
 
 def start_background_job(args: argparse.Namespace, prepared: dict) -> int:
-    if args.mode == "accept-edits":
-        active = active_edit_job(prepared["cwd"])
-        if active:
-            raise RuntimeError(
-                f"An editing AGY job is already running for {prepared['cwd']}: {active['job_id']}. "
-                "Wait for it or cancel it before starting another editor."
-            )
-
     JOB_ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(JOB_ROOT, 0o700)
     job_id = f"{args.role}-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+    lock_fd = None
+    lock_path = None
+    if args.mode == "accept-edits":
+        lock_fd, lock_path = acquire_workspace_lock(
+            prepared["cwd"],
+            {"kind": "background", "pid": os.getpid(), "job_id": job_id, "role": args.role},
+        )
+    try:
+        result = launch_background_job(args, prepared, job_id, lock_fd, lock_path)
+        if lock_fd is not None:
+            # The worker inherited the same open file description. Closing only
+            # this duplicate transfers lock lifetime to the worker process;
+            # calling LOCK_UN here would release the worker's lock as well.
+            os.close(lock_fd)
+            lock_fd = None
+        return result
+    finally:
+        release_workspace_lock(lock_fd)
+
+
+def launch_background_job(
+    args: argparse.Namespace,
+    prepared: dict,
+    job_id: str,
+    lock_fd: int | None,
+    lock_path: Path | None,
+) -> int:
     directory = job_dir(job_id)
     directory.mkdir(parents=True, exist_ok=False, mode=0o700)
     prompt_path = directory / "prompt.txt"
@@ -790,10 +1184,16 @@ def start_background_job(args: argparse.Namespace, prepared: dict) -> int:
         schema_path.write_text(prepared["schema_path"].read_text(encoding="utf-8"), encoding="utf-8")
         os.chmod(schema_path, 0o600)
 
-    command = build_child_run_args(args, prepared, prompt_path, schema_path)
+    approval_path = None
+    if prepared.get("approval_path"):
+        approval_path = directory / "approval.json"
+        approval_path.write_text(prepared["approval_path"].read_text(encoding="utf-8"), encoding="utf-8")
+        os.chmod(approval_path, 0o600)
+
+    command = build_child_run_args(args, prepared, prompt_path, schema_path, approval_path)
     job = {
         "job_id": job_id,
-        "status": "running",
+        "status": "starting",
         "role": args.role,
         "strategy": args.strategy,
         "model": prepared["model"],
@@ -804,6 +1204,8 @@ def start_background_job(args: argparse.Namespace, prepared: dict) -> int:
         "started_at": utc_now(),
         "result_path": str(job_result_path(job_id)),
         "log_path": str(directory / "worker.log"),
+        "workspace_lock": str(lock_path) if lock_path else None,
+        "approval_id": prepared.get("approval_id"),
     }
     atomic_write_json(job_spec_path(job_id), {"command": command})
     write_job(job)
@@ -818,9 +1220,11 @@ def start_background_job(args: argparse.Namespace, prepared: dict) -> int:
             stderr=subprocess.STDOUT,
             start_new_session=True,
             close_fds=True,
+            pass_fds=(lock_fd,) if lock_fd is not None else (),
         )
     current = read_job(job_id)
     current["pid"] = child.pid
+    current["status"] = "running"
     write_job(current)
 
     print(
@@ -878,7 +1282,7 @@ def cmd_worker(args: argparse.Namespace) -> int:
         }
         atomic_write_json(job_result_path(args.job_id), result)
         current = read_job(args.job_id)
-        if current.get("status") != "canceled":
+        if current.get("status") not in {"canceled", "canceling"}:
             current["status"] = status
             current["conversation_id"] = result["conversation_id"] or current.get("conversation_id")
             current["finished_at"] = utc_now()
@@ -896,7 +1300,7 @@ def cmd_worker(args: argparse.Namespace) -> int:
         }
         atomic_write_json(job_result_path(args.job_id), result)
         current = read_job(args.job_id)
-        if current.get("status") != "canceled":
+        if current.get("status") not in {"canceled", "canceling"}:
             current["status"] = "error"
             current["finished_at"] = utc_now()
             write_job(current)
@@ -945,7 +1349,7 @@ def cmd_wait(args: argparse.Namespace) -> int:
     while True:
         job = refresh_job(read_job(args.job_id))
         status = job.get("status")
-        if status != "running":
+        if status not in {"starting", "running", "canceling"}:
             print(json.dumps(job_result(args.job_id), ensure_ascii=False, indent=2))
             return JOB_EXIT_CODES.get(status, 1)
         if time.monotonic() >= deadline:
@@ -953,7 +1357,7 @@ def cmd_wait(args: argparse.Namespace) -> int:
                 json.dumps(
                     {
                         "job_id": args.job_id,
-                        "status": "running",
+                        "status": status,
                         "message": "wait timeout expired; call wait again",
                     },
                     ensure_ascii=False,
@@ -964,44 +1368,83 @@ def cmd_wait(args: argparse.Namespace) -> int:
         time.sleep(min(2.0, max(0.1, deadline - time.monotonic())))
 
 
+def signal_process_group(pid: int, sig: signal.Signals) -> None:
+    try:
+        os.killpg(pid, sig)
+    except ProcessLookupError:
+        return
+    except OSError:
+        try:
+            os.kill(pid, sig)
+        except ProcessLookupError:
+            return
+
+
+def wait_for_process_exit(pid: int, timeout_seconds: float) -> bool:
+    deadline = time.monotonic() + timeout_seconds
+    while pid_alive(pid) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    return not pid_alive(pid)
+
+
+def terminate_process_group(pid: int | None, grace_seconds: float = 5.0) -> bool:
+    if not pid or not pid_alive(pid):
+        return True
+    signal_process_group(pid, signal.SIGTERM)
+    if wait_for_process_exit(pid, grace_seconds):
+        return True
+    signal_process_group(pid, signal.SIGKILL)
+    return wait_for_process_exit(pid, min(2.0, grace_seconds))
+
+
+def process_matches_job(pid: int, job_id: str) -> bool:
+    try:
+        if os.getpgid(pid) != pid:
+            return False
+    except ProcessLookupError:
+        return False
+    proc = run_capture(["ps", "-p", str(pid), "-o", "command="], timeout=5)
+    command = proc.stdout.strip() if proc.returncode == 0 else ""
+    return bool(command and "_worker" in command and job_id in command)
+
+
 def cmd_cancel(args: argparse.Namespace) -> int:
     job = refresh_job(read_job(args.job_id))
-    if job.get("status") != "running":
+    if job.get("status") not in {"starting", "running", "canceling"}:
         print(json.dumps(job, ensure_ascii=False, indent=2))
         return JOB_EXIT_CODES.get(job.get("status"), 1)
     pid = job.get("pid")
-    if pid:
-        try:
-            os.killpg(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-        except OSError:
-            try:
-                os.kill(pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
-    job["status"] = "canceled"
+    if pid and not process_matches_job(pid, args.job_id):
+        raise RuntimeError(
+            f"Refusing to signal PID {pid}: it is not the recorded Mission Control worker for {args.job_id}"
+        )
+    job["status"] = "canceling"
+    job["cancel_requested_at"] = utc_now()
+    write_job(job)
+    terminated = terminate_process_group(pid, args.grace_seconds)
+    final_status = "canceled" if terminated else "cancel_failed"
+    job["status"] = final_status
     job["finished_at"] = utc_now()
     write_job(job)
     atomic_write_json(
         job_result_path(args.job_id),
         {
             "job_id": args.job_id,
-            "status": "canceled",
-            "exit_code": JOB_EXIT_CODES["canceled"],
+            "status": final_status,
+            "exit_code": JOB_EXIT_CODES[final_status],
             "role": job.get("role"),
             "model": job.get("model"),
             "cwd": job.get("cwd"),
-            "error": "Job canceled by the caller",
+            "error": "Job canceled and process exit confirmed" if terminated else "Process did not exit after TERM and KILL",
         },
     )
     print(json.dumps(job, ensure_ascii=False, indent=2))
-    return JOB_EXIT_CODES["canceled"]
+    return JOB_EXIT_CODES[final_status]
 
 
 def cmd_continue(args: argparse.Namespace) -> int:
     job = refresh_job(read_job(args.job_id))
-    if job.get("status") == "running":
+    if job.get("status") in {"starting", "running", "canceling"}:
         raise RuntimeError(f"Job {args.job_id} is still running; wait for it before continuing the conversation")
     conversation_id = job.get("conversation_id")
     if not conversation_id:
@@ -1027,6 +1470,8 @@ def cmd_continue(args: argparse.Namespace) -> int:
         json_schema=None,
         timeout_seconds=args.timeout_seconds,
         background=args.background,
+        approval_file=args.approval_file,
+        workspace_lock_held=False,
     )
     return cmd_run(follow_up)
 
@@ -1037,8 +1482,31 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     doctor_parser = subparsers.add_parser("doctor", help="Check AGY and Mission Control runtime capabilities")
     doctor_parser.set_defaults(func=cmd_doctor)
+    skill_parser = subparsers.add_parser("skill", help="Install, update, inspect, or uninstall the bundled Codex skill")
+    skill_parser.add_argument("action", choices=["install", "update", "status", "uninstall"])
+    skill_parser.add_argument("--target", help="Override the exact Codex skill directory")
+    skill_parser.add_argument("--force", action="store_true", help="Back up and replace an unmanaged existing target")
+    skill_parser.add_argument("--dry-run", action="store_true")
+    skill_parser.add_argument("--format", choices=["pretty", "json"], default="pretty")
+    skill_parser.add_argument("--lang", choices=["auto", "en", "zh"], default="auto")
+    skill_parser.set_defaults(func=cmd_skill)
     models_parser = subparsers.add_parser("models", help="List currently available AGY models as JSON")
     models_parser.set_defaults(func=cmd_models)
+    approve_parser = subparsers.add_parser("approve", help="Create a signed, expiring approval manifest")
+    approve_parser.add_argument("--strategy", choices=STRATEGY_PATTERNS, required=True)
+    approve_parser.add_argument("--role", choices=ROLES, required=True)
+    approve_parser.add_argument("--model", required=True)
+    approve_parser.add_argument("--cwd", required=True)
+    approve_parser.add_argument("--prompt-file", required=True)
+    approve_parser.add_argument("--mode", choices=["plan", "accept-edits"], default="plan")
+    approve_parser.add_argument("--permission-profile", choices=["standard", "unrestricted"], default="standard")
+    approve_parser.add_argument("--conversation")
+    approve_parser.add_argument("--expires-minutes", type=int, default=60)
+    approve_parser.add_argument("--output")
+    approve_parser.add_argument("--confirmed", action="store_true")
+    approve_parser.add_argument("--unrestricted-confirmed", action="store_true")
+    approve_parser.add_argument("--non-high-gemini-confirmed", action="store_true")
+    approve_parser.set_defaults(func=cmd_approve)
     usage_parser = subparsers.add_parser("usage", help="Show a sanitized AGY quota snapshot")
     usage_parser.add_argument("--watch", action="store_true", help="Refresh continuously until interrupted")
     usage_parser.add_argument("--interval", type=float, default=60.0, help="Watch refresh interval in seconds")
@@ -1072,11 +1540,13 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--cwd", required=True)
     run_parser.add_argument("--prompt-file", required=True)
     run_parser.add_argument("--model")
+    run_parser.add_argument("--approval-file", help="Signed approval manifest created by the approve command")
     run_parser.add_argument(
         "--roster-approved",
         action="store_true",
         help="Assert that the user explicitly approved this role and exact model before execution",
     )
+    run_parser.add_argument("--workspace-lock-held", action="store_true", help=argparse.SUPPRESS)
     run_parser.add_argument(
         "--allow-non-high-gemini",
         action="store_true",
@@ -1119,11 +1589,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     cancel_parser = subparsers.add_parser("cancel", help="Cancel a running job")
     cancel_parser.add_argument("job_id")
+    cancel_parser.add_argument("--grace-seconds", type=float, default=5.0)
     cancel_parser.set_defaults(func=cmd_cancel)
 
     continue_parser = subparsers.add_parser("continue", help="Continue a completed job's AGY conversation")
     continue_parser.add_argument("job_id")
     continue_parser.add_argument("--prompt-file", required=True)
+    continue_parser.add_argument("--approval-file")
     continue_parser.add_argument("--roster-approved", action="store_true")
     continue_parser.add_argument("--allow-non-high-gemini", action="store_true")
     continue_parser.add_argument("--unrestricted", action="store_true")
@@ -1147,6 +1619,8 @@ def main() -> int:
         parser.error("--count must be positive")
     if getattr(args, "timeout_seconds", 1) < 1:
         parser.error("--timeout-seconds must be positive")
+    if getattr(args, "grace_seconds", 1) <= 0:
+        parser.error("--grace-seconds must be positive")
     try:
         return args.func(args)
     except (OSError, RuntimeError, subprocess.SubprocessError) as exc:

@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from unittest import mock
 import argparse
+import os
 
 from antigravity_mission_control import cli
 
@@ -14,9 +15,39 @@ class PermissionTests(unittest.TestCase):
     def test_atomic_json_is_private(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "nested" / "evidence.json"
+            path.parent.mkdir(mode=0o755)
             cli.atomic_write_json(path, {"ok": True})
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+            self.assertEqual(stat.S_IMODE(path.parent.stat().st_mode), 0o755)
             self.assertEqual(json.loads(path.read_text()), {"ok": True})
+
+    def test_signed_approval_detects_tampering_and_expiration(self):
+        from datetime import datetime, timedelta, timezone
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            key_path = root / "approval.key"
+            manifest = root / "approval.json"
+            with mock.patch.object(cli, "APPROVAL_KEY_PATH", key_path):
+                key = cli.approval_key(create=True)
+                payload = {
+                    "schema": "agy-mc-approval.v1",
+                    "approval_id": "test",
+                    "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
+                    "role": "planner",
+                }
+                payload["signature"] = cli.approval_signature(payload, key)
+                cli.atomic_write_json(manifest, payload)
+                tampered = dict(payload, role="implementer")
+                cli.atomic_write_json(manifest, tampered)
+                with self.assertRaisesRegex(RuntimeError, "signature"):
+                    cli.load_approval(manifest)
+
+                expired = dict(payload, expires_at=(datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat())
+                expired["signature"] = cli.approval_signature(expired, key)
+                cli.atomic_write_json(manifest, expired)
+                with self.assertRaisesRegex(RuntimeError, "expired"):
+                    cli.load_approval(manifest)
 
     def test_run_never_auto_grants_workspace_trust(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -41,6 +72,22 @@ class PermissionTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "Workspace is not trusted"):
                     cli.prepare_run(args)
             self.assertFalse(settings.exists())
+
+    def test_cancel_refuses_pid_that_is_not_the_recorded_worker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(cli, "JOB_ROOT", Path(directory)):
+                job = {
+                    "job_id": "planner-test-job",
+                    "status": "running",
+                    "pid": os.getpid(),
+                    "role": "planner",
+                    "model": "fake",
+                    "cwd": directory,
+                }
+                cli.write_job(job)
+                args = argparse.Namespace(job_id=job["job_id"], grace_seconds=0.1)
+                with self.assertRaisesRegex(RuntimeError, "Refusing to signal PID"):
+                    cli.cmd_cancel(args)
 
 
 if __name__ == "__main__":

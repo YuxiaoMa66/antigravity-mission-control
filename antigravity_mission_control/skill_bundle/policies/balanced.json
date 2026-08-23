@@ -1,0 +1,9 @@
+{
+  "schema": "agy-mc-policy.v1",
+  "name": "balanced",
+  "require_three_rosters": false,
+  "require_exact_model": true,
+  "gemini_default_effort": "high",
+  "require_separate_unrestricted_approval": true,
+  "max_correction_rounds": 2
+}

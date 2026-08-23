@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import json
+import os
 import sys
+import time
 
 if "--version" in sys.argv:
     print("agy 1.1.19-fake")
@@ -22,5 +24,10 @@ elif "/usage" in sys.argv:
     }))
 elif "models" in sys.argv:
     print(json.dumps({"command": {"data": {"models": [{"id": "gemini-3.7-flash-high"}]}}}))
+elif "stream-json" in sys.argv:
+    request = sys.stdin.readline()
+    time.sleep(float(os.environ.get("FAKE_AGY_SLEEP", "0")))
+    print(json.dumps({"event": "init", "conversation_id": "fake-conversation"}))
+    print(json.dumps({"event": "result", "status": "SUCCESS", "conversation_id": "fake-conversation", "response": request}))
 else:
     print(json.dumps({"status": "SUCCESS", "response": "fake"}))

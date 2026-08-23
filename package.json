@@ -1,0 +1,44 @@
+{
+  "name": "antigravity-mission-control",
+  "version": "0.1.0-alpha.1",
+  "description": "Install and operate Antigravity Mission Control for Codex and the AGY CLI",
+  "type": "module",
+  "license": "MIT",
+  "author": "YuxiaoMa66",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git"
+  },
+  "homepage": "https://github.com/YuxiaoMa66/antigravity-mission-control#readme",
+  "bugs": "https://github.com/YuxiaoMa66/antigravity-mission-control/issues",
+  "bin": {
+    "antigravity-mission-control": "npm/cli.mjs",
+    "agy-mc-install": "npm/cli.mjs"
+  },
+  "files": [
+    "npm/",
+    "assets/",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "pack:check": "npm pack --dry-run"
+  },
+  "keywords": [
+    "antigravity",
+    "agy",
+    "codex",
+    "ai-agents",
+    "orchestration"
+  ]
+}

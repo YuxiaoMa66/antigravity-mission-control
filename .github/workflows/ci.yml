@@ -1,9 +1,11 @@
 name: CI
+
 on:
   push:
   pull_request:
+
 jobs:
-  test:
+  python:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -14,5 +16,21 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m unittest discover -s tests -v
+      - run: python -m compileall -q antigravity_mission_control scripts tests
+      - run: python scripts/sync_skill_bundle.py && git diff --exit-code
+      - run: python -m pip wheel . --no-deps --wheel-dir "$RUNNER_TEMP/wheels"
+      - name: Verify wheel contains no bytecode or cache directories
+        run: python -c 'import glob, zipfile; p=glob.glob("${{ runner.temp }}/wheels/*.whl")[0]; names=zipfile.ZipFile(p).namelist(); assert not any("__pycache__" in n or n.endswith((".pyc", ".pyo")) for n in names), names'
       - run: python -m pip install .
       - run: agy-mc --version
+      - run: AGY_MC_BIN="$PWD/tests/fake_agy.py" AGY_MC_STATE_ROOT="$RUNNER_TEMP/agy-mc-state" agy-mc doctor
+
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm test
+      - run: npm pack --dry-run

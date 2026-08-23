@@ -21,3 +21,9 @@ agy-mc = "antigravity_mission_control.cli:main"
 
 [tool.setuptools]
 packages = ["antigravity_mission_control"]
+
+[tool.setuptools.package-data]
+antigravity_mission_control = ["skill_bundle/**/*"]
+
+[tool.setuptools.exclude-package-data]
+antigravity_mission_control = ["skill_bundle/**/__pycache__/*", "skill_bundle/**/*.pyc", "skill_bundle/**/*.pyo"]
