@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0a4 - 2026-08-23
+
+- Added a copy-ready Agent installation prompt to both READMEs.
+- Explained the A recommended, B best-result and C Gemini Flash High routing strategies with use cases and tradeoffs.
+- Added required roster-selection and roster-change confirmation formats to the collaboration protocol.
+- Added two matching interface captures for selecting and revising a roster.
+- Bound roster changes to explicit reconfirmation while preserving separate workspace-trust and unrestricted-permission approvals.
+
 ## 0.1.0a3 - 2026-08-23
 
 - Made npm `install` idempotent when a managed Mission Control Skill already exists.

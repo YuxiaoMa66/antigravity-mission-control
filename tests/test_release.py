@@ -18,12 +18,12 @@ class ReleaseIntegrityTests(unittest.TestCase):
         package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         npm_cli = (ROOT / "npm" / "cli.mjs").read_text(encoding="utf-8")
-        self.assertEqual(cli.VERSION, "0.1.0a3")
+        self.assertEqual(cli.VERSION, "0.1.0a4")
         self.assertEqual(__version__, cli.VERSION)
-        self.assertIn('version = "0.1.0a3"', pyproject)
-        self.assertEqual(package["version"], "0.1.0-alpha.3")
-        self.assertIn("const VERSION = '0.1.0-alpha.3'", npm_cli)
-        self.assertIn("const PYTHON_VERSION = '0.1.0a3'", npm_cli)
+        self.assertIn('version = "0.1.0a4"', pyproject)
+        self.assertEqual(package["version"], "0.1.0-alpha.4")
+        self.assertIn("const VERSION = '0.1.0-alpha.4'", npm_cli)
+        self.assertIn("const PYTHON_VERSION = '0.1.0a4'", npm_cli)
         self.assertIn("assets/", package["files"])
         self.assertIn('skill_bundle/**/__pycache__/*', pyproject)
 
@@ -36,6 +36,7 @@ class ReleaseIntegrityTests(unittest.TestCase):
             ("docs/releases/v0.1.0a1.md", "docs/releases/v0.1.0a1.zh-CN.md"),
             ("docs/releases/v0.1.0a2.md", "docs/releases/v0.1.0a2.zh-CN.md"),
             ("docs/releases/v0.1.0a3.md", "docs/releases/v0.1.0a3.zh-CN.md"),
+            ("docs/releases/v0.1.0a4.md", "docs/releases/v0.1.0a4.zh-CN.md"),
         )
         for english, chinese in pairs:
             with self.subTest(english=english):
@@ -81,6 +82,15 @@ class ReleaseIntegrityTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_bilingual_readmes_show_every_interface_asset(self):
+        assets = sorted(path.name for path in (ROOT / "assets" / "interfaces").glob("*.svg"))
+        self.assertEqual(len(assets), 6)
+        for readme_name in ("README.md", "README.zh-CN.md"):
+            text = (ROOT / readme_name).read_text(encoding="utf-8")
+            for asset in assets:
+                with self.subTest(readme=readme_name, asset=asset):
+                    self.assertIn(f'assets/interfaces/{asset}', text)
 
 
 if __name__ == "__main__":

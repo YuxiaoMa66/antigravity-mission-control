@@ -15,6 +15,24 @@ Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact 
 
 > **Alpha:** ready for public pre-release evaluation, not a stable security boundary. Independent community project; not affiliated with Google or Antigravity.
 
+## Hand this page to your agent
+
+Paste the block below into Codex or another coding agent. GitHub adds a copy button to the code block.
+
+```text
+Open and read https://github.com/YuxiaoMa66/antigravity-mission-control before making changes.
+
+1. Check whether `agy` is installed and signed in.
+2. Show me the exact commands and target paths, then wait for my confirmation.
+3. If AGY is ready, install `antigravity-mission-control@next`. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
+4. Run `agy-mc doctor` and report the installed versions and paths.
+5. Before delegating project work, show me the A/B/C roster choices with exact available model slugs and wait for my selection.
+
+Treat workspace trust and unrestricted permissions as separate actions. Do not grant either one without my approval.
+```
+
+The agent reads the same installation and security boundaries you see on this page, performs the checks, and reports the result. You do not need to translate the README into a chain of shell commands.
+
 ## See the flight deck
 
 These are faithful renders of the real CLI format. Home paths, signatures, job IDs and quota values are sanitized examples.
@@ -27,6 +45,10 @@ These are faithful renders of the real CLI format. Home paths, signatures, job I
   <tr>
     <td width="50%"><img src="assets/interfaces/bound-approval.svg" alt="Signed approval manifest in the terminal"><br><sub><strong>Bound approval.</strong> Model, role, workspace, prompt and expiry travel together.</sub></td>
     <td width="50%"><img src="assets/interfaces/background-job.svg" alt="Background worker status and wait commands"><br><sub><strong>Background control.</strong> Dispatch, inspect and collect durable jobs without confusing worker output with acceptance.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/interfaces/roster-selection.svg" alt="Agent conversation presenting A, B and C model rosters"><br><sub><strong>Roster selection.</strong> Compare complete roles, exact models and access before any worker starts.</sub></td>
+    <td width="50%"><img src="assets/interfaces/roster-change.svg" alt="Agent conversation requesting confirmation for a roster change"><br><sub><strong>Change confirmation.</strong> See the approved value, proposal, reason and review impact before accepting a change.</sub></td>
   </tr>
 </table>
 
@@ -48,6 +70,20 @@ Bring your own eligible Google account and quota. Mission Control neither create
 | Supervision | Reviewer + Codex | Checks drift, evidence, tests, and delivery quality; Codex accepts, corrects, or rejects the result |
 
 The planner can choose its own route inside the approved objective. It surfaces alternatives when a choice changes scope, cost, reversibility, or product behavior. The reviewer receives the original brief and the real artifacts, so it can catch a polished answer that solved the wrong problem.
+
+### What A, B and C mean
+
+Mission Control discovers the current AGY model catalog before proposing a roster. Each proposal names the executor, exact model slug, role, filesystem scope and execution profile. You choose one before dispatch.
+
+| Strategy | Team design | Best fit | Tradeoff |
+|---|---|---|---|
+| A: Recommended | Uses the smallest adequate team. Efficient models handle implementation; Codex keeps planning or review work when another AGY call adds little value. | Routine development, bounded changes and quota-aware work | Best quality/cost balance, with fewer independent model passes |
+| B: Best result | Uses the strongest suitable planner and implementer, then prefers a reviewer from another model family. | Ambiguous design, large changes, security-sensitive work and costly mistakes | More quota and time in exchange for deeper planning and independent checking |
+| C: Gemini Flash High | Routes every AGY role to the newest available exact slug matching `gemini-.*flash-high`. Separate conversations and adversarial prompts provide review separation. | Fast iteration, consistent Gemini behavior and users who want to spend Gemini quota | Fast and consistent, but reviewer diversity comes from process because all AGY calls stay in one model family |
+
+These strategies are routing rules, not permanent model lists or benchmark rankings. Mission Control reads `agy-mc models` at run time and pins the exact slug you approve. A changed model, role, write scope or permission profile requires confirmation again. Gemini medium and low variants also require a separate exception; the default Gemini route uses High.
+
+The installed Skill uses the same field order shown in the roster selection and change-confirmation images above. A roster proposal ends with an explicit A/B/C choice. A modification pauses the affected entry and shows the approved value, proposed value, reason, scope impact and review-independence impact before asking again.
 
 ## Install
 
@@ -78,7 +114,7 @@ npx antigravity-mission-control@next status
 Direct Python installation is also supported:
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a3"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a4"
 agy-mc skill install
 agy-mc doctor
 ```

@@ -8,8 +8,8 @@ import process from 'node:process';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
-const VERSION = '0.1.0-alpha.3';
-const PYTHON_VERSION = '0.1.0a3';
+const VERSION = '0.1.0-alpha.4';
+const PYTHON_VERSION = '0.1.0a4';
 const REPOSITORY = 'https://github.com/YuxiaoMa66/antigravity-mission-control.git';
 const DEFAULT_SOURCE = `git+${REPOSITORY}@v${PYTHON_VERSION}`;
 const AGY_INSTALL_URL = 'https://antigravity.google/cli/install.sh';

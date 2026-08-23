@@ -15,6 +15,24 @@
 
 > **Alpha：** 已适合公开预发布测试，但还不是稳定安全边界。本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
 
+## 直接把本页交给 Agent 安装
+
+把下面整段复制给 Codex 或其他 coding agent。GitHub 代码块右上角自带复制按钮。
+
+```text
+开始修改前，请先打开并阅读 https://github.com/YuxiaoMa66/antigravity-mission-control 。
+
+1. 检查 `agy` 是否已经安装并完成登录。
+2. 向我展示将执行的精确命令和目标路径，等我确认后再继续。
+3. 如果 AGY 已经可用，安装 `antigravity-mission-control@next`。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
+4. 运行 `agy-mc doctor`，然后报告安装版本和路径。
+5. 开始委派项目任务前，使用当前可用的精确模型 slug 向我展示 A/B/C 三套阵容，等我选择后再执行。
+
+把 workspace trust 和 unrestricted 权限当作两项独立操作。没有我的批准，不要增加其中任何一项。
+```
+
+Agent 会阅读本页的安装步骤和安全边界，完成检查后回报结果。你不需要自己把 README 翻译成一串终端命令。
+
 ## 看看实际操作界面
 
 下面的图片忠实呈现真实 CLI 格式。HOME 路径、签名、任务 ID 和额度数字使用了脱敏示例。
@@ -27,6 +45,10 @@
   <tr>
     <td width="50%"><img src="assets/interfaces/bound-approval.svg" alt="终端中的签名批准清单"><br><sub><strong>绑定批准。</strong> 模型、角色、工作区、prompt 和有效期一起绑定。</sub></td>
     <td width="50%"><img src="assets/interfaces/background-job.svg" alt="后台 worker 状态与等待命令"><br><sub><strong>后台控制。</strong> 调度、检查和收集持久任务，同时保持 worker 输出与最终验收分离。</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/interfaces/roster-selection.svg" alt="Agent 对话中展示 A、B、C 三套模型阵容"><br><sub><strong>阵容选择。</strong> worker 启动前比较完整角色、精确模型和权限。</sub></td>
+    <td width="50%"><img src="assets/interfaces/roster-change.svg" alt="Agent 对话中请求确认阵容修改"><br><sub><strong>修改确认。</strong> 接受修改前查看已批准值、拟修改值、原因和审核影响。</sub></td>
   </tr>
 </table>
 
@@ -48,6 +70,20 @@ Google 账号资格和额度由你自己提供。Mission Control 不送订阅，
 | 监督验收 | reviewer + Codex | 检查范围漂移、证据、测试和交付质量；Codex 决定接受、纠正或退回 |
 
 planner 可以在批准目标内自己决定路线。某个选择会改变范围、成本、可逆性或产品行为时，它必须把可选方案摆出来。reviewer 会同时拿到原始任务书和真实产物，专门识别“答案写得很漂亮，完成的却是另一件事”。
+
+### A、B、C 三套方案有什么区别
+
+Mission Control 会先读取当前 AGY 模型目录，再提出阵容。每套方案都要列出执行者、精确模型 slug、角色、文件权限范围和执行模式，由你在 dispatch 前选择。
+
+| 方案 | 阵容设计 | 适合场景 | 取舍 |
+|---|---|---|---|
+| A：推荐方案 | 使用能够完成任务的最小团队。高效率模型负责实现；增加一次 AGY 调用帮助不大时，由 Codex 保留规划或审核职责。 | 日常开发、边界明确的修改和需要节省额度的任务 | 在质量和消耗之间取得平衡，独立模型复核次数较少 |
+| B：最佳结果 | 使用最强的合适 planner 和 implementer，并优先安排不同模型家族的 reviewer。 | 设计模糊、大范围修改、安全敏感任务和返工代价高的项目 | 使用更多额度和时间，换取更深入的规划与独立检查 |
+| C：Gemini Flash High | 所有 AGY 角色都使用当前最新且匹配 `gemini-.*flash-high` 的精确 slug。审核通过独立会话和对抗提示分离。 | 快速迭代、保持 Gemini 行为一致，或者希望优先消耗 Gemini 额度 | 速度快、模型一致；由于 AGY 调用属于同一模型家族，审核独立性主要依靠流程设计 |
+
+这三套方案是动态路由规则，不是永久模型名单，也不是模型排行榜。Mission Control 在运行时读取 `agy-mc models`，并固定你批准的精确 slug。模型、角色、写入范围或权限配置发生变化时，需要重新确认。Gemini medium 和 low 还需要单独授权；默认 Gemini 路由只使用 High。
+
+安装后的 Skill 会按照上面“阵容选择”和“修改确认”图片中的相同字段顺序输出。阵容提案最后要求明确选择 A/B/C；修改时暂停受影响的条目，列出已批准值、拟修改值、原因、范围影响和审核独立性影响，然后重新请求确认。
 
 ## 安装
 
@@ -78,7 +114,7 @@ npx antigravity-mission-control@next status --lang zh
 也支持直接使用 Python：
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a3"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a4"
 agy-mc skill install --lang zh
 agy-mc doctor
 ```

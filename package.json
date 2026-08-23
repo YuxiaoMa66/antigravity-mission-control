@@ -1,6 +1,6 @@
 {
   "name": "antigravity-mission-control",
-  "version": "0.1.0-alpha.3",
+  "version": "0.1.0-alpha.4",
   "description": "Install and operate Antigravity Mission Control for Codex and the AGY CLI",
   "type": "module",
   "license": "MIT",

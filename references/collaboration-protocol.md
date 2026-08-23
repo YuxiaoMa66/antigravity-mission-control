@@ -6,6 +6,58 @@ Before dispatch, use read-only scope inspection, model discovery, and `agy-mc wo
 
 Approval is roster-specific. A replacement model, added role, executor change, broader write scope, or execution-profile change requires reconfirmation of the affected entry. After approval, create a short-lived `agy-mc approve` manifest and pin every AGY run to the approved slug. Roster approval alone never authorizes `--dangerously-skip-permissions`; an unrestricted manifest requires both `--permission-profile unrestricted` and the separate `--unrestricted-confirmed` assertion.
 
+## Required roster interface
+
+Use the following structure whenever the three-roster gate applies. Do not replace it with model names alone.
+
+```text
+Objective: <one sentence>
+Catalog: <agy-mc models check time and model count>
+
+### A: Recommended
+Intent: smallest adequate team and best project-specific quality/cost balance
+| Role | Executor | Exact model | Responsibility | Filesystem scope | Execution profile |
+| ...  | ...      | ...         | ...            | ...              | plan|accept-edits |
+Tradeoff: <specific cost, latency and review-independence effect>
+
+### B: Best result
+Intent: strongest suitable roles and cross-family review when available
+<same table and tradeoff fields>
+
+### C: Gemini Flash High
+Intent: every AGY call uses the newest exact gemini-.*flash-high slug
+<same table and tradeoff fields>
+
+Reply with A, B or C, or name the entries you want changed. No worker has been dispatched.
+```
+
+Every role row must name both the filesystem scope and execution profile. Use `Codex / current session` when Codex owns a role. Mark omitted roles as omitted and explain who retains that responsibility. The tradeoff line must cover expected quota use, latency and reviewer independence without presenting routing heuristics as benchmark results.
+
+## Required roster-change interface
+
+Use this structure before changing any approved model, role, executor, ownership, filesystem scope or execution profile:
+
+```text
+Roster change requires confirmation
+Approved strategy: <A|B|C|custom>
+
+| Field | Approved | Proposed |
+| Affected role | ... | ... |
+| Executor | ... | ... |
+| Exact model | ... | ... |
+| Ownership | ... | ... |
+| Filesystem scope | ... | ... |
+| Execution profile | ... | ... |
+
+Reason: <concrete evidence for the change>
+Effect: <quota, latency, scope and review-independence impact>
+Unchanged: <entries that remain approved>
+
+Reply "approve change", "keep original", or provide another proposal. Work on the changed entry remains paused.
+```
+
+Reconfirm only the affected roster entry when the rest stays identical. A broader workspace, workspace trust mutation or unrestricted profile still needs its own approval even after the roster change is accepted. Preserve the original and revised roster in the decision log.
+
 ## Assignment contract
 
 Each AGY prompt should contain:
