@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "antigravity-mission-control"
+version = "0.1.0a1"
+description = "Policy-aware orchestration and quota telemetry for the Antigravity CLI"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "YuxiaoMa66"}]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+]
+
+[project.scripts]
+agy-mc = "antigravity_mission_control.cli:main"
+
+[tool.setuptools]
+packages = ["antigravity_mission_control"]
