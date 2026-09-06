@@ -11,10 +11,10 @@
   <text x="560" y="72" text-anchor="middle" fill="#6f779b" font-family="ui-monospace, SFMono-Regular, Menlo" font-size="15">antigravity-mission-control</text>
   <g font-family="ui-monospace, SFMono-Regular, Menlo" font-size="20">
     <text x="85" y="120" fill="#a78bfa">╭────────────────────────────────────────────────────────────╮</text>
-    <text x="85" y="151" fill="#a78bfa">│</text><text x="110" y="151" fill="#f5f3ff" font-weight="700">ANTIGRAVITY MISSION CONTROL</text><text x="475" y="151" fill="#22d3ee">◉</text><text x="515" y="151" fill="#c4b5fd">v0.1.0-alpha.4</text><text x="817" y="151" fill="#a78bfa">│</text>
+    <text x="85" y="151" fill="#a78bfa">│</text><text x="110" y="151" fill="#f5f3ff" font-weight="700">ANTIGRAVITY MISSION CONTROL</text><text x="475" y="151" fill="#22d3ee">◉</text><text x="515" y="151" fill="#c4b5fd">v0.2.0</text><text x="817" y="151" fill="#a78bfa">│</text>
     <text x="85" y="182" fill="#a78bfa">│</text><text x="110" y="182" fill="#7f89a9">Route / Guard / Verify</text><text x="817" y="182" fill="#a78bfa">│</text>
     <text x="85" y="213" fill="#a78bfa">╰────────────────────────────────────────────────────────────╯</text>
-    <text x="85" y="261" fill="#4ade80">✓</text><text x="120" y="261" fill="#f5f3ff" font-weight="700">AGY 1.1.19 · runtime ready</text>
+    <text x="85" y="261" fill="#4ade80">✓</text><text x="120" y="261" fill="#f5f3ff" font-weight="700">AGY 1.1.27 · runtime ready</text>
     <text x="85" y="307" fill="#22d3ee">◆</text><text x="120" y="307" fill="#f5f3ff">Gemini Models</text><text x="430" y="307" fill="#7f89a9">weekly</text><text x="590" y="307" fill="#22d3ee">62.50%</text><text x="730" y="307" fill="#7f89a9">sanitized sample</text>
     <text x="85" y="350" fill="#a78bfa">◆</text><text x="120" y="350" fill="#f5f3ff">Claude &amp; GPT</text><text x="430" y="350" fill="#7f89a9">5 hours</text><text x="590" y="350" fill="#a78bfa">100.00%</text><text x="730" y="350" fill="#7f89a9">sanitized sample</text>
     <text x="85" y="408" fill="#7f89a9">$</text><text x="110" y="408" fill="#f5f3ff">npx antigravity-mission-control status</text>

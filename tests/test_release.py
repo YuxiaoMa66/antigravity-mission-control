@@ -86,7 +86,7 @@ class ReleaseIntegrityTests(unittest.TestCase):
 
     def test_bilingual_readmes_show_every_interface_asset(self):
         assets = sorted(path.name for path in (ROOT / "assets" / "interfaces").glob("*.svg"))
-        self.assertEqual(len(assets), 6)
+        self.assertEqual(len(assets), 8)
         for readme_name in ("README.md", "README.zh-CN.md"):
             text = (ROOT / readme_name).read_text(encoding="utf-8")
             for asset in assets:

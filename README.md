@@ -5,13 +5,13 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-7c3aed" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/Node.js-18%2B-0891b2" alt="Node.js 18+">
-  <img src="https://img.shields.io/badge/AGY-tested_1.1.19-22d3ee" alt="AGY tested 1.1.19">
+  <img src="https://img.shields.io/badge/AGY-tested_1.1.27-22d3ee" alt="AGY tested 1.1.27">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a78bfa" alt="MIT License"></a>
 </p>
 
 Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota. Codex remains responsible for acceptance.
 
-<p align="center"><img src="assets/terminal-preview.svg" width="920" alt="Mission Control terminal preview"></p>
+<p align="center"><img src="assets/release-v0.2.0.png" width="920" alt="Antigravity Mission Control v0.2.0 release cover"></p>
 
 > **v0.2:** policy-aware orchestration with independently reviewed worker output; permission limits are documented below. Independent community project; not affiliated with Google or Antigravity.
 
@@ -35,7 +35,7 @@ The agent reads the same installation and security boundaries you see on this pa
 
 ## See the flight deck
 
-These are faithful renders of the real CLI format. Home paths, signatures, job IDs and quota values are sanitized examples.
+These v0.2.0 illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
 
 <table>
   <tr>
@@ -49,6 +49,10 @@ These are faithful renders of the real CLI format. Home paths, signatures, job I
   <tr>
     <td width="50%"><img src="assets/interfaces/roster-selection.svg" alt="Agent conversation presenting A, B and C model rosters"><br><sub><strong>Roster selection.</strong> Compare complete roles, exact models and access before any worker starts.</sub></td>
     <td width="50%"><img src="assets/interfaces/roster-change.svg" alt="Agent conversation requesting confirmation for a roster change"><br><sub><strong>Change confirmation.</strong> See the approved value, proposal, reason and review impact before accepting a change.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/interfaces/workspace-evidence.svg" alt="Before and after workspace evidence"><br><sub><strong>Workspace evidence.</strong> Git baselines, changed-file fingerprints and explicit limitations.</sub></td>
+    <td width="50%"><img src="assets/interfaces/correction-chain.svg" alt="Recorded correction count across follow-ups"><br><sub><strong>Correction history.</strong> Follow-ups retain the count; a third correction is rejected.</sub></td>
   </tr>
 </table>
 

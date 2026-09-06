@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render faithful, sanitized CLI captures as dependency-free SVG assets."""
+"""Render versioned command and workflow illustrations as dependency-free SVG assets."""
 
 from __future__ import annotations
 
@@ -29,193 +29,131 @@ class Screen:
 
 
 SCREENS = (
-    Screen(
-        filename="guided-install.svg",
-        title="Guided installation",
-        description="Mission Control installation with exact targets shown before changes.",
-        tab="install",
-        lines=(
-            Line("$ npx antigravity-mission-control@next install", "prompt"),
-            Line(""),
-            Line("ANTIGRAVITY MISSION CONTROL  v0.2.0", "heading"),
-            Line("Route / Guard / Verify", "muted"),
-            Line(""),
-            Line("◆ Install", "accent"),
-            Line("  Skill target     ~/.codex/skills/antigravity-mission-control"),
-            Line("  Managed runtime  ~/.local/share/antigravity-mission-control/"),
-            Line("                   venv"),
-            Line("  Package source   github.com/YuxiaoMa66/...@v0.2.0", "muted"),
-            Line(""),
-            Line("✓ Python  python3 3.13.9", "success"),
-            Line("✓ AGY     1.1.19", "success"),
-            Line("? Continue with these exact changes?  y", "prompt"),
-            Line("✓ Installed  /  recoverable backup enabled", "success"),
-            Line("✓ Mission accomplished", "success"),
-        ),
-    ),
-    Screen(
-        filename="live-quota.svg",
-        title="Live quota telemetry",
-        description="Sanitized example of the live quota table, including windows and reset state.",
-        tab="usage --watch",
-        lines=(
-            Line("$ agy-mc usage --watch --interval 60", "prompt"),
-            Line(""),
-            Line("ANTIGRAVITY MISSION CONTROL / LIVE QUOTA", "heading"),
-            Line("SANITIZED SAMPLE  status=ok", "muted"),
-            Line(""),
-            Line("GROUP                    WINDOW       REMAINING   RESET / STATE", "muted"),
-            Line("──────────────────────────────────────────────────────────────", "dim"),
-            Line("Gemini Models            weekly           62.50%   Tue 08:25", "accent"),
-            Line("                         5h              100.00%   02:05"),
-            Line(""),
-            Line("Claude and GPT models    weekly           35.86%   Tue 20:47", "accent"),
-            Line("                         5h              100.00%   02:05"),
-            Line(""),
-            Line("↻ refreshing every 60 seconds  /  Ctrl+C to stop", "muted"),
-            Line("Account identity and OAuth material are excluded.", "success"),
-        ),
-    ),
-    Screen(
-        filename="bound-approval.svg",
-        title="Bound approval",
-        description="A signed approval manifest binding model, role, workspace, prompt and expiry.",
-        tab="approve",
-        lines=(
-            Line("$ agy-mc approve --strategy A --role implementer \\", "prompt"),
-            Line("    --model gemini-3.7-flash-high --mode accept-edits \\", "prompt"),
-            Line("    --cwd ~/Projects/app --prompt-file /private/task.txt \\", "prompt"),
-            Line("    --three-rosters-presented --expires-minutes 60 --confirmed", "prompt"),
-            Line(""),
-            Line("{", "muted"),
-            Line('  "schema": "agy-mc-approval.v1",'),
-            Line('  "strategy": "A",'),
-            Line('  "role": "implementer",'),
-            Line('  "model": "gemini-3.7-flash-high",', "accent"),
-            Line('  "cwd": "~/Projects/app",'),
-            Line('  "mode": "accept-edits",'),
-            Line('  "prompt_sha256": "8ad7...b421",', "muted"),
-            Line('  "expires_at": "2026-08-23T23:20:00Z"'),
-            Line("}", "muted"),
-            Line("✓ Scope, authority and evidence are bound before dispatch.", "success"),
-        ),
-    ),
-    Screen(
-        filename="roster-selection.svg",
-        title="A/B/C roster selection",
-        description="The required Agent conversation format for choosing a complete role and model roster.",
-        tab="agent / roster selection",
-        lines=(
-            Line("MISSION CONTROL / ROSTER SELECTION", "heading"),
-            Line("CURRENT CATALOG EXAMPLE  /  14 models discovered", "muted"),
-            Line(""),
-            Line("A  RECOMMENDED", "accent"),
-            Line("   planner      Codex / current session        plan"),
-            Line("   implementer  claude-sonnet-4-6              accept-edits"),
-            Line("   reviewer     gpt-oss-120b-medium            plan"),
-            Line(""),
-            Line("B  BEST RESULT", "accent"),
-            Line("   planner      claude-opus-4-6-thinking       plan"),
-            Line("   implementer  claude-opus-4-6-thinking       accept-edits"),
-            Line("   reviewer     gemini-3.1-pro-high            plan / cross-family"),
-            Line(""),
-            Line("C  GEMINI FLASH HIGH", "accent"),
-            Line("   all AGY roles  gemini-3.7-flash-high        bounded by role"),
-            Line("Reply A, B, C, or name the entries to change.", "success"),
-            Line("No worker has been dispatched.", "muted"),
-        ),
-    ),
-    Screen(
-        filename="roster-change.svg",
-        title="Roster change confirmation",
-        description="The required Agent conversation format when an approved roster entry needs to change.",
-        tab="agent / reconfirmation",
-        lines=(
-            Line("MISSION CONTROL / ROSTER CHANGE", "heading"),
-            Line("APPROVED STRATEGY  B  /  changed entry paused", "muted"),
-            Line(""),
-            Line("FIELD                 APPROVED                  PROPOSED", "muted"),
-            Line("──────────────────────────────────────────────────────────────", "dim"),
-            Line("Affected role         reviewer                  reviewer"),
-            Line("Exact model           gemini-3.1-pro-high       claude-sonnet-4-6", "accent"),
-            Line("Filesystem scope      repo/** read-only         unchanged"),
-            Line("Execution profile     plan                      unchanged"),
-            Line("Review family         cross-family              same-family", "accent"),
-            Line(""),
-            Line("Reason  Gemini weekly remaining is below the approved floor.", "prompt"),
-            Line("Effect  Lower Gemini use; reviewer independence decreases.", "muted"),
-            Line("Unchanged  planner, implementer and ownership."),
-            Line("           Acceptance criteria remain unchanged."),
-            Line("Reply: approve change / keep original", "success"),
-            Line("       or propose another option", "success"),
-        ),
-    ),
-    Screen(
-        filename="background-job.svg",
-        title="Background job control",
-        description="A bounded worker running in the background with durable status and collection commands.",
-        tab="status",
-        lines=(
-            Line("$ agy-mc run ... --background", "prompt"),
-            Line(""),
-            Line('{  "status": "queued",', "muted"),
-            Line('   "job_id": "job-20260823-8f31",', "accent"),
-            Line('   "role": "implementer",'),
-            Line('   "model": "gemini-3.7-flash-high",'),
-            Line('   "mode": "accept-edits"  }'),
-            Line(""),
-            Line("$ agy-mc status job-20260823-8f31", "prompt"),
-            Line('{  "status": "running",  "pid": 48317  }', "accent"),
-            Line(""),
-            Line("$ agy-mc wait job-20260823-8f31 --timeout 10m", "prompt"),
-            Line('{  "status": "done",  "exit_code": 0  }', "success"),
-            Line(""),
-            Line("Worker result is evidence, not acceptance.", "heading"),
-            Line("Codex still checks the real diff, tests and task criteria.", "muted"),
-        ),
-    ),
+    Screen('guided-install.svg', 'Install with intent.', 'Inspect the exact target before installing the CLI and skill.', 'install', (
+        Line('$ npx antigravity-mission-control@latest install --dry-run', 'prompt'),
+        Line('', 'text'),
+        Line('CLI version       0.2.0', 'text'),
+        Line('Skill target      ~/.codex/skills/antigravity-mission-control', 'text'),
+        Line('Runtime           ~/.local/share/antigravity-mission-control/venv', 'text'),
+        Line('Source tag        v0.2.0', 'text'),
+        Line('', 'text'),
+        Line('$ npx antigravity-mission-control@latest install', 'prompt'),
+        Line('', 'text'),
+        Line('Inspect targets. Approve installation. Keep a recovery path.', 'text'),
+    )),
+    Screen('live-quota.svg', 'Quota, without a kickoff.', 'Usage queries go straight to telemetry. No roster workflow.', 'usage', (
+        Line('$ agy-mc usage', 'prompt'),
+        Line('', 'text'),
+        Line('GROUP                   WINDOW     REMAINING', 'accent'),
+        Line('Gemini Models           weekly     62.50%', 'text'),
+        Line('Claude and GPT models   weekly     unknown', 'text'),
+        Line('', 'text'),
+        Line('$ agy-mc usage --watch --interval 60', 'prompt'),
+        Line('', 'text'),
+        Line('Unknown stays unknown. Watch only when requested.', 'text'),
+        Line('Sample values. Account identity is excluded.', 'text'),
+    )),
+    Screen('bound-approval.svg', 'Make the policy explicit.', 'New manifests bind the effective policy and the approved task.', 'policy / approve', (
+        Line('$ agy-mc policy strict-yuxiao', 'prompt'),
+        Line('require_three_rosters: true', 'text'),
+        Line('max_correction_rounds: 2', 'text'),
+        Line('', 'text'),
+        Line('$ agy-mc approve --policy strict-yuxiao \\', 'prompt'),
+        Line('    --three-rosters-presented --strategy A --role implementer \\', 'prompt'),
+        Line('    --model <approved-slug> --cwd /project \\', 'prompt'),
+        Line('    --prompt-file /private/task.txt --mode accept-edits --confirmed', 'prompt'),
+        Line('', 'text'),
+        Line('Bound: model / workspace / prompt / permissions / policy / expiry', 'text'),
+        Line("Confirmation flags record the caller's assertion.", 'text'),
+    )),
+    Screen('roster-selection.svg', 'Choose the right team.', 'Strict is the default. Balanced is an explicit user choice.', 'assignment policy', (
+        Line('STRICT-YUXIAO', 'accent'),
+        Line('A   Smallest adequate team', 'text'),
+        Line('B   Capability and independent review', 'text'),
+        Line('C   Latest available Gemini Flash High', 'text'),
+        Line('', 'text'),
+        Line('BALANCED', 'accent'),
+        Line('One exact assignment for approval', 'text'),
+        Line('', 'text'),
+        Line('Both retain exact model and scope approval.', 'text'),
+        Line('Unrestricted execution requires separate authorization.', 'text'),
+    )),
+    Screen('roster-change.svg', 'Confirm what changed.', 'Reuse existing decisions when the assignment stays the same.', 'scope / continuation', (
+        Line('UNCHANGED ASSIGNMENT', 'accent'),
+        Line('Same model, workspace, role and permissions', 'text'),
+        Line('New prompt: create a fresh bound manifest', 'text'),
+        Line('', 'text'),
+        Line('CHANGED ASSIGNMENT', 'accent'),
+        Line('Present the affected entry and its tradeoff', 'text'),
+        Line('Confirm the change before dispatch', 'text'),
+        Line('', 'text'),
+        Line('Ordinary follow-up: --follow-up-of <job-id>', 'text'),
+        Line('Correction:         --correction-of <job-id>', 'text'),
+    )),
+    Screen('background-job.svg', 'Dispatch. Collect. Inspect.', 'A completed worker still needs independent acceptance.', 'run / wait / result', (
+        Line('$ agy-mc run <approved-run-fields> --background', 'prompt'),
+        Line('', 'text'),
+        Line('job_id:          implementer-<timestamp>-<id>', 'text'),
+        Line('evidence_path:   <private-job-dir>/workspace-evidence', 'text'),
+        Line('', 'text'),
+        Line('$ agy-mc wait <job-id> --timeout 300s', 'prompt'),
+        Line('', 'text'),
+        Line('status:          done', 'text'),
+        Line('acceptance:      not_evaluated', 'text'),
+        Line('', 'text'),
+        Line('Inspect the real diff and checks against the original task.', 'text'),
+    )),
+    Screen('workspace-evidence.svg', 'Know what was already there.', 'Private Git baselines help separate existing and new changes.', 'workspace evidence', (
+        Line('BEFORE DISPATCH', 'accent'),
+        Line('before.json     HEAD / Git status / changed-file fingerprints', 'text'),
+        Line('dispatch.json   original and dispatched prompt hashes', 'text'),
+        Line('', 'text'),
+        Line('AFTER EXECUTION', 'accent'),
+        Line('after.json      fresh workspace snapshot', 'text'),
+        Line('delta.json      changed paths / diff changes / limitations', 'text'),
+        Line('', 'text'),
+        Line('Existing changes enter the worker prompt as observed context.', 'text'),
+        Line('Missing evidence stays visible. Ownership still needs review.', 'text'),
+    )),
+    Screen('correction-chain.svg', 'Keep the correction history.', 'Ordinary follow-ups retain the count. Corrections increment it.', 'recorded job lineage', (
+        Line('Initial job                  correction_round: 0', 'text'),
+        Line('  -> first correction        correction_round: 1', 'text'),
+        Line('  -> ordinary follow-up      correction_round: 1', 'text'),
+        Line('  -> second correction       correction_round: 2', 'text'),
+        Line('', 'text'),
+        Line('Third correction             rejected', 'accent'),
+        Line('', 'text'),
+        Line('Diagnose the failure before approving a new scoped task.', 'text'),
+        Line('', 'text'),
+        Line('Limit applies to recorded chains; legacy runs are uncounted.', 'text'),
+    )),
 )
 
-
 PALETTE = {
-    "text": "#e6edf7",
-    "heading": "#f8fafc",
-    "prompt": "#67e8f9",
-    "accent": "#22d3ee",
-    "success": "#86efac",
-    "muted": "#94a3b8",
-    "dim": "#334155",
+    "text": "#dce5e9", "heading": "#f3f7f8", "prompt": "#79d8e2",
+    "accent": "#79d8e2", "success": "#79d8e2", "muted": "#9cabb2", "dim": "#3b4a52",
 }
 
 
 def render(screen: Screen) -> str:
     rows = []
-    y = 145
+    y = 254
     for line in screen.lines:
-        color = PALETTE[line.tone]
-        weight = "700" if line.tone in {"heading", "success"} else "500"
-        rows.append(
-            f'    <text x="92" y="{y}" fill="{color}" font-weight="{weight}">{escape(line.text)}</text>'
-        )
-        y += 31
+        rows.append(f'<text x="72" y="{y}" fill="{PALETTE[line.tone]}">{escape(line.text)}</text>')
+        y += 34
     content = "\n".join(rows)
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
-  <title id="title">{escape(screen.title)}</title>
-  <desc id="desc">{escape(screen.description)} Paths and values are sanitized examples rendered from the real CLI format.</desc>
-  <defs>
-    <linearGradient id="page" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e8edf5"/><stop offset="1" stop-color="#d7e2ea"/></linearGradient>
-    <linearGradient id="terminal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#111827"/><stop offset="1" stop-color="#08151d"/></linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#0f172a" flood-opacity=".28"/></filter>
-  </defs>
-  <rect width="1280" height="720" rx="30" fill="url(#page)"/>
-  <rect x="42" y="34" width="1196" height="652" rx="20" fill="url(#terminal)" filter="url(#shadow)"/>
-  <rect x="42" y="34" width="1196" height="58" rx="20" fill="#172033"/>
-  <path d="M42 72h1196v20H42z" fill="#172033"/>
-  <circle cx="76" cy="63" r="7" fill="#fb7185"/><circle cx="100" cy="63" r="7" fill="#fbbf24"/><circle cx="124" cy="63" r="7" fill="#4ade80"/>
-  <text x="640" y="69" text-anchor="middle" fill="#cbd5e1" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">{escape(screen.tab)}</text>
-  <g xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">
-{content}
-  </g>
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" role="img" aria-labelledby="title desc">
+<title id="title">{escape(screen.title)}</title>
+<desc id="desc">{escape(screen.description)} Illustrative command and field excerpts, not a live screenshot.</desc>
+<rect width="1280" height="800" rx="20" fill="#10191e"/>
+<rect x="48" y="48" width="5" height="96" fill="#79d8e2"/>
+<text x="72" y="88" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" letter-spacing="-1" fill="#f3f7f8">{escape(screen.title)}</text>
+<text x="72" y="133" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#acbbc2">{escape(screen.description)}</text>
+<rect x="48" y="182" width="1184" height="524" rx="10" fill="#162229" stroke="#2d3e47"/>
+<text x="72" y="215" font-family="Menlo, monospace" font-size="17" fill="#9cabb2">{escape(screen.tab)}</text>
+<g xml:space="preserve" font-family="Menlo, Consolas, monospace" font-size="21">{content}</g>
+<text x="72" y="756" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#9cabb2">Antigravity Mission Control  /  v0.2.0</text>
+<text x="1208" y="756" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#9cabb2">Illustrative commands and fields</text>
 </svg>
 '''
 

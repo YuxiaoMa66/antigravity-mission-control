@@ -1,33 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
-  <title id="title">Guided installation</title>
-  <desc id="desc">Mission Control installation with exact targets shown before changes. Paths and values are sanitized examples rendered from the real CLI format.</desc>
-  <defs>
-    <linearGradient id="page" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e8edf5"/><stop offset="1" stop-color="#d7e2ea"/></linearGradient>
-    <linearGradient id="terminal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#111827"/><stop offset="1" stop-color="#08151d"/></linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#0f172a" flood-opacity=".28"/></filter>
-  </defs>
-  <rect width="1280" height="720" rx="30" fill="url(#page)"/>
-  <rect x="42" y="34" width="1196" height="652" rx="20" fill="url(#terminal)" filter="url(#shadow)"/>
-  <rect x="42" y="34" width="1196" height="58" rx="20" fill="#172033"/>
-  <path d="M42 72h1196v20H42z" fill="#172033"/>
-  <circle cx="76" cy="63" r="7" fill="#fb7185"/><circle cx="100" cy="63" r="7" fill="#fbbf24"/><circle cx="124" cy="63" r="7" fill="#4ade80"/>
-  <text x="640" y="69" text-anchor="middle" fill="#cbd5e1" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">install</text>
-  <g xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">
-    <text x="92" y="145" fill="#67e8f9" font-weight="500">$ npx antigravity-mission-control@next install</text>
-    <text x="92" y="176" fill="#e6edf7" font-weight="500"></text>
-    <text x="92" y="207" fill="#f8fafc" font-weight="700">ANTIGRAVITY MISSION CONTROL  v0.2.0</text>
-    <text x="92" y="238" fill="#94a3b8" font-weight="500">Route / Guard / Verify</text>
-    <text x="92" y="269" fill="#e6edf7" font-weight="500"></text>
-    <text x="92" y="300" fill="#22d3ee" font-weight="500">◆ Install</text>
-    <text x="92" y="331" fill="#e6edf7" font-weight="500">  Skill target     ~/.codex/skills/antigravity-mission-control</text>
-    <text x="92" y="362" fill="#e6edf7" font-weight="500">  Managed runtime  ~/.local/share/antigravity-mission-control/</text>
-    <text x="92" y="393" fill="#e6edf7" font-weight="500">                   venv</text>
-    <text x="92" y="424" fill="#94a3b8" font-weight="500">  Package source   github.com/YuxiaoMa66/...@v0.2.0</text>
-    <text x="92" y="455" fill="#e6edf7" font-weight="500"></text>
-    <text x="92" y="486" fill="#86efac" font-weight="700">✓ Python  python3 3.13.9</text>
-    <text x="92" y="517" fill="#86efac" font-weight="700">✓ AGY     1.1.19</text>
-    <text x="92" y="548" fill="#67e8f9" font-weight="500">? Continue with these exact changes?  y</text>
-    <text x="92" y="579" fill="#86efac" font-weight="700">✓ Installed  /  recoverable backup enabled</text>
-    <text x="92" y="610" fill="#86efac" font-weight="700">✓ Mission accomplished</text>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" role="img" aria-labelledby="title desc">
+<title id="title">Install with intent.</title>
+<desc id="desc">Inspect the exact target before installing the CLI and skill. Illustrative command and field excerpts, not a live screenshot.</desc>
+<rect width="1280" height="800" rx="20" fill="#10191e"/>
+<rect x="48" y="48" width="5" height="96" fill="#79d8e2"/>
+<text x="72" y="88" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" letter-spacing="-1" fill="#f3f7f8">Install with intent.</text>
+<text x="72" y="133" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#acbbc2">Inspect the exact target before installing the CLI and skill.</text>
+<rect x="48" y="182" width="1184" height="524" rx="10" fill="#162229" stroke="#2d3e47"/>
+<text x="72" y="215" font-family="Menlo, monospace" font-size="17" fill="#9cabb2">install</text>
+<g xml:space="preserve" font-family="Menlo, Consolas, monospace" font-size="21"><text x="72" y="254" fill="#79d8e2">$ npx antigravity-mission-control@latest install --dry-run</text>
+<text x="72" y="288" fill="#dce5e9"></text>
+<text x="72" y="322" fill="#dce5e9">CLI version       0.2.0</text>
+<text x="72" y="356" fill="#dce5e9">Skill target      ~/.codex/skills/antigravity-mission-control</text>
+<text x="72" y="390" fill="#dce5e9">Runtime           ~/.local/share/antigravity-mission-control/venv</text>
+<text x="72" y="424" fill="#dce5e9">Source tag        v0.2.0</text>
+<text x="72" y="458" fill="#dce5e9"></text>
+<text x="72" y="492" fill="#79d8e2">$ npx antigravity-mission-control@latest install</text>
+<text x="72" y="526" fill="#dce5e9"></text>
+<text x="72" y="560" fill="#dce5e9">Inspect targets. Approve installation. Keep a recovery path.</text></g>
+<text x="72" y="756" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#9cabb2">Antigravity Mission Control  /  v0.2.0</text>
+<text x="1208" y="756" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#9cabb2">Illustrative commands and fields</text>
 </svg>

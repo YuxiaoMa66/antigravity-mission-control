@@ -1,0 +1,11 @@
+# v0.2.0 visual refresh
+
+Preserve the existing orbital logo, README structure and developer-tool voice. The old terminal hero still showed an earlier Alpha version; the gallery also lacked workspace evidence and correction lineage. This update uses a dark graphite surface, a restrained cyan accent, clear sans-serif headings and monospace command excerpts.
+
+Design settings: variation 5, motion 0, density 4. Static repository assets, not an interactive web redesign. The logo remains unchanged. Command graphics are explicitly illustrative, not live screenshots. Existing SVGs are updated through the repository-native renderer.
+
+Assets: a release cover at `assets/release-v0.2.0.png` and eight command/workflow SVGs under `assets/interfaces/`. The raster cover uses the built-in image generation tool; it is a conceptual orchestration illustration. The command diagrams use `scripts/render_interface_assets.py` and are checked for consistency. Native-size PNG renders of the policy and workspace evidence diagrams were visually inspected; the cover's typography and version were inspected as well.
+
+## Cover prompt
+
+Use case: ads-marketing. Create a polished wide 16:9 GitHub release cover for a developer CLI tool, Antigravity Mission Control v0.2.0. Near-black graphite background, restrained cyan accent, clear off-white sans-serif typography, sophisticated engineering editorial design. Main title on left, exact text on two lines: "Antigravity" then "Mission Control". Small version label "v0.2.0" above title, since this is a release announcement. Subtitle exact text "Bounded workers. Verified delivery." On right a tactile three-dimensional precision-machined orbital assembly with a central dark hub and three understated cyan-connected satellite modules, an elegant technical metaphor for orchestration; not outer-space scenery. Subtle physical material and directional studio lighting, no purple glow, no gradient blob, no fake app screenshot, no charts, no invented metrics or platform logos, no other text, no extra logo or watermark. Strong hierarchy and wide breathing room. Keep text legible at GitHub README width 900px. Premium developer-tool visual, original geometric product illustration.

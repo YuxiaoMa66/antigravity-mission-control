@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" role="img" aria-labelledby="title desc">
+<title id="title">Know what was already there.</title>
+<desc id="desc">Private Git baselines help separate existing and new changes. Illustrative command and field excerpts, not a live screenshot.</desc>
+<rect width="1280" height="800" rx="20" fill="#10191e"/>
+<rect x="48" y="48" width="5" height="96" fill="#79d8e2"/>
+<text x="72" y="88" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" letter-spacing="-1" fill="#f3f7f8">Know what was already there.</text>
+<text x="72" y="133" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#acbbc2">Private Git baselines help separate existing and new changes.</text>
+<rect x="48" y="182" width="1184" height="524" rx="10" fill="#162229" stroke="#2d3e47"/>
+<text x="72" y="215" font-family="Menlo, monospace" font-size="17" fill="#9cabb2">workspace evidence</text>
+<g xml:space="preserve" font-family="Menlo, Consolas, monospace" font-size="21"><text x="72" y="254" fill="#79d8e2">BEFORE DISPATCH</text>
+<text x="72" y="288" fill="#dce5e9">before.json     HEAD / Git status / changed-file fingerprints</text>
+<text x="72" y="322" fill="#dce5e9">dispatch.json   original and dispatched prompt hashes</text>
+<text x="72" y="356" fill="#dce5e9"></text>
+<text x="72" y="390" fill="#79d8e2">AFTER EXECUTION</text>
+<text x="72" y="424" fill="#dce5e9">after.json      fresh workspace snapshot</text>
+<text x="72" y="458" fill="#dce5e9">delta.json      changed paths / diff changes / limitations</text>
+<text x="72" y="492" fill="#dce5e9"></text>
+<text x="72" y="526" fill="#dce5e9">Existing changes enter the worker prompt as observed context.</text>
+<text x="72" y="560" fill="#dce5e9">Missing evidence stays visible. Ownership still needs review.</text></g>
+<text x="72" y="756" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#9cabb2">Antigravity Mission Control  /  v0.2.0</text>
+<text x="1208" y="756" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#9cabb2">Illustrative commands and fields</text>
+</svg>

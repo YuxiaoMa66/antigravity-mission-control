@@ -5,13 +5,13 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-7c3aed" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/Node.js-18%2B-0891b2" alt="Node.js 18+">
-  <img src="https://img.shields.io/badge/AGY-tested_1.1.19-22d3ee" alt="AGY tested 1.1.19">
+  <img src="https://img.shields.io/badge/AGY-tested_1.1.27-22d3ee" alt="AGY tested 1.1.27">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a78bfa" alt="MIT License"></a>
 </p>
 
 面向 Antigravity CLI（`agy`）的策略化任务控制层：将工作路由到精确模型，把批准绑定到具体任务，串行保护编辑 worker，确认取消结果并实时查看额度；最终验收始终由 Codex 负责。
 
-<p align="center"><img src="assets/terminal-preview.svg" width="920" alt="Mission Control 终端界面预览"></p>
+<p align="center"><img src="assets/release-v0.2.0.png" width="920" alt="Mission Control 终端界面预览"></p>
 
 > **v0.2：** 支持策略编排与独立验收，权限和运行限制见下文。本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
 
@@ -35,7 +35,7 @@ Agent 会阅读本页的安装步骤和安全边界，完成检查后回报结�
 
 ## 看看实际操作界面
 
-下面的图片忠实呈现真实 CLI 格式。HOME 路径、签名、任务 ID 和额度数字使用了脱敏示例。
+以下为 v0.2.0 命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
 
 <table>
   <tr>
@@ -49,6 +49,10 @@ Agent 会阅读本页的安装步骤和安全边界，完成检查后回报结�
   <tr>
     <td width="50%"><img src="assets/interfaces/roster-selection.svg" alt="Agent 对话中展示 A、B、C 三套模型阵容"><br><sub><strong>阵容选择。</strong> worker 启动前比较完整角色、精确模型和权限。</sub></td>
     <td width="50%"><img src="assets/interfaces/roster-change.svg" alt="Agent 对话中请求确认阵容修改"><br><sub><strong>修改确认。</strong> 接受修改前查看已批准值、拟修改值、原因和审核影响。</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/interfaces/workspace-evidence.svg" alt="Before and after workspace evidence"><br><sub><strong>工作区证据。</strong> Git 前后基线、变更文件指纹及明确的证据限制。</sub></td>
+    <td width="50%"><img src="assets/interfaces/correction-chain.svg" alt="Recorded correction count across follow-ups"><br><sub><strong>纠错记录。</strong> 普通追问保留计数，记录链中的第三次纠错被拒绝。</sub></td>
   </tr>
 </table>
 
