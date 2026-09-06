@@ -114,7 +114,7 @@ npx antigravity-mission-control@next status
 Direct Python installation is also supported:
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a4"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a5"
 agy-mc skill install
 agy-mc doctor
 ```
@@ -148,6 +148,7 @@ After the user approves the exact roster and permission profile, create a short-
 
 ```bash
 agy-mc approve \
+  --policy strict-yuxiao --three-rosters-presented \
   --strategy A --role implementer --model gemini-3.7-flash-high \
   --cwd /absolute/project --prompt-file /private/prompt.txt \
   --mode accept-edits --expires-minutes 60 --confirmed

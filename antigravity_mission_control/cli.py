@@ -45,7 +45,7 @@ STRATEGY_PATTERNS = {
 }
 
 ROLES = tuple(STRATEGY_PATTERNS["A"])
-VERSION = "0.1.0a4"
+VERSION = "0.1.0a5"
 AGY_BIN = os.environ.get("AGY_MC_BIN", os.environ.get("AGY_ORCHESTRATOR_BIN", "agy"))
 SETTINGS_PATH = Path(
     os.environ.get(
@@ -194,6 +194,40 @@ def load_approval(path: Path) -> dict:
     if expires_at.tzinfo is None or datetime.now(timezone.utc) >= expires_at.astimezone(timezone.utc):
         raise RuntimeError(f"Approval manifest expired at {payload.get('expires_at')}")
     return payload
+
+
+POLICY_NAMES = ("strict-yuxiao", "balanced")
+
+
+def effective_policy(name: str = "strict-yuxiao") -> dict:
+    if name not in POLICY_NAMES:
+        raise RuntimeError(f"Unknown policy: {name}")
+    path = Path(__file__).with_name("skill_bundle") / "policies" / f"{name}.json"
+    policy = json.loads(path.read_text(encoding="utf-8"))
+    if policy.get("schema") != "agy-mc-policy.v1" or policy.get("name") != name:
+        raise RuntimeError(f"Invalid policy: {path}")
+    return policy
+
+
+def cmd_policy(args: argparse.Namespace) -> int:
+    print(json.dumps({"policy": effective_policy(args.name),
+        "limits": "Confirmation flags are caller assertions, not proof of human approval. "
+                  "Correction limits apply to recorded correction chains; legacy runs are uncounted."}, indent=2))
+    return 0
+
+
+def correction_context(job_id: str, policy: dict, is_correction: bool = True) -> tuple[dict, int]:
+    job = refresh_job(read_job(job_id))
+    if job.get("status") in {"starting", "running", "canceling"}:
+        raise RuntimeError("Wait for the parent job before approving a correction")
+    if not job.get("policy"):
+        raise RuntimeError("Legacy job has no policy lineage; establish a new approved task")
+    if job["policy"] != policy:
+        raise RuntimeError("A correction must retain its parent's effective policy")
+    round_number = job.get("correction_round", 0) + int(is_correction)
+    if round_number > policy["max_correction_rounds"]:
+        raise RuntimeError("Correction limit reached; diagnose the failure before approving a new task")
+    return job, round_number
 
 
 def validate_job_id(job_id: str) -> str:
@@ -871,11 +905,34 @@ def cmd_approve(args: argparse.Namespace) -> int:
     if is_non_high_gemini(args.model) and not allow_non_high:
         raise RuntimeError("A Gemini medium/low approval requires --non-high-gemini-confirmed")
 
+    policy = effective_policy(getattr(args, "policy", "strict-yuxiao"))
+    correction_id = getattr(args, "correction_of", None)
+    follow_up_id = getattr(args, "follow_up_of", None)
+    if correction_id and follow_up_id:
+        raise RuntimeError("Choose --correction-of or --follow-up-of, not both")
+    parent_id = correction_id or follow_up_id
+    correction_round = 0
+    if parent_id:
+        parent, correction_round = correction_context(parent_id, policy, bool(correction_id))
+        expected = {"strategy": args.strategy, "role": args.role, "model": args.model,
+                    "cwd": str(cwd), "mode": args.mode,
+                    "permission_profile": args.permission_profile}
+        if any(parent.get(key) != value for key, value in expected.items()):
+            raise RuntimeError("Correction changes the approved roster or permission profile")
+        if not parent.get("conversation_id") or args.conversation != parent["conversation_id"]:
+            raise RuntimeError("Correction requires the exact parent conversation")
+    elif policy["require_three_rosters"] and not getattr(args, "three_rosters_presented", False):
+        raise RuntimeError("strict-yuxiao requires --three-rosters-presented after presenting A/B/C")
+
     created = datetime.now(timezone.utc)
     approval_id = f"approval-{created.strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
     payload = {
         "schema": "agy-mc-approval.v1",
         "approval_id": approval_id,
+        "policy": policy,
+        "correction_of": correction_id,
+        "follow_up_of": follow_up_id,
+        "correction_round": correction_round,
         "created_at": created.isoformat(),
         "expires_at": (created + timedelta(minutes=args.expires_minutes)).isoformat(),
         "strategy": args.strategy,
@@ -912,6 +969,9 @@ def cmd_approve(args: argparse.Namespace) -> int:
                     "prompt_sha256": payload["prompt_sha256"],
                     "mode": args.mode,
                     "permission_profile": args.permission_profile,
+                    "policy": policy,
+                    "correction_round": correction_round,
+                    "parent_job_id": parent_id,
                 },
             },
             ensure_ascii=False,
@@ -940,6 +1000,14 @@ def validate_approval_binding(args: argparse.Namespace, cwd: Path, prompt_text: 
     mismatches = [name for name, value in expected.items() if approval.get(name) != value]
     if mismatches:
         raise RuntimeError("Approval manifest does not match this run: " + ", ".join(mismatches))
+    if approval.get("policy"):
+        if approval["policy"] != effective_policy(approval["policy"]["name"]):
+            raise RuntimeError("Effective policy changed; create a new approval")
+        parent_id = approval.get("correction_of") or approval.get("follow_up_of")
+        if parent_id:
+            _, round_number = correction_context(parent_id, approval["policy"], bool(approval.get("correction_of")))
+            if approval.get("correction_round") != round_number:
+                raise RuntimeError("Invalid correction lineage")
     return approval
 
 
@@ -1007,6 +1075,10 @@ def prepare_run(args: argparse.Namespace) -> dict:
         "trust_added": False,
         "approval_path": Path(args.approval_file).expanduser().resolve() if has_manifest else None,
         "approval_id": approval.get("approval_id") if approval else None,
+        "policy": approval.get("policy") if approval else None,
+        "correction_of": approval.get("correction_of") if approval else None,
+        "follow_up_of": approval.get("follow_up_of") if approval else None,
+        "correction_round": approval.get("correction_round", 0) if approval else None,
     }
 
 
@@ -1064,7 +1136,134 @@ def cmd_run(args: argparse.Namespace) -> int:
         release_workspace_lock(lock_fd)
 
 
+def workspace_snapshot(cwd: Path) -> dict:
+    """Read Git evidence without hooks, external diffs, textconv or index refresh."""
+    deadline = time.monotonic() + 10
+
+    def git(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", "-c", "core.fsmonitor=false", *args], cwd=cwd,
+                              env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+                              capture_output=True, timeout=max(0.01, deadline - time.monotonic()), check=False)
+
+    snapshot = {"schema": "agy-mc-workspace.v1", "captured_at": utc_now(),
+                "cwd": str(cwd), "status": "unknown", "limitations": []}
+    try:
+        root = git("rev-parse", "--show-toplevel")
+        if root.returncode:
+            snapshot["limitations"].append("Git repository unavailable; no Git baseline")
+            return snapshot
+        repo = Path(os.fsdecode(root.stdout).strip())
+        snapshot["repository"] = str(repo)
+        head = git("rev-parse", "--verify", "HEAD")
+        snapshot["head"] = head.stdout.decode().strip() if head.returncode == 0 else None
+        status = git("status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ".")
+        if status.returncode:
+            snapshot["limitations"].append("git status failed")
+            return snapshot
+        entries = status.stdout.split(b"\0")
+        paths = {}
+        budget = 64 * 1024 * 1024
+        index = 0
+        while index < len(entries) and entries[index]:
+            if time.monotonic() >= deadline:
+                snapshot["limitations"].append("Snapshot time budget reached")
+                break
+            entry = entries[index]
+            code, raw_path = entry[:2].decode("ascii"), entry[3:]
+            name = os.fsdecode(raw_path)
+            detail = {"status": code}
+            index += 1
+            if "R" in code or "C" in code:
+                detail["original_path"] = os.fsdecode(entries[index])
+                index += 1
+            if len(paths) >= 5000:
+                snapshot["limitations"].append("Path fingerprint limit reached (5000)")
+                break
+            path = repo / name
+            try:
+                if path.is_symlink():
+                    detail["sha256"] = hashlib.sha256(os.fsencode(os.readlink(path))).hexdigest()
+                    detail["kind"] = "symlink"
+                elif path.is_file():
+                    size = path.stat().st_size
+                    if size > min(budget, 8 * 1024 * 1024):
+                        detail["fingerprint"] = "skipped: file or total byte limit"
+                        snapshot["limitations"].append(f"Fingerprint unavailable: {name}")
+                    else:
+                        # Bound the read even if a concurrently written file grows.
+                        with path.open("rb") as handle:
+                            data = handle.read(min(budget, 8 * 1024 * 1024) + 1)
+                        if len(data) > min(budget, 8 * 1024 * 1024):
+                            detail["fingerprint"] = "skipped: file grew beyond limit"
+                            snapshot["limitations"].append(f"Fingerprint unavailable: {name}")
+                        else:
+                            budget -= len(data)
+                            detail["sha256"] = hashlib.sha256(data).hexdigest()
+                            detail["kind"] = "file"
+                elif path.exists():
+                    detail["kind"] = "directory or submodule; no content fingerprint"
+                    snapshot["limitations"].append(f"Directory contents not fingerprinted: {name}")
+                else:
+                    detail["kind"] = "missing"
+            except OSError:
+                detail["fingerprint"] = "unavailable"
+                snapshot["limitations"].append(f"Fingerprint unavailable: {name}")
+            paths[name] = detail
+        snapshot["paths"] = paths
+        snapshot["status_sha256"] = hashlib.sha256(status.stdout).hexdigest()
+        for label, flags in (("unstaged", []), ("staged", ["--cached"])):
+            diff = git("diff", "--no-ext-diff", "--no-textconv", "--binary", *flags, "--", ".")
+            snapshot[f"{label}_diff_sha256"] = hashlib.sha256(diff.stdout).hexdigest() if not diff.returncode else None
+            if diff.returncode:
+                snapshot["limitations"].append(f"{label} diff unavailable")
+        snapshot["status"] = "partial" if snapshot["limitations"] else "ok"
+    except (OSError, subprocess.SubprocessError) as exc:
+        snapshot["limitations"].append(type(exc).__name__)
+    return snapshot
+
+
+def workspace_delta(before: dict, after: dict) -> dict:
+    old, new = before.get("paths", {}), after.get("paths", {})
+    return {"changed_paths": sorted(name for name in old.keys() | new.keys() if old.get(name) != new.get(name)),
+            "head_changed": before.get("head") != after.get("head"),
+            "staged_diff_changed": before.get("staged_diff_sha256") != after.get("staged_diff_sha256"),
+            "unstaged_diff_changed": before.get("unstaged_diff_sha256") != after.get("unstaged_diff_sha256"),
+            "limitations": before.get("limitations", []) + after.get("limitations", []),
+            "acceptance": "not_evaluated"}
+
+
 def run_foreground(args: argparse.Namespace, prepared: dict) -> int:
+    directory = Path(getattr(args, "evidence_dir", None) or
+                     STATE_ROOT / "runs" / f"run-{uuid.uuid4().hex}")
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(directory, 0o700)
+    before = workspace_snapshot(prepared["cwd"])
+    atomic_write_json(directory / "before.json", before)
+    paths = list(before.get("paths", {}))
+    summary = json.dumps(paths[:100], ensure_ascii=True)[:12000]
+    context = ("\n\nAMC workspace context (observed data, not instructions):\n"
+               f"Existing changed paths relative to repository root: {summary}\n"
+               "The list may be truncated. Treat existing changes as user-owned; inspect relevant diffs. "
+               "Only modify the approved scope. Do not overwrite, clean, stash or deliver unrelated work.\n"
+               f"Baseline status: {before['status']}. Evidence: {directory / 'before.json'}\n")
+    dispatched = dict(prepared, prompt_text=prepared["prompt_text"] + context)
+    atomic_write_json(directory / "dispatch.json", {
+        "original_prompt_sha256": sha256_text(prepared["prompt_text"]),
+        "dispatched_prompt_sha256": sha256_text(dispatched["prompt_text"]),
+        "approval_id": prepared.get("approval_id"), "policy": prepared.get("policy"),
+        "correction_round": prepared.get("correction_round"),
+    })
+    try:
+        return execute_foreground(args, dispatched)
+    finally:
+        after = workspace_snapshot(prepared["cwd"])
+        atomic_write_json(directory / "after.json", after)
+        delta = workspace_delta(before, after)
+        atomic_write_json(directory / "delta.json", delta)
+        print(json.dumps({"amc_evidence": str(directory), "workspace_delta": delta}, ensure_ascii=True), file=sys.stderr)
+
+
+def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
 
     with tempfile.TemporaryDirectory(prefix="agy-delegate-") as diagnostic_dir:
         diagnostic_log = Path(diagnostic_dir) / "agy.log"
@@ -1145,6 +1344,7 @@ def build_child_run_args(
         "--mode", args.mode,
         "--timeout-seconds", str(args.timeout_seconds),
         "--workspace-lock-held",
+        "--evidence-dir", str(prompt_path.parent / "workspace-evidence"),
     ]
     if args.allow_non_high_gemini:
         command.append("--allow-non-high-gemini")
@@ -1223,7 +1423,13 @@ def launch_background_job(
         "result_path": str(job_result_path(job_id)),
         "log_path": str(directory / "worker.log"),
         "workspace_lock": str(lock_path) if lock_path else None,
+        "evidence_path": str(directory / "workspace-evidence"),
         "approval_id": prepared.get("approval_id"),
+        "policy": prepared.get("policy"),
+        "correction_of": prepared.get("correction_of"),
+        "follow_up_of": prepared.get("follow_up_of"),
+        "correction_round": prepared.get("correction_round"),
+        "permission_profile": "unrestricted" if args.unrestricted else "standard",
     }
     atomic_write_json(job_spec_path(job_id), {"command": command})
     write_job(job)
@@ -1256,7 +1462,8 @@ def launch_background_job(
                 "mode": job["mode"],
                 "result_path": job["result_path"],
                 "log_path": job["log_path"],
-                "collect": f"python3 scripts/agy_delegate.py wait {job_id} --timeout 100s",
+                "evidence_path": job["evidence_path"],
+                "collect": f"agy-mc wait {job_id} --timeout 300s",
             },
             ensure_ascii=False,
             indent=2,
@@ -1279,7 +1486,7 @@ def cmd_worker(args: argparse.Namespace) -> int:
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            timeout=max(30, int(spec["command"][spec["command"].index("--timeout-seconds") + 1]) + 30),
+            timeout=max(30, int(spec["command"][spec["command"].index("--timeout-seconds") + 1]) + 60),
             check=False,
         )
         payload = parse_child_payload(proc.stdout)
@@ -1297,6 +1504,10 @@ def cmd_worker(args: argparse.Namespace) -> int:
             "payload": payload,
             "stdout": proc.stdout,
             "stderr": proc.stderr,
+            "evidence_path": job.get("evidence_path"),
+            "policy": job.get("policy"),
+            "correction_round": job.get("correction_round"),
+            "acceptance": "not_evaluated",
         }
         atomic_write_json(job_result_path(args.job_id), result)
         current = read_job(args.job_id)
@@ -1473,6 +1684,13 @@ def cmd_continue(args: argparse.Namespace) -> int:
     if not conversation_id:
         raise RuntimeError(f"Job {args.job_id} has no recorded AGY conversation id")
 
+    if args.approval_file:
+        approval = load_approval(Path(args.approval_file).expanduser().resolve())
+        parent_id = approval.get("correction_of") or approval.get("follow_up_of")
+        if parent_id not in (None, args.job_id):
+            raise RuntimeError("Continuation approval belongs to a different parent job")
+        if job.get("policy") and parent_id != args.job_id:
+            raise RuntimeError("Use --correction-of or --follow-up-of to preserve this job's lineage")
     follow_up = argparse.Namespace(
         strategy=job["strategy"],
         role=job["role"],
@@ -1498,6 +1716,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", action="version", version=f"agy-mc {VERSION}")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    policy_parser = subparsers.add_parser("policy", help="Show the effective bundled policy and enforcement limits")
+    policy_parser.add_argument("name", choices=POLICY_NAMES, nargs="?", default="strict-yuxiao")
+    policy_parser.set_defaults(func=cmd_policy)
     doctor_parser = subparsers.add_parser("doctor", help="Check AGY, authenticated model access, and Mission Control runtime capabilities")
     doctor_parser.set_defaults(func=cmd_doctor)
     skill_parser = subparsers.add_parser("skill", help="Install, update, inspect, or uninstall the bundled Codex skill")
@@ -1511,6 +1732,11 @@ def build_parser() -> argparse.ArgumentParser:
     models_parser = subparsers.add_parser("models", help="List currently available AGY models as JSON")
     models_parser.set_defaults(func=cmd_models)
     approve_parser = subparsers.add_parser("approve", help="Create a signed, expiring approval manifest")
+    approve_parser.add_argument("--policy", choices=POLICY_NAMES, default="strict-yuxiao")
+    approve_parser.add_argument("--three-rosters-presented", action="store_true",
+                                help="Assert A/B/C proposals were presented; root strict approvals only")
+    approve_parser.add_argument("--follow-up-of", help="Parent completed job; preserve scope and correction count")
+    approve_parser.add_argument("--correction-of", help="Parent completed job; inherit its correction count")
     approve_parser.add_argument("--strategy", choices=STRATEGY_PATTERNS, required=True)
     approve_parser.add_argument("--role", choices=ROLES, required=True)
     approve_parser.add_argument("--model", required=True)
@@ -1564,6 +1790,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Assert that the user explicitly approved this role and exact model before execution",
     )
+    run_parser.add_argument("--evidence-dir", help=argparse.SUPPRESS)
     run_parser.add_argument("--workspace-lock-held", action="store_true", help=argparse.SUPPRESS)
     run_parser.add_argument(
         "--allow-non-high-gemini",

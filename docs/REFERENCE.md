@@ -60,3 +60,13 @@ Legacy `AGY_ORCHESTRATOR_BIN` and `AGY_ORCHESTRATOR_JOB_ROOT` remain fallback al
 ## Permission boundaries
 
 Exact workspace trust is a separate `workspace --grant --trust-approved` operation. It refuses filesystem root, the home directory, and matching `deny` or `ask` rules. Unrestricted execution requires its own approval profile and is never inferred from trust.
+
+## Policy, follow-ups and workspace evidence
+
+`policy [strict-yuxiao|balanced]` reports the effective settings without calling AGY. New `approve` manifests bind the policy. Strict root approvals require `--three-rosters-presented`; balanced roots still require `--confirmed`, exact models and separate unrestricted authorization. Choose balanced only with the user's approval.
+
+Use `approve --correction-of <job-id>` for corrections or `--follow-up-of <job-id>` for ordinary in-scope follow-ups, preserving the parent's exact assignment, policy and conversation. Corrections increment a recorded chain counter; a third correction is rejected. Follow-ups retain the count. A newly approved task is required when the scope changes. Flags record the caller's assertion, not proof of human approval; lineage does not enforce a global call budget. Legacy manifests/boolean runs remain uncounted for migration.
+
+Run evidence records private before/after Git snapshots, changed-path fingerprints and staged/unstaged diff hashes outside the project, with paths available in background job results and foreground stderr. The original signed prompt remains intact; observed context is appended and both prompt hashes are recorded. Missing/oversized evidence and snapshot timeouts are explicit limitations. A killed job can lack its after snapshot. Evidence is not a per-file sandbox or automatic ownership/acceptance proof. Provider success retains `acceptance: not_evaluated` in background results.
+
+See [approval workflow](../references/approvals.md) and [job lifecycle](../references/job-lifecycle.md) for exact commands and evidence limits.

@@ -16,7 +16,7 @@
     <text x="92" y="145" fill="#67e8f9" font-weight="500">$ agy-mc approve --strategy A --role implementer \</text>
     <text x="92" y="176" fill="#67e8f9" font-weight="500">    --model gemini-3.7-flash-high --mode accept-edits \</text>
     <text x="92" y="207" fill="#67e8f9" font-weight="500">    --cwd ~/Projects/app --prompt-file /private/task.txt \</text>
-    <text x="92" y="238" fill="#67e8f9" font-weight="500">    --expires-minutes 60 --confirmed</text>
+    <text x="92" y="238" fill="#67e8f9" font-weight="500">    --three-rosters-presented --expires-minutes 60 --confirmed</text>
     <text x="92" y="269" fill="#e6edf7" font-weight="500"></text>
     <text x="92" y="300" fill="#94a3b8" font-weight="500">{</text>
     <text x="92" y="331" fill="#e6edf7" font-weight="500">  &quot;schema&quot;: &quot;agy-mc-approval.v1&quot;,</text>

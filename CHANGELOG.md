@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0a5 - 2026-09-06
+
+- Route quota and existing-job requests directly without starting a roster workflow.
+- Bind effective strict/balanced policy to new signed approvals; require an A/B/C presentation assertion for strict root assignments.
+- Preserve parent assignment and correction count across follow-ups; reject a third correction along a recorded chain.
+- Capture private Git workspace baselines, changed-file fingerprints and diff hashes; inject bounded existing-change context and retain both prompt hashes.
+- Keep provider completion separate from acceptance, and make collect commands independent of repository-relative launcher paths.
+- Consolidate role contracts and document migration/enforcement limits; add isolated fake-AGY coverage.
+
 ## 0.1.0a4 - 2026-08-23
 
 - Added a copy-ready Agent installation prompt to both READMEs.

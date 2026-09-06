@@ -87,7 +87,7 @@ class LifecycleTests(unittest.TestCase):
             "approve", "--strategy", "A", "--role", "planner",
             "--model", "gemini-3.7-flash-high", "--cwd", str(self.workspace),
             "--prompt-file", str(self.prompt), "--mode", "plan",
-            "--expires-minutes", "10", "--confirmed", "--output", str(approval),
+            "--expires-minutes", "10", "--confirmed", "--three-rosters-presented", "--output", str(approval),
         )
         self.assertEqual(created.returncode, 0, created.stderr)
         self.assertEqual(json.loads(created.stdout)["status"], "created")

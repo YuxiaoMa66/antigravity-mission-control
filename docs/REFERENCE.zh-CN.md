@@ -60,3 +60,13 @@
 ## 权限边界
 
 精确工作区信任必须单独执行 `workspace --grant --trust-approved`。它拒绝文件系统根目录、用户主目录以及匹配的 `deny` 或 `ask` 规则。unrestricted 执行需要自己的批准配置，绝不会从 workspace trust 推导。
+
+## 策略、续接与工作区证据
+
+`policy [strict-yuxiao|balanced]` 无需调用 AGY 即可显示当前策略。新 `approve` 清单绑定策略；严格策略的新任务需要 `--three-rosters-presented`，balanced 仍需要 `--confirmed`、精确模型和单独的 unrestricted 授权。仅在用户选择轻量流程后使用 balanced。
+
+纠错用 `approve --correction-of <job-id>`，普通范围内追问用 `--follow-up-of <job-id>`；两者保留父任务的分工、策略及会话。纠错沿已记录链递增，第三次被拒绝；普通追问保留计数。改变范围需要新的批准任务。确认参数是调用者的声明，不能证明人类真实批准；链计数不是全局调用预算。旧清单和布尔参数保留迁移兼容，未记录纠错计数。
+
+运行在项目外保存私有 Git 前后快照、变更路径指纹及暂存/未暂存 diff 哈希，后台结果和前台 stderr 均提供证据路径。原始签名提示词保持完整，程序追加观测上下文并记录两个提示词哈希。证据缺失、超大文件及快照超时都会标明；被终止的任务可能缺少后快照。这些证据不构成逐文件沙箱、改动归属证明或自动验收。后台结果即使执行成功也保留 `acceptance: not_evaluated`。
+
+具体命令和证据限制见[审批流程](../references/approvals.md)及[任务生命周期](../references/job-lifecycle.md)。

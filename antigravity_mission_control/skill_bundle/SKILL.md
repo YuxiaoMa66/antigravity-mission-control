@@ -1,71 +1,37 @@
 ---
 name: antigravity-mission-control
-description: Coordinate Antigravity CLI workers with explicit model rosters, bounded permissions, independent acceptance, background job control, and live quota telemetry. Use for multi-model AGY projects, AGY worker delegation, quota checks, or durable orchestration workflows. Not for a single ordinary AGY command that needs no orchestration.
+description: Coordinate bounded Antigravity CLI workers with approved model rosters and independent acceptance; inspect AGY jobs and live quota. Use for AGY delegation, job follow-ups, quota checks, or multi-model projects. Not for an ordinary single AGY command without orchestration.
 ---
 
 # Antigravity Mission Control
 
-Codex is mission control; AGY models are bounded workers. A worker response is evidence, not acceptance. Codex retains scope, checks the real diff and tests, and makes the completion claim.
+Codex owns the user's objective and final acceptance. AGY workers own bounded assignments; their responses are evidence to inspect.
 
-## Control loop
+## Choose the route first
 
-Preserve the user's objective through four distinct responsibilities:
+| Request | Action |
+| --- | --- |
+| Quota or reset time | Run `agy-mc usage`; use `--format json` when needed. No roster, workspace trust, or model discovery is needed. |
+| Existing job status, result, wait or cancellation | Use the exact job id and [job lifecycle](references/job-lifecycle.md). No new roster is needed. |
+| Existing job follow-up or correction | Preserve the approved scope and model; read [approvals](references/approvals.md). A new prompt needs a new manifest, not renewed approval of unchanged choices. |
+| New worker assignment | Follow the dispatch workflow below. |
+| Launch, permission, authentication or routing failure | Read [runtime diagnostics](references/runtime-diagnostics.md); preserve the evidence before retrying. |
 
-1. Codex translates the request into scope, constraints, acceptance criteria, and bounded roles.
-2. Codex proposes meaningful roster or design choices when they change cost, scope, reversibility, or product behavior. The user selects or revises consequential choices.
-3. The planner and implementer choose their own steps inside the approved objective. Do not turn harmless implementation details into repeated confirmation gates.
-4. A reviewer receives the original objective, acceptance criteria, and real artifacts. It checks scope drift and delivery quality; Codex independently accepts, corrects, or rejects the work.
+Unknown or failed quota values stay `unknown`, never zero. Quota telemetry does not establish a call budget. Watch only when requested: `agy-mc usage --watch --interval 60`.
 
-Do not let a worker silently redefine the objective. When ambiguity would produce materially different outcomes, present the alternatives and their tradeoffs before implementation. Review completion against the original task, not the implementer's summary.
+## Dispatch workflow
 
-## Preflight
+1. Inspect the exact workspace and existing changes. Run `agy-mc doctor` and `agy-mc models` before a new dispatch session; refresh discovery when availability changes or a routing error occurs.
+2. Read [model routing](references/model-routing.md) and [collaboration protocol](references/collaboration-protocol.md). The default is `strict-yuxiao`: present A/B/C role-model rosters and obtain selection. Use `balanced` only when the user has chosen lighter confirmation; it still requires approval of the exact assignment. Inspect either with `agy-mc policy <name>`.
+3. Reuse existing authorization for unchanged choices. Confirm only a changed model, role, executor, scope or permission profile. Workspace trust and unrestricted execution require separate exact authorization; standard permissions remain the default.
+4. Compose a bounded assignment using [role contracts](references/role-prompts.md), then create the prompt-bound manifest using [approvals](references/approvals.md). Keep prompts outside the project and send them through the CLI, which uses stdin.
+5. Dispatch with the exact model and `--approval-file`. Use background execution for long tasks and collect every started job. Editing workers share one canonical-workspace lock; parallel edits require isolated worktrees and explicit integration.
+6. Independently inspect the actual changes and relevant checks against the original objective. Separate infrastructure errors, worker findings and acceptance. `done` or `done_with_warnings` does not mean the task passed acceptance.
 
-1. Run `agy-mc doctor` and `agy-mc models`. The compatibility launcher in `scripts/agy_delegate.py` delegates to the installed CLI.
-2. Confirm the exact target workspace and inspect its existing changes.
-3. For multi-role work, read [references/model-routing.md](references/model-routing.md) and [references/collaboration-protocol.md](references/collaboration-protocol.md).
-4. Present A (cost-effective), B (best result), and C (latest Gemini Flash High only) rosters and wait for explicit selection. Pin every AGY model to the returned exact slug.
-5. Workspace trust and unrestricted execution are separate mutations. Explain each exact target and obtain its own confirmation. Standard permission handling is the default.
-6. Before a worker call, record role, owned and forbidden paths, acceptance criteria, checks, execution profile, and correction limit.
+## Workspace evidence and correction
 
-When exact workspace trust is approved, grant it separately:
+The CLI records private before/after Git snapshots, changed-path fingerprints and diff hashes outside the project. It injects a bounded summary of pre-existing changes as context. Inspect the reported evidence path plus real diffs: snapshots are not a sandbox, proof of ownership, or an automatic acceptance test. Missing, oversized or concurrent evidence is a limitation, not a clean result.
 
-```bash
-agy-mc workspace --cwd /absolute/project/path \
-  --mode accept-edits --grant --trust-approved
-```
+Use `approve --correction-of <job-id>` for a correction and `--follow-up-of <job-id>` for an ordinary in-scope follow-up. Both retain the recorded policy and assignment. Two corrections are allowed along a recorded chain; ordinary follow-ups retain its count. At the limit, diagnose the failure and obtain a new scoped decision rather than starting an unrecorded retry. See [approvals](references/approvals.md) for legacy and enforcement limits.
 
-The bundled `strict-yuxiao` policy preserves the mandatory three-roster flow. `balanced` is available for projects where the user explicitly prefers a lighter confirmation gate.
-
-## Dispatch and acceptance
-
-- Use [references/role-prompts.md](references/role-prompts.md) for scout, planner, implementer, and reviewer contracts.
-- Run editing workers serially in one workspace. Parallelize only read-only or disjoint work.
-- Use `--mode plan` for read-only roles and `--mode accept-edits` only for an approved write scope.
-- Keep prompts outside the project. Mission Control sends them to AGY over standard input, not the process argument list.
-- Use `--background` for long work, then `status`, `wait`, `result`, or `cancel`. Read [references/job-lifecycle.md](references/job-lifecycle.md).
-- Limit ordinary correction loops to two. Diagnose recurring infrastructure failures instead of cycling models.
-- Independently inspect outputs, changed files, untracked files, diagnostics, and relevant tests. Do not let an implementer approve its own work.
-
-After the exact roster and permission profile are approved, create a short-lived bound manifest. Treat `--confirmed` as an assertion backed by the durable decision log:
-
-```bash
-agy-mc approve \
-  --strategy A --role implementer --model <exact-approved-slug> \
-  --cwd /absolute/project/path --prompt-file /private/path/prompt.txt \
-  --mode accept-edits --expires-minutes 60 --confirmed
-```
-
-Run with the returned `--approval-file`. The manifest is signed by a machine-local key and binds strategy, role, model, canonical workspace, prompt hash, mode, permission profile, conversation and expiration. Never reuse it after any bound field changes. Legacy boolean approval flags are deprecated migration compatibility.
-
-## Live quota
-
-Use `agy-mc usage` for a sanitized snapshot or:
-
-```bash
-agy-mc usage --watch --interval 60
-agy-mc usage --format json
-```
-
-Unknown and failed values remain `unknown`; they must never be reported as zero. The adapter outputs quota groups, windows, remaining percentages, reset times, and disabled state without OAuth data, email addresses, or raw account payloads. Quota telemetry is operational context only and does not replace explicit call budgets.
-
-Read [references/runtime-diagnostics.md](references/runtime-diagnostics.md) after launch, authentication, permission, or model-routing errors. Finish only when direct evidence maps to every acceptance criterion, and report the exact models, ownership, checks, and unresolved limits.
+Finish with the result, exact models, checked evidence and unresolved limits. Let workers choose their own steps within scope; ask about alternatives only when they materially change the user's outcome, cost, scope or reversibility.
