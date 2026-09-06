@@ -11,7 +11,7 @@
 
 Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota. Codex remains responsible for acceptance.
 
-<p align="center"><img src="assets/release-v0.2.0.png" width="920" alt="Antigravity Mission Control v0.2.0 release cover"></p>
+<!-- <p align="center"><img src="assets/release-v0.2.0.png" width="920" alt="Antigravity Mission Control v0.2.0 release cover"></p> -->
 
 > **v0.2:** policy-aware orchestration with independently reviewed worker output; permission limits are documented below. Independent community project; not affiliated with Google or Antigravity.
 
