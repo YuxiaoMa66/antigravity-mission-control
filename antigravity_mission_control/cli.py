@@ -196,10 +196,20 @@ def load_approval(path: Path) -> dict:
     return payload
 
 
-POLICY_NAMES = ("strict-yuxiao", "balanced")
+POLICY_NAMES = ("strict", "balanced")
 
 
-def effective_policy(name: str = "strict-yuxiao") -> dict:
+def canonical_policy_name(name: str) -> str:
+    # Hidden migration alias; public commands and output use the generic name.
+    return "strict" if name == "strict-yuxiao" else name
+
+
+def normalized_policy(policy: dict) -> dict:
+    return dict(policy, name=canonical_policy_name(policy["name"]))
+
+
+def effective_policy(name: str = "strict") -> dict:
+    name = canonical_policy_name(name)
     if name not in POLICY_NAMES:
         raise RuntimeError(f"Unknown policy: {name}")
     path = Path(__file__).with_name("skill_bundle") / "policies" / f"{name}.json"
@@ -222,7 +232,7 @@ def correction_context(job_id: str, policy: dict, is_correction: bool = True) ->
         raise RuntimeError("Wait for the parent job before approving a correction")
     if not job.get("policy"):
         raise RuntimeError("Legacy job has no policy lineage; establish a new approved task")
-    if job["policy"] != policy:
+    if normalized_policy(job["policy"]) != normalized_policy(policy):
         raise RuntimeError("A correction must retain its parent's effective policy")
     round_number = job.get("correction_round", 0) + int(is_correction)
     if round_number > policy["max_correction_rounds"]:
@@ -905,7 +915,7 @@ def cmd_approve(args: argparse.Namespace) -> int:
     if is_non_high_gemini(args.model) and not allow_non_high:
         raise RuntimeError("A Gemini medium/low approval requires --non-high-gemini-confirmed")
 
-    policy = effective_policy(getattr(args, "policy", "strict-yuxiao"))
+    policy = effective_policy(getattr(args, "policy", "strict"))
     correction_id = getattr(args, "correction_of", None)
     follow_up_id = getattr(args, "follow_up_of", None)
     if correction_id and follow_up_id:
@@ -922,7 +932,7 @@ def cmd_approve(args: argparse.Namespace) -> int:
         if not parent.get("conversation_id") or args.conversation != parent["conversation_id"]:
             raise RuntimeError("Correction requires the exact parent conversation")
     elif policy["require_three_rosters"] and not getattr(args, "three_rosters_presented", False):
-        raise RuntimeError("strict-yuxiao requires --three-rosters-presented after presenting A/B/C")
+        raise RuntimeError("strict requires --three-rosters-presented after presenting A/B/C")
 
     created = datetime.now(timezone.utc)
     approval_id = f"approval-{created.strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
@@ -1001,8 +1011,9 @@ def validate_approval_binding(args: argparse.Namespace, cwd: Path, prompt_text: 
     if mismatches:
         raise RuntimeError("Approval manifest does not match this run: " + ", ".join(mismatches))
     if approval.get("policy"):
-        if approval["policy"] != effective_policy(approval["policy"]["name"]):
+        if normalized_policy(approval["policy"]) != effective_policy(approval["policy"]["name"]):
             raise RuntimeError("Effective policy changed; create a new approval")
+        approval = dict(approval, policy=normalized_policy(approval["policy"]))
         parent_id = approval.get("correction_of") or approval.get("follow_up_of")
         if parent_id:
             _, round_number = correction_context(parent_id, approval["policy"], bool(approval.get("correction_of")))
@@ -1717,7 +1728,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"agy-mc {VERSION}")
     subparsers = parser.add_subparsers(dest="command", required=True)
     policy_parser = subparsers.add_parser("policy", help="Show the effective bundled policy and enforcement limits")
-    policy_parser.add_argument("name", choices=POLICY_NAMES, nargs="?", default="strict-yuxiao")
+    policy_parser.add_argument("name", type=canonical_policy_name, choices=POLICY_NAMES, nargs="?", default="strict")
     policy_parser.set_defaults(func=cmd_policy)
     doctor_parser = subparsers.add_parser("doctor", help="Check AGY, authenticated model access, and Mission Control runtime capabilities")
     doctor_parser.set_defaults(func=cmd_doctor)
@@ -1732,7 +1743,7 @@ def build_parser() -> argparse.ArgumentParser:
     models_parser = subparsers.add_parser("models", help="List currently available AGY models as JSON")
     models_parser.set_defaults(func=cmd_models)
     approve_parser = subparsers.add_parser("approve", help="Create a signed, expiring approval manifest")
-    approve_parser.add_argument("--policy", choices=POLICY_NAMES, default="strict-yuxiao")
+    approve_parser.add_argument("--policy", type=canonical_policy_name, choices=POLICY_NAMES, default="strict")
     approve_parser.add_argument("--three-rosters-presented", action="store_true",
                                 help="Assert A/B/C proposals were presented; root strict approvals only")
     approve_parser.add_argument("--follow-up-of", help="Parent completed job; preserve scope and correction count")

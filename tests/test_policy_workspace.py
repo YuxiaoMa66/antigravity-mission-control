@@ -130,6 +130,24 @@ class PolicyWorkspaceTests(unittest.TestCase):
         self.assertEqual(stat.S_IMODE((evidence / 'before.json').stat().st_mode), 0o600)
         self.assertNotIn(str(self.workspace), str(evidence))
 
+    def test_legacy_policy_alias_is_hidden_and_normalized(self):
+        help_output = self.call('approve', '--help')
+        self.assertNotIn('strict-yuxiao', help_output.stdout)
+        result = self.call('policy', 'strict-yuxiao')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)['policy']['name'], 'strict')
+        result = self.approval('--policy', 'strict-yuxiao', '--three-rosters-presented')
+        path = Path(json.loads(result.stdout)['approval_file'])
+        payload = json.loads(path.read_text())
+        self.assertEqual(payload['policy']['name'], 'strict')
+        # Model a genuine pre-rename signed manifest without changing other fields.
+        payload['policy']['name'] = 'strict-yuxiao'
+        key = (self.root / 'state/approval.key').read_bytes()
+        payload['signature'] = cli.approval_signature(payload, key)
+        path.write_text(json.dumps(payload))
+        _, completed = self.run_job(result)
+        self.assertEqual(completed['policy']['name'], 'strict')
+
     def test_quota_and_policy_do_not_require_model_discovery_or_roster(self):
         env = {**self.env, 'FAKE_AGY_MODELS_ERROR': '1'}
         quota = self.call('usage', '--format', 'json', env=env)

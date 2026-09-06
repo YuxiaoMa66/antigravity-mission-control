@@ -4,7 +4,7 @@ Read for a new dispatch, in-scope follow-up, correction, or a change to approved
 
 ## Effective policy
 
-`agy-mc policy strict-yuxiao` and `agy-mc policy balanced` report the bundled settings. New manifests bind the complete policy; execution rejects a changed policy. Both require an exact model and separate unrestricted approval. The strict policy additionally requires the caller to assert that A/B/C were presented. `balanced` omits that assertion only after the user chooses the lighter flow.
+`agy-mc policy strict` and `agy-mc policy balanced` report the bundled settings. New manifests bind the complete policy; execution rejects a changed policy. Both require an exact model and separate unrestricted approval. The strict policy additionally requires the caller to assert that A/B/C were presented. `balanced` omits that assertion only after the user chooses the lighter flow.
 
 The CLI validates the assertion and manifest fields, not whether a conversation actually contained three complete proposals. Assignment ownership remains a prompt contract; workspace trust and the editing lock do not enforce per-file permissions. The two-correction limit applies to a recorded lineage, not a global account budget or all branches of a conversation.
 
@@ -14,7 +14,7 @@ After approval of a strict roster, create a short-lived manifest:
 
 ```bash
 agy-mc approve \
-  --policy strict-yuxiao --three-rosters-presented \
+  --policy strict --three-rosters-presented \
   --strategy A --role implementer --model <exact-approved-slug> \
   --cwd /absolute/project/path --prompt-file /private/path/prompt.txt \
   --mode accept-edits --expires-minutes 60 --confirmed

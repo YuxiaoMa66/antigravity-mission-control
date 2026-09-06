@@ -63,7 +63,7 @@
 
 ## 策略、续接与工作区证据
 
-`policy [strict-yuxiao|balanced]` 无需调用 AGY 即可显示当前策略。新 `approve` 清单绑定策略；严格策略的新任务需要 `--three-rosters-presented`，balanced 仍需要 `--confirmed`、精确模型和单独的 unrestricted 授权。仅在用户选择轻量流程后使用 balanced。
+`policy [strict|balanced]` 无需调用 AGY 即可显示当前策略。新 `approve` 清单绑定策略；严格策略的新任务需要 `--three-rosters-presented`，balanced 仍需要 `--confirmed`、精确模型和单独的 unrestricted 授权。仅在用户选择轻量流程后使用 balanced。
 
 纠错用 `approve --correction-of <job-id>`，普通范围内追问用 `--follow-up-of <job-id>`；两者保留父任务的分工、策略及会话。纠错沿已记录链递增，第三次被拒绝；普通追问保留计数。改变范围需要新的批准任务。确认参数是调用者的声明，不能证明人类真实批准；链计数不是全局调用预算。旧清单和布尔参数保留迁移兼容，未记录纠错计数。
 

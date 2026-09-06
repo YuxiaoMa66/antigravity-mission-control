@@ -152,7 +152,7 @@ agy-mc usage --format json
 
 ```bash
 agy-mc approve \
-  --policy strict-yuxiao --three-rosters-presented \
+  --policy strict --three-rosters-presented \
   --strategy A --role implementer --model gemini-3.7-flash-high \
   --cwd /absolute/project --prompt-file /private/prompt.txt \
   --mode accept-edits --expires-minutes 60 --confirmed

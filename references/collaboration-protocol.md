@@ -2,7 +2,7 @@
 
 ## Confirmation gate
 
-For a new strict-yuxiao assignment, use read-only scope inspection, model discovery, and `agy-mc workspace --cwd <path>` to draft exactly three complete role/model rosters: A recommended/cost-effective, B best result, and C all AGY calls on the latest Gemini Flash High. Include AGY and Codex roles when useful. Present the executor, exact model, responsibility, and access for every role in each option, then wait for the user to select or revise one. The access cell must name both filesystem scope and execution profile. Standard permission handling is the default; unrestricted execution requires a concrete need and separate explicit confirmation. If the workspace is untrusted, disclose the exact trust mutation and request separate approval.
+For a new strict assignment, use read-only scope inspection, model discovery, and `agy-mc workspace --cwd <path>` to draft exactly three complete role/model rosters: A recommended/cost-effective, B best result, and C all AGY calls on the latest Gemini Flash High. Include AGY and Codex roles when useful. Present the executor, exact model, responsibility, and access for every role in each option, then wait for the user to select or revise one. The access cell must name both filesystem scope and execution profile. Standard permission handling is the default; unrestricted execution requires a concrete need and separate explicit confirmation. If the workspace is untrusted, disclose the exact trust mutation and request separate approval.
 
 Approval is roster-specific. A replacement model, added role, executor change, broader write scope, or execution-profile change requires reconfirmation of the affected entry. After approval, create a short-lived `agy-mc approve` manifest and pin every AGY run to the approved slug. Roster approval alone never authorizes `--dangerously-skip-permissions`; an unrestricted manifest requires both `--permission-profile unrestricted` and the separate `--unrestricted-confirmed` assertion.
 
@@ -65,7 +65,7 @@ Compose prompts from [role contracts](role-prompts.md), the single source for sh
 ## Recommended sequence
 
 1. Codex establishes the minimal read-only baseline needed to define acceptance criteria and propose roles.
-2. For strict-yuxiao, Codex presents A/B/C and obtains selection. With a user-selected balanced policy, confirm the exact proposed assignment without requiring three alternatives. Reuse unchanged prior decisions.
+2. For strict, Codex presents A/B/C and obtains selection. With a user-selected balanced policy, confirm the exact proposed assignment without requiring three alternatives. Reuse unchanged prior decisions.
 3. A confirmed planner is optional. Use one when the design is ambiguous or the code area is unfamiliar; require a plan with risks and verification points, not edits.
    The planner may choose its own steps inside the approved objective. Require explicit alternatives only when a choice changes scope, cost, reversibility, or product behavior.
 4. The confirmed implementer owns named paths. Codex inspects the actual resulting diff immediately after the run.

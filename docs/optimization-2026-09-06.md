@@ -15,7 +15,7 @@
 
 ## 验证
 
-- Python：29 项通过。
+- Python：30 项通过。
 - npm 安装器：8 项通过。
 - skill-creator `quick_validate.py`：通过；使用临时 PyYAML 环境，没有向系统 Python 安装依赖。
 - Wheel：构建成功；校验 CLI 与源码一致、新审批参考文档存在且无 pyc 缓存。
@@ -25,7 +25,7 @@
 
 ## 使用变化
 
-默认仍用 strict-yuxiao。新任务创建审批时增加 `--three-rosters-presented`；这是基于已发生 A/B/C 展示的声明。
+默认仍用 strict。新任务创建审批时增加 `--three-rosters-presented`；这是基于已发生 A/B/C 展示的声明。
 
 范围内的追问/纠错在 `approve` 阶段指定父 job，并传入其原会话；之后 `continue` 使用新清单。已批准分工无需重复确认；实际改变范围时需要新的决定。详见[审批流程](../references/approvals.md)。
 

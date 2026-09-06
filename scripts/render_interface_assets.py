@@ -54,11 +54,11 @@ SCREENS = (
         Line('Sample values. Account identity is excluded.', 'text'),
     )),
     Screen('bound-approval.svg', 'Make the policy explicit.', 'New manifests bind the effective policy and the approved task.', 'policy / approve', (
-        Line('$ agy-mc policy strict-yuxiao', 'prompt'),
+        Line('$ agy-mc policy strict', 'prompt'),
         Line('require_three_rosters: true', 'text'),
         Line('max_correction_rounds: 2', 'text'),
         Line('', 'text'),
-        Line('$ agy-mc approve --policy strict-yuxiao \\', 'prompt'),
+        Line('$ agy-mc approve --policy strict \\', 'prompt'),
         Line('    --three-rosters-presented --strategy A --role implementer \\', 'prompt'),
         Line('    --model <approved-slug> --cwd /project \\', 'prompt'),
         Line('    --prompt-file /private/task.txt --mode accept-edits --confirmed', 'prompt'),

@@ -63,7 +63,7 @@ Exact workspace trust is a separate `workspace --grant --trust-approved` operati
 
 ## Policy, follow-ups and workspace evidence
 
-`policy [strict-yuxiao|balanced]` reports the effective settings without calling AGY. New `approve` manifests bind the policy. Strict root approvals require `--three-rosters-presented`; balanced roots still require `--confirmed`, exact models and separate unrestricted authorization. Choose balanced only with the user's approval.
+`policy [strict|balanced]` reports the effective settings without calling AGY. New `approve` manifests bind the policy. Strict root approvals require `--three-rosters-presented`; balanced roots still require `--confirmed`, exact models and separate unrestricted authorization. Choose balanced only with the user's approval.
 
 Use `approve --correction-of <job-id>` for corrections or `--follow-up-of <job-id>` for ordinary in-scope follow-ups, preserving the parent's exact assignment, policy and conversation. Corrections increment a recorded chain counter; a third correction is rejected. Follow-ups retain the count. A newly approved task is required when the scope changes. Flags record the caller's assertion, not proof of human approval; lineage does not enforce a global call budget. Legacy manifests/boolean runs remain uncounted for migration.
 
