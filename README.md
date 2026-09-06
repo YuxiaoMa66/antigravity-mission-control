@@ -24,7 +24,7 @@ Open and read https://github.com/YuxiaoMa66/antigravity-mission-control before m
 
 1. Check whether `agy` is installed and signed in.
 2. Show me the exact commands and target paths, then wait for my confirmation.
-3. If AGY is ready, install `antigravity-mission-control@latest`. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
+3. If AGY is ready, install v0.2.0 from the GitHub Release package shown below. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
 4. Run `agy-mc doctor` and report the installed versions and paths.
 5. Before delegating project work, show me the A/B/C roster choices with exact available model slugs and wait for my selection.
 
@@ -96,13 +96,13 @@ Already have AGY? Verify it, launch it once to finish Google sign-in, then insta
 ```bash
 agy --version
 agy
-npx antigravity-mission-control@latest install
+npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz install
 ```
 
 No AGY yet? The installer can fetch Google's official installer first:
 
 ```bash
-npx antigravity-mission-control@latest install --install-agy
+npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz install --install-agy
 ```
 
 Interactive installation asks before adding AGY when it is missing. Non-interactive installation requires the explicit `--install-agy` flag. After a fresh AGY install, run `agy` to complete Google sign-in. Mission Control never reads or copies that login state.
@@ -110,9 +110,9 @@ Interactive installation asks before adding AGY when it is missing. Non-interact
 The bootstrapper shows every target before writing, creates a private managed Python environment, installs `agy-mc`, deploys the Codex Skill, and runs without shell interpolation. For CI or agents, add `--yes`; inspect first with `--dry-run`.
 
 ```bash
-npx antigravity-mission-control@latest install --dry-run
-npx antigravity-mission-control@latest install --yes
-npx antigravity-mission-control@latest status
+npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz install --dry-run
+npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz install --yes
+npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz status
 ```
 
 Direct Python installation is also supported:
