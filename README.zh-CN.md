@@ -24,7 +24,7 @@
 
 1. 检查 `agy` 是否已经安装并完成登录。
 2. 向我展示将执行的精确命令和目标路径，等我确认后再继续。
-3. 如果 AGY 已经可用，从下方 GitHub Release 安装包安装 v0.2.0。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
+3. 如果 AGY 已经可用，通过下方 Git tag 命令安装 v0.2.0。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
 4. 运行 `agy-mc doctor`，然后报告安装版本和路径。
 5. 开始委派项目任务前，使用当前可用的精确模型 slug 向我展示 A/B/C 三套阵容，等我选择后再执行。
 
@@ -96,13 +96,13 @@ Mission Control 会先读取当前 AGY 模型目录，再提出阵容。每套�
 ```bash
 agy --version
 agy
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz install --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --lang zh
 ```
 
 还没有 AGY：让安装器先调用 Google 官方安装器：
 
 ```bash
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz install --install-agy --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --install-agy --lang zh
 ```
 
 交互安装检测不到 AGY 时会先询问；非交互安装必须明确增加 `--install-agy`。新装 AGY 后运行 `agy` 完成 Google 登录。Mission Control 不读取、不复制登录材料。
@@ -110,9 +110,9 @@ npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/
 安装器会先展示所有目标，再创建私有 Python 运行环境、安装 `agy-mc`、部署 Codex Skill。全程使用参数数组，不使用 shell 拼接。CI 或 agent 环境需要加 `--yes`；可以先用 `--dry-run` 查看影响。
 
 ```bash
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz install --dry-run --lang zh
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz install --yes --lang zh
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz status --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --dry-run --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --yes --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control status --lang zh
 ```
 
 也支持直接使用 Python：

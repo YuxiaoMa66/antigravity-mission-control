@@ -17,13 +17,13 @@ Mission Control never reads or copies AGY OAuth material. A fresh AGY installati
 Preview exact paths without writing:
 
 ```bash
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz install --dry-run
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --dry-run
 ```
 
 Interactive install:
 
 ```bash
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz install
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install
 ```
 
 If AGY is already installed, the bootstrapper uses it. If AGY is missing, interactive mode asks whether it should run Google's official installer from `https://antigravity.google/cli/install.sh`.
@@ -31,7 +31,7 @@ If AGY is already installed, the bootstrapper uses it. If AGY is missing, intera
 Install both AGY and Mission Control:
 
 ```bash
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz install --install-agy
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --install-agy
 agy
 agy-mc doctor
 ```
@@ -41,7 +41,7 @@ The bootstrapper downloads the official script to a private temporary file, perf
 Non-interactive installation requires separate flags for Mission Control confirmation and AGY installation:
 
 ```bash
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz install --yes --install-agy
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --yes --install-agy
 ```
 
 Omit `--install-agy` when automation has already provisioned and authenticated AGY.
@@ -61,9 +61,9 @@ Add `~/.local/bin` to `PATH` if the installer reports that it is missing.
 ## Upgrade and status
 
 ```bash
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz status
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz update
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz doctor
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control status
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control update
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control doctor
 ```
 
 `update` refreshes the managed Python package first, then atomically deploys the bundled Skill and preserves the previous Skill as a timestamped backup.
@@ -71,7 +71,7 @@ npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/
 ## Recoverable uninstall
 
 ```bash
-npx https://github.com/YuxiaoMa66/antigravity-mission-control/releases/download/v0.2.0/antigravity-mission-control-0.2.0.tgz uninstall
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control uninstall
 ```
 
 The Skill is moved to Codex's backup directory. The managed Python environment is renamed to a timestamped backup beside its original path. User-owned AGY settings, trust entries, OAuth state and Mission Control job evidence are not deleted.
