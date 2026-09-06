@@ -13,7 +13,7 @@ Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact 
 
 <p align="center"><img src="assets/terminal-preview.svg" width="920" alt="Mission Control terminal preview"></p>
 
-> **Alpha:** ready for public pre-release evaluation, not a stable security boundary. Independent community project; not affiliated with Google or Antigravity.
+> **v0.2:** policy-aware orchestration with independently reviewed worker output; permission limits are documented below. Independent community project; not affiliated with Google or Antigravity.
 
 ## Hand this page to your agent
 
@@ -24,7 +24,7 @@ Open and read https://github.com/YuxiaoMa66/antigravity-mission-control before m
 
 1. Check whether `agy` is installed and signed in.
 2. Show me the exact commands and target paths, then wait for my confirmation.
-3. If AGY is ready, install `antigravity-mission-control@next`. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
+3. If AGY is ready, install `antigravity-mission-control@latest`. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
 4. Run `agy-mc doctor` and report the installed versions and paths.
 5. Before delegating project work, show me the A/B/C roster choices with exact available model slugs and wait for my selection.
 
@@ -92,13 +92,13 @@ Already have AGY? Verify it, launch it once to finish Google sign-in, then insta
 ```bash
 agy --version
 agy
-npx antigravity-mission-control@next install
+npx antigravity-mission-control@latest install
 ```
 
 No AGY yet? The installer can fetch Google's official installer first:
 
 ```bash
-npx antigravity-mission-control@next install --install-agy
+npx antigravity-mission-control@latest install --install-agy
 ```
 
 Interactive installation asks before adding AGY when it is missing. Non-interactive installation requires the explicit `--install-agy` flag. After a fresh AGY install, run `agy` to complete Google sign-in. Mission Control never reads or copies that login state.
@@ -106,15 +106,15 @@ Interactive installation asks before adding AGY when it is missing. Non-interact
 The bootstrapper shows every target before writing, creates a private managed Python environment, installs `agy-mc`, deploys the Codex Skill, and runs without shell interpolation. For CI or agents, add `--yes`; inspect first with `--dry-run`.
 
 ```bash
-npx antigravity-mission-control@next install --dry-run
-npx antigravity-mission-control@next install --yes
-npx antigravity-mission-control@next status
+npx antigravity-mission-control@latest install --dry-run
+npx antigravity-mission-control@latest install --yes
+npx antigravity-mission-control@latest status
 ```
 
 Direct Python installation is also supported:
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.1.0a5"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.2.0"
 agy-mc skill install
 agy-mc doctor
 ```
@@ -163,7 +163,7 @@ agy-mc run \
   --mode accept-edits --approval-file ~/.local/state/antigravity-mission-control/approvals/<id>.json
 ```
 
-Legacy boolean approval flags remain for migration in this Alpha and are deprecated.
+Legacy boolean approval flags remain for migration from earlier releases and are deprecated.
 
 ## Background jobs
 

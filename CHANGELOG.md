@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0a5 - 2026-09-06
+## 0.2.0 - 2026-09-06
 
 - Route quota and existing-job requests directly without starting a roster workflow.
 - Bind effective strict/balanced policy to new signed approvals; require an A/B/C presentation assertion for strict root assignments.

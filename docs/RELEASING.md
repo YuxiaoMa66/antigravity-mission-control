@@ -4,8 +4,8 @@
 
 Mission Control has two version strings by ecosystem:
 
-- Python and Git tag: `0.1.0a5` / `v0.1.0a5`
-- npm SemVer: `0.1.0-alpha.5`
+- Python and Git tag: `0.2.0` / `v0.2.0`
+- npm SemVer: `0.2.0`
 
 Both identify the same release. Update `VERSION`, `__version__`, `pyproject.toml`, `package.json`, npm bootstrap constants, changelog and release notes together.
 
@@ -28,14 +28,14 @@ Also run Skill Creator's `quick_validate.py`, inspect the wheel contents, perfor
 ## Publication order
 
 1. Push the reviewed `main` commit to GitHub.
-2. Create tag `v0.1.0a5` at that exact commit.
-3. Create a GitHub Pre-release from the bilingual notes.
+2. Create tag `v0.2.0` at that exact commit.
+3. Create a GitHub Release from the bilingual notes.
 4. Verify Git installation from the tag in an isolated environment.
-5. Run `npm publish --tag next --access public`.
+5. Run `npm publish --tag latest --access public`.
 6. Verify `npm view antigravity-mission-control dist-tags` and `npx antigravity-mission-control status`.
 
-The npm bootstrap default source points at the Git tag, so npm must be published only after the GitHub tag is reachable. PyPI publication is intentionally deferred for the Alpha; direct Python installs use GitHub.
+The npm bootstrap default source points at the Git tag, so npm must be published only after the GitHub tag is reachable. PyPI publication is intentionally deferred; direct Python installs use GitHub.
 
 ## Rollback
 
-Do not move or overwrite a published Git tag. Deprecate a broken npm version with a reason, publish a fixed version, and update the `next` tag. GitHub releases can be marked as withdrawn, but evidence and unfavorable release notes must remain available.
+Do not move or overwrite a published Git tag. Deprecate a broken npm version with a reason, publish a fixed version, and update the `latest` tag. GitHub releases can be marked as withdrawn, but evidence and unfavorable release notes must remain available.
