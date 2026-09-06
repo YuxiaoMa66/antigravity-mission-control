@@ -11,7 +11,7 @@
 
 面向 Antigravity CLI（`agy`）的策略化任务控制层：将工作路由到精确模型，把批准绑定到具体任务，串行保护编辑 worker，确认取消结果并实时查看额度；最终验收始终由 Codex 负责。
 
-<p align="center"><img src="assets/release-v0.2.0.png" width="920" alt="Mission Control 终端界面预览"></p>
+<!-- <p align="center"><img src="assets/release-v0.2.0.png" width="920" alt="Mission Control 终端界面预览"></p> -->
 
 > **v0.2：** 支持策略编排与独立验收，权限和运行限制见下文。本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
 
