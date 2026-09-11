@@ -8,6 +8,7 @@ Only the newest alpha is supported while the project is pre-1.0. Do not open a p
 - Workspace trust mutates AGY settings only after an explicit grant command. Review the exact canonical directory first.
 - Unrestricted AGY execution disables provider permission prompts. It is a separate, high-impact approval and should be exceptional.
 - Signed approval manifests bind the exact run with a machine-local HMAC and expiration. They prove local integrity after creation, not human identity; retain the user's approval in the project decision log.
+- Opt-in scoped approvals require the Git repository root, bind the preflight state and path rules, always forbid Git metadata paths, reject HEAD changes, and execute only frozen check argv from the signed catalog. This is after-the-fact enforcement, not an OS sandbox; Codex must still inspect the real diff and evidence.
 - Legacy boolean approval assertions remain temporarily available for Alpha migration and should not be used in new automation.
 - Editing serialization relies on Unix `flock`; this Alpha supports macOS and Linux, not Windows.
 - Quota output is normalized and account-free; diagnostic errors intentionally omit raw stderr.

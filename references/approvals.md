@@ -24,6 +24,31 @@ For an approved balanced flow, use `--policy balanced` and omit `--three-rosters
 
 Use the returned `--approval-file` with `run`. The signed manifest binds strategy, role, model, canonical workspace, original prompt hash, mode, permission profile, non-high Gemini exception, conversation, policy, lineage and expiration. If a bound field changes, create a new manifest. The CLI appends observed workspace context after checking the original prompt; its evidence records both original and dispatched prompt hashes.
 
+## Signed workspace scope and required checks
+
+Opt into signed workspace-scope enforcement by supplying `--allowed-path` options during `approve`. Scoped bindings require `accept-edits` mode, `--cwd` set to the Git repository root with a valid HEAD, and a complete workspace snapshot without limitations:
+
+```bash
+agy-mc approve \
+  --policy balanced \
+  --strategy A --role implementer --model <exact-approved-slug> \
+  --cwd /absolute/project/path --prompt-file /private/path/prompt.txt \
+  --mode accept-edits --expires-minutes 60 --confirmed \
+  --allowed-path src/ \
+  --allowed-path package.json \
+  --forbidden-path src/secret/ \
+  --required-check test \
+  --base-commit <exact-40-hex-HEAD>
+```
+
+- `--allowed-path <rule>`: repeatable. At least one rule activates scoped enforcement.
+- `--forbidden-path <rule>`: repeatable. Forbidden rules override allowed rules. Reject if no `--allowed-path` is passed.
+- `--required-check <id>`: repeatable check IDs defined in `.agy-mc/checks.json` (`agy-mc-checks.v1`). Reject if no `--allowed-path` is passed. `.agy-mc/checks.json` is automatically added as a forbidden exact path when checks are selected.
+- `--base-commit <hash>`: optional exact 40-hex commit hash matching current Git HEAD.
+- **Path rule syntax**: Repository-root-relative POSIX strings only. Reject absolute paths, backslashes, empty/root rules, traversal (`.`, `..`), duplicate separators (`//`), and glob metacharacters (`*`, `?`, `[]`, `{}`). A trailing slash denotes a directory prefix; otherwise the rule is an exact file. Directory semantics are never inferred from filesystem state.
+- **System-forbidden paths**: Every scoped approval automatically forbids both `.git` and `.git/`. These rules also reject allowed-scope symlinks resolving to Git metadata. Required checks additionally forbid `.agy-mc/checks.json`.
+- **Preflight digest**: Signs `base_commit` and deterministic `preflight_sha256` covering repository, HEAD, status sha256, diff hashes, and sorted path details (untracked content fingerprints and symlink targets), excluding timestamps. Run preflight recomputes this snapshot and rejects before worker invocation on commit drift or dirty/untracked workspace drift. Foreground edits re-verify after obtaining the workspace lock, and background workers validate while holding the inherited lock.
+
 ## Follow-up and correction
 
 For a completed policy-bound job, preserve its exact recorded assignment and conversation. Use `approve` with the same fields and either:
@@ -32,6 +57,10 @@ For a completed policy-bound job, preserve its exact recorded assignment and con
 - `--follow-up-of <parent-job-id>`: preserves the count for an ordinary in-scope follow-up.
 
 Pass `--conversation <recorded-id>`. The policy must match the parent. These operations reuse the prior roster decision, so `--three-rosters-presented` is unnecessary. Use `--confirmed` backed by the existing authorization; changed scope still requires a new decision.
+
+When the parent job is scoped, the approval inherits the parent's exact `allowed_paths`, `forbidden_paths`, and frozen `required_checks` without requiring duplicated CLI flags, while capturing a fresh `base_commit` and preflight snapshot for the new run. Scope lineage authority is derived from and verified against the parent's private signed `approval.json` and its HMAC (permitting reading expired completed approvals for lineage verification). Any tampering with or mismatch in mutable `job.json` scope metadata is rejected. If scope flags are provided, they must equal the parent's exact scope; widening or altering rules is rejected. Corrections of unscoped jobs cannot add scope rules.
+
+Continuing a policy-bound job always requires a signed `--approval-file` created with `--correction-of` or `--follow-up-of`; legacy `--roster-approved` cannot downgrade a recorded lineage to an unscoped run.
 
 Then collect a new background job:
 

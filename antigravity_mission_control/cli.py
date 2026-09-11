@@ -45,7 +45,7 @@ STRATEGY_PATTERNS = {
 }
 
 ROLES = tuple(STRATEGY_PATTERNS["A"])
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 AGY_BIN = os.environ.get("AGY_MC_BIN", os.environ.get("AGY_ORCHESTRATOR_BIN", "agy"))
 SETTINGS_PATH = Path(
     os.environ.get(
@@ -79,7 +79,294 @@ JOB_EXIT_CODES = {
     "crashed": 3,
     "cancel_failed": 3,
     "canceled": 4,
+    "scope_violation": 5,
+    "check_failed": 5,
+    "incomplete_evidence": 5,
 }
+ENFORCEMENT_EXIT_CODE = 5
+CHECKS_SCHEMA = "agy-mc-checks.v1"
+SCOPED_SYSTEM_FORBIDDEN = (".git", ".git/")
+
+
+def validate_path_rule(rule: str) -> str:
+    if not isinstance(rule, str) or not rule:
+        raise RuntimeError("Invalid path rule: path rule cannot be empty")
+    if rule.strip() != rule or "\n" in rule or "\r" in rule:
+        raise RuntimeError(f"Invalid path rule: whitespace not allowed: {rule!r}")
+    if rule.startswith("/"):
+        raise RuntimeError(f"Invalid path rule: absolute paths not allowed: {rule}")
+    if "\\" in rule:
+        raise RuntimeError(f"Invalid path rule: backslashes not allowed: {rule}")
+    if "//" in rule:
+        raise RuntimeError(f"Invalid path rule: duplicate separators not allowed: {rule}")
+    if re.search(r"[*?\[\]{}]", rule):
+        raise RuntimeError(f"Invalid path rule: glob metacharacters not allowed: {rule}")
+    parts = (rule[:-1] if rule.endswith("/") else rule).split("/")
+    if any(p in ("", ".", "..") for p in parts):
+        raise RuntimeError(f"Invalid path rule: '.' or '..' traversal not allowed: {rule}")
+    return rule
+
+
+def matches_path_rule(path_str: str, rule: str) -> bool:
+    target = str(path_str)
+    if os.name == "nt":
+        target = target.replace("\\", "/")
+    if rule.endswith("/"):
+        return target == rule[:-1] or target.startswith(rule)
+    return target == rule
+
+
+def matches_any_path_rule(path_str: str, rules: list[str]) -> bool:
+    return any(matches_path_rule(path_str, rule) for rule in rules)
+
+
+def with_system_forbidden(rules: list[str]) -> list[str]:
+    return [rule for rule in rules if rule not in SCOPED_SYSTEM_FORBIDDEN] + list(SCOPED_SYSTEM_FORBIDDEN)
+
+
+def resolve_required_checks(repo_root: Path, check_ids: list[str]) -> list[dict]:
+    catalog_path = repo_root / ".agy-mc" / "checks.json"
+    if not catalog_path.is_file():
+        raise RuntimeError(f"Required checks file does not exist: {catalog_path}")
+    try:
+        catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Required checks catalog is invalid JSON: {catalog_path}: {exc}") from exc
+    if not isinstance(catalog, dict) or catalog.get("schema") != CHECKS_SCHEMA:
+        raise RuntimeError(f"Invalid required checks schema in {catalog_path}: expected {CHECKS_SCHEMA}")
+    checks = catalog.get("checks")
+    if not isinstance(checks, dict):
+        raise RuntimeError(f"Required checks catalog must have a 'checks' object: {catalog_path}")
+
+    resolved = []
+    seen = set()
+    for check_id in check_ids:
+        if check_id in seen:
+            continue
+        seen.add(check_id)
+        if check_id not in checks:
+            raise RuntimeError(f"Unknown required check ID: {check_id}")
+        spec = checks[check_id]
+        if not isinstance(spec, dict):
+            raise RuntimeError(f"Invalid check specification for '{check_id}': must be an object")
+        argv = spec.get("argv")
+        if (
+            not isinstance(argv, list)
+            or not argv
+            or not all(isinstance(a, str) and a and "\0" not in a for a in argv)
+        ):
+            raise RuntimeError(
+                f"Invalid argv for check '{check_id}': must be a non-empty list of non-empty strings without null bytes"
+            )
+        timeout = spec.get("timeout_seconds", 300)
+        if not isinstance(timeout, int) or isinstance(timeout, bool) or timeout < 1 or timeout > 3600:
+            raise RuntimeError(f"Invalid timeout_seconds for check '{check_id}': must be an integer between 1 and 3600")
+        resolved.append({
+            "id": check_id,
+            "argv": list(argv),
+            "timeout_seconds": timeout,
+        })
+    return resolved
+
+
+def compute_preflight_sha256(snapshot: dict) -> str:
+    sorted_paths = {k: snapshot["paths"][k] for k in sorted(snapshot.get("paths", {}).keys())}
+    preflight_data = {
+        "repository": snapshot.get("repository"),
+        "head": snapshot.get("head"),
+        "status_sha256": snapshot.get("status_sha256"),
+        "staged_diff_sha256": snapshot.get("staged_diff_sha256"),
+        "unstaged_diff_sha256": snapshot.get("unstaged_diff_sha256"),
+        "paths": sorted_paths,
+    }
+    encoded = json.dumps(preflight_data, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def verify_scoped_preflight(cwd: Path, approval: dict) -> None:
+    if not approval or not approval.get("allowed_paths"):
+        return
+    snapshot = workspace_snapshot(cwd)
+    if snapshot.get("status") != "ok" or snapshot.get("limitations"):
+        raise RuntimeError(
+            "Scoped preflight snapshot is incomplete or has limitations: "
+            + "; ".join(snapshot.get("limitations", []))
+        )
+    repository = snapshot.get("repository")
+    if not repository or Path(repository).resolve() != cwd.resolve():
+        raise RuntimeError("Scoped approval requires --cwd to be the Git repository root")
+    base_commit = approval.get("base_commit")
+    if snapshot.get("head") != base_commit:
+        raise RuntimeError(
+            f"Commit drift detected: workspace HEAD ({snapshot.get('head')}) "
+            f"does not match approved base commit ({base_commit})"
+        )
+    current_digest = compute_preflight_sha256(snapshot)
+    expected_digest = approval.get("preflight_sha256")
+    if current_digest != expected_digest:
+        raise RuntimeError(
+            f"Workspace preflight digest mismatch: expected {expected_digest}, got {current_digest}"
+        )
+
+
+def evaluate_scope(
+    before: dict,
+    after: dict,
+    allowed_paths: list[str],
+    forbidden_paths: list[str],
+    repo_root: Path,
+) -> tuple[str, dict]:
+    limitations = (before.get("limitations") or []) + (after.get("limitations") or [])
+    if before.get("status") != "ok" or after.get("status") != "ok" or limitations:
+        return "incomplete_evidence", {"limitations": limitations}
+
+    if before.get("head") != after.get("head"):
+        return "scope_violation", {
+            "violations": [f"HEAD changed from {before.get('head')} to {after.get('head')}"],
+            "limitations": limitations,
+        }
+
+    delta = workspace_delta(before, after)
+    changed_paths = delta.get("changed_paths", [])
+
+    paths_to_check = set(changed_paths)
+    for p in changed_paths:
+        if p in after.get("paths", {}) and after["paths"][p].get("original_path"):
+            paths_to_check.add(after["paths"][p]["original_path"])
+        if p in before.get("paths", {}) and before["paths"][p].get("original_path"):
+            paths_to_check.add(before["paths"][p]["original_path"])
+
+    violations = []
+    for p in sorted(paths_to_check):
+        if matches_any_path_rule(p, forbidden_paths):
+            violations.append(f"Forbidden path modified: {p}")
+        elif not matches_any_path_rule(p, allowed_paths):
+            violations.append(f"Path outside allowed scope: {p}")
+
+    for p in changed_paths:
+        full_path = repo_root / p
+        is_symlink = False
+        target_str = None
+        try:
+            if full_path.is_symlink():
+                is_symlink = True
+                try:
+                    target_str = os.readlink(full_path)
+                except OSError as exc:
+                    violations.append(f"Cannot read symlink: {p}: {exc}")
+                    continue
+            elif after.get("paths", {}).get(p, {}).get("kind") == "symlink":
+                is_symlink = True
+                target_str = after["paths"][p].get("target")
+        except (RuntimeError, OSError) as exc:
+            violations.append(f"Cannot inspect file or symlink: {p}: {exc}")
+            continue
+
+        if is_symlink and target_str is not None:
+            if os.path.isabs(target_str):
+                target_abs = Path(os.path.abspath(target_str))
+            else:
+                target_abs = Path(os.path.abspath(full_path.parent / target_str))
+
+            try:
+                rel = target_abs.resolve(strict=True).relative_to(repo_root.resolve())
+                rel_posix = rel.as_posix()
+            except ValueError:
+                violations.append(f"Symlink target resolves outside repository: {p} -> {target_str}")
+                continue
+            except (RuntimeError, OSError) as exc:
+                violations.append(f"Symlink resolution failed (loop or unreadable): {p} -> {target_str}: {exc}")
+                continue
+
+            if matches_any_path_rule(rel_posix, forbidden_paths):
+                violations.append(f"Symlink target resolves to forbidden path: {p} -> {rel_posix}")
+
+    if violations:
+        return "scope_violation", {
+            "violations": violations,
+            "changed_paths": changed_paths,
+            "limitations": limitations,
+        }
+
+    return "ok", {"changed_paths": changed_paths, "limitations": limitations}
+
+
+def execute_required_checks(
+    required_checks: list[dict],
+    repo_root: Path,
+    evidence_dir: Path,
+) -> tuple[list[dict], str | None]:
+    checks_evidence = []
+    failed_id = None
+    for check in required_checks:
+        check_id = check["id"]
+        argv = check["argv"]
+        timeout = check.get("timeout_seconds", 300)
+        t0 = time.monotonic()
+        timed_out = False
+        out = b""
+        err = b""
+        exit_code = 1
+        try:
+            if any("\0" in str(arg) for arg in argv):
+                raise ValueError("embedded null byte in argv")
+            proc = subprocess.Popen(
+                argv,
+                cwd=str(repo_root),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=False,
+                start_new_session=True,
+            )
+            try:
+                out, err = proc.communicate(timeout=timeout)
+                exit_code = proc.returncode
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                except OSError:
+                    proc.kill()
+                out, err = proc.communicate()
+                exit_code = 124
+                timed_out = True
+                if not err:
+                    err = f"Check '{check_id}' timed out after {timeout} seconds\n".encode("utf-8")
+        except FileNotFoundError as exc:
+            exit_code = 127
+            err = f"Check executable not found: {exc}\n".encode("utf-8")
+        except PermissionError as exc:
+            exit_code = 126
+            err = f"Check permission denied: {exc}\n".encode("utf-8")
+        except (OSError, ValueError) as exc:
+            exit_code = 1
+            err = f"Check execution failed: {exc}\n".encode("utf-8")
+        except Exception as exc:
+            exit_code = 1
+            err = f"Unexpected check error: {exc}\n".encode("utf-8")
+
+        duration = time.monotonic() - t0
+        entry = {
+            "id": check_id,
+            "argv": argv,
+            "timeout_seconds": timeout,
+            "exit_code": exit_code,
+            "duration_seconds": round(duration, 3),
+            "timed_out": timed_out,
+            "stdout_truncated": out[:32768].decode("utf-8", errors="replace"),
+            "stderr_truncated": err[:32768].decode("utf-8", errors="replace"),
+            "stdout_sha256": hashlib.sha256(out).hexdigest(),
+            "stderr_sha256": hashlib.sha256(err).hexdigest(),
+        }
+        checks_evidence.append(entry)
+        if exit_code != 0:
+            failed_id = check_id
+            break
+
+    atomic_write_json(evidence_dir / "checks.json", {"checks": checks_evidence})
+    return checks_evidence, failed_id
 PERMISSION_NOTICE_RE = re.compile(
     r"soft[- ]?denied|permission[^\n]*(?:required|denied|not granted|unavailable)|"
     r"requires approval|approval[^\n]*(?:unavailable|cannot be obtained)|tool[^\n]*denied",
@@ -174,7 +461,7 @@ def approval_signature(payload: dict, key: bytes) -> str:
     return hmac.new(key, encoded, hashlib.sha256).hexdigest()
 
 
-def load_approval(path: Path) -> dict:
+def load_approval(path: Path, allow_expired: bool = False) -> dict:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
@@ -191,8 +478,9 @@ def load_approval(path: Path) -> dict:
         expires_at = datetime.fromisoformat(str(payload["expires_at"]))
     except (KeyError, ValueError) as exc:
         raise RuntimeError("Approval manifest has an invalid expiration") from exc
-    if expires_at.tzinfo is None or datetime.now(timezone.utc) >= expires_at.astimezone(timezone.utc):
-        raise RuntimeError(f"Approval manifest expired at {payload.get('expires_at')}")
+    if not allow_expired:
+        if expires_at.tzinfo is None or datetime.now(timezone.utc) >= expires_at.astimezone(timezone.utc):
+            raise RuntimeError(f"Approval manifest expired at {payload.get('expires_at')}")
     return payload
 
 
@@ -237,6 +525,25 @@ def correction_context(job_id: str, policy: dict, is_correction: bool = True) ->
     round_number = job.get("correction_round", 0) + int(is_correction)
     if round_number > policy["max_correction_rounds"]:
         raise RuntimeError("Correction limit reached; diagnose the failure before approving a new task")
+
+    copied_approval = job_dir(job_id) / "approval.json"
+    derived_scope = None
+    if copied_approval.is_file():
+        parent_manifest = load_approval(copied_approval, allow_expired=True)
+        if parent_manifest.get("allowed_paths"):
+            derived_scope = {
+                "allowed_paths": list(parent_manifest["allowed_paths"]),
+                "forbidden_paths": list(parent_manifest.get("forbidden_paths", [])),
+                "required_checks": list(parent_manifest.get("required_checks", [])),
+            }
+        job_scope = job.get("scope")
+        if job_scope != derived_scope:
+            raise RuntimeError(f"Parent job metadata scope does not match its signed approval manifest: {job_id}")
+        job["scope"] = derived_scope
+    else:
+        if job.get("scope"):
+            raise RuntimeError(f"Parent job has scope in metadata but no signed approval manifest: {job_id}")
+
     return job, round_number
 
 
@@ -899,6 +1206,130 @@ def cmd_approve(args: argparse.Namespace) -> int:
         raise RuntimeError("--unrestricted-confirmed requires --permission-profile unrestricted")
 
     cwd = canonical_workspace(args.cwd)
+    raw_allowed = getattr(args, "allowed_paths", None) or []
+    raw_forbidden = getattr(args, "forbidden_paths", None) or []
+    raw_checks = getattr(args, "required_checks", None) or []
+    base_commit_arg = getattr(args, "base_commit", None)
+
+    policy = effective_policy(getattr(args, "policy", "strict"))
+    correction_id = getattr(args, "correction_of", None)
+    follow_up_id = getattr(args, "follow_up_of", None)
+    if correction_id and follow_up_id:
+        raise RuntimeError("Choose --correction-of or --follow-up-of, not both")
+    parent_id = correction_id or follow_up_id
+    correction_round = 0
+
+    allowed_paths = []
+    forbidden_paths = []
+    resolved_checks = []
+    is_scoped = False
+
+    if parent_id:
+        parent, correction_round = correction_context(parent_id, policy, bool(correction_id))
+        expected = {"strategy": args.strategy, "role": args.role, "model": args.model,
+                    "cwd": str(cwd), "mode": args.mode,
+                    "permission_profile": args.permission_profile}
+        if any(parent.get(key) != value for key, value in expected.items()):
+            raise RuntimeError("Correction changes the approved roster or permission profile")
+        if not parent.get("conversation_id") or args.conversation != parent["conversation_id"]:
+            raise RuntimeError("Correction requires the exact parent conversation")
+
+        parent_scope = parent.get("scope")
+        if parent_scope and parent_scope.get("allowed_paths"):
+            parent_allowed = list(parent_scope["allowed_paths"])
+            parent_forbidden = list(parent_scope.get("forbidden_paths", []))
+            parent_checks = list(parent_scope.get("required_checks", []))
+            parent_check_ids = [c["id"] for c in parent_checks]
+
+            flags_supplied = bool(raw_allowed or raw_forbidden or raw_checks)
+            if not flags_supplied:
+                allowed_paths = parent_allowed
+                forbidden_paths = parent_forbidden
+                resolved_checks = parent_checks
+                is_scoped = True
+            else:
+                if not raw_allowed:
+                    raise RuntimeError("Correction cannot remove parent's allowed paths")
+                supplied_allowed = list(dict.fromkeys([validate_path_rule(p) for p in raw_allowed]))
+                if supplied_allowed != parent_allowed:
+                    raise RuntimeError("Correction cannot widen or change parent's allowed paths")
+
+                supplied_forbidden = with_system_forbidden(
+                    list(dict.fromkeys([validate_path_rule(p) for p in raw_forbidden]))
+                )
+                if parent_check_ids and ".agy-mc/checks.json" not in supplied_forbidden:
+                    supplied_forbidden.append(".agy-mc/checks.json")
+                if supplied_forbidden != parent_forbidden:
+                    raise RuntimeError("Correction cannot widen or change parent's forbidden paths")
+
+                supplied_check_ids = list(dict.fromkeys(raw_checks))
+                if supplied_check_ids != parent_check_ids:
+                    raise RuntimeError("Correction cannot widen or change parent's required checks")
+
+                allowed_paths = parent_allowed
+                forbidden_paths = parent_forbidden
+                resolved_checks = parent_checks
+                is_scoped = True
+        else:
+            if raw_allowed or raw_forbidden or raw_checks or base_commit_arg:
+                raise RuntimeError("Correction of an unscoped job cannot add scoped rules")
+            is_scoped = False
+    else:
+        if policy["require_three_rosters"] and not getattr(args, "three_rosters_presented", False):
+            raise RuntimeError("strict requires --three-rosters-presented after presenting A/B/C")
+        allowed_paths = [validate_path_rule(p) for p in raw_allowed]
+        forbidden_paths = [validate_path_rule(p) for p in raw_forbidden]
+        allowed_paths = list(dict.fromkeys(allowed_paths))
+        forbidden_paths = list(dict.fromkeys(forbidden_paths))
+
+        is_scoped = bool(allowed_paths)
+        if not is_scoped:
+            if forbidden_paths:
+                raise RuntimeError("--forbidden-path requires at least one --allowed-path")
+            if raw_checks:
+                raise RuntimeError("--required-check requires at least one --allowed-path")
+            if base_commit_arg:
+                raise RuntimeError("--base-commit requires at least one --allowed-path")
+
+    if is_scoped and args.mode != "accept-edits":
+        raise RuntimeError("Scoped approval options are only supported in accept-edits mode")
+
+    if is_scoped and not parent_id:
+        forbidden_paths = with_system_forbidden(forbidden_paths)
+
+    base_commit = None
+    preflight_sha256 = None
+    if is_scoped:
+        snapshot = workspace_snapshot(cwd)
+        if not snapshot.get("repository") or snapshot.get("status") == "unknown":
+            raise RuntimeError(f"Scoped approval requires a valid Git repository: {cwd}")
+        repo = Path(snapshot["repository"])
+        if repo.resolve() != cwd.resolve():
+            raise RuntimeError("Scoped approval requires --cwd to be the Git repository root")
+        current_head = snapshot.get("head")
+        if not current_head:
+            raise RuntimeError(f"Scoped approval requires a real Git HEAD: {cwd}")
+        if snapshot.get("status") != "ok" or snapshot.get("limitations"):
+            raise RuntimeError(
+                "Scoped approval requires a complete workspace snapshot without limitations: "
+                + "; ".join(snapshot.get("limitations", []))
+            )
+        if base_commit_arg:
+            if not re.fullmatch(r"[0-9a-fA-F]{40}", base_commit_arg):
+                raise RuntimeError(f"Invalid --base-commit: must be an exact 40-hex commit hash: {base_commit_arg}")
+            if base_commit_arg.lower() != current_head.lower():
+                raise RuntimeError(
+                    f"--base-commit ({base_commit_arg}) does not match current HEAD ({current_head})"
+                )
+        base_commit = current_head
+        preflight_sha256 = compute_preflight_sha256(snapshot)
+        if not parent_id:
+            if raw_checks:
+                resolved_checks = resolve_required_checks(repo, raw_checks)
+                checks_path_rule = ".agy-mc/checks.json"
+                if checks_path_rule not in forbidden_paths:
+                    forbidden_paths.append(checks_path_rule)
+
     prompt_path = Path(args.prompt_file).expanduser().resolve()
     if not prompt_path.is_file():
         raise RuntimeError(f"Prompt file does not exist: {prompt_path}")
@@ -914,25 +1345,6 @@ def cmd_approve(args: argparse.Namespace) -> int:
     allow_non_high = bool(args.non_high_gemini_confirmed)
     if is_non_high_gemini(args.model) and not allow_non_high:
         raise RuntimeError("A Gemini medium/low approval requires --non-high-gemini-confirmed")
-
-    policy = effective_policy(getattr(args, "policy", "strict"))
-    correction_id = getattr(args, "correction_of", None)
-    follow_up_id = getattr(args, "follow_up_of", None)
-    if correction_id and follow_up_id:
-        raise RuntimeError("Choose --correction-of or --follow-up-of, not both")
-    parent_id = correction_id or follow_up_id
-    correction_round = 0
-    if parent_id:
-        parent, correction_round = correction_context(parent_id, policy, bool(correction_id))
-        expected = {"strategy": args.strategy, "role": args.role, "model": args.model,
-                    "cwd": str(cwd), "mode": args.mode,
-                    "permission_profile": args.permission_profile}
-        if any(parent.get(key) != value for key, value in expected.items()):
-            raise RuntimeError("Correction changes the approved roster or permission profile")
-        if not parent.get("conversation_id") or args.conversation != parent["conversation_id"]:
-            raise RuntimeError("Correction requires the exact parent conversation")
-    elif policy["require_three_rosters"] and not getattr(args, "three_rosters_presented", False):
-        raise RuntimeError("strict requires --three-rosters-presented after presenting A/B/C")
 
     created = datetime.now(timezone.utc)
     approval_id = f"approval-{created.strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
@@ -955,6 +1367,13 @@ def cmd_approve(args: argparse.Namespace) -> int:
         "allow_non_high_gemini": allow_non_high,
         "conversation": args.conversation,
     }
+    if is_scoped:
+        payload["base_commit"] = base_commit
+        payload["preflight_sha256"] = preflight_sha256
+        payload["allowed_paths"] = allowed_paths
+        payload["forbidden_paths"] = forbidden_paths
+        payload["required_checks"] = resolved_checks
+
     payload["signature"] = approval_signature(payload, approval_key(create=True))
     if args.output:
         output = Path(args.output).expanduser().resolve()
@@ -963,6 +1382,26 @@ def cmd_approve(args: argparse.Namespace) -> int:
         os.chmod(APPROVAL_ROOT, 0o700)
         output = APPROVAL_ROOT / f"{approval_id}.json"
     atomic_write_json(output, payload)
+
+    binding = {
+        "strategy": args.strategy,
+        "role": args.role,
+        "model": args.model,
+        "cwd": str(cwd),
+        "prompt_sha256": payload["prompt_sha256"],
+        "mode": args.mode,
+        "permission_profile": args.permission_profile,
+        "policy": policy,
+        "correction_round": correction_round,
+        "parent_job_id": parent_id,
+    }
+    if is_scoped:
+        binding["base_commit"] = payload["base_commit"]
+        binding["preflight_sha256"] = payload["preflight_sha256"]
+        binding["allowed_paths"] = payload["allowed_paths"]
+        binding["forbidden_paths"] = payload["forbidden_paths"]
+        binding["required_checks"] = payload["required_checks"]
+
     print(
         json.dumps(
             {
@@ -971,18 +1410,7 @@ def cmd_approve(args: argparse.Namespace) -> int:
                 "approval_id": approval_id,
                 "approval_file": str(output),
                 "expires_at": payload["expires_at"],
-                "binding": {
-                    "strategy": args.strategy,
-                    "role": args.role,
-                    "model": args.model,
-                    "cwd": str(cwd),
-                    "prompt_sha256": payload["prompt_sha256"],
-                    "mode": args.mode,
-                    "permission_profile": args.permission_profile,
-                    "policy": policy,
-                    "correction_round": correction_round,
-                    "parent_job_id": parent_id,
-                },
+                "binding": binding,
             },
             ensure_ascii=False,
             indent=2,
@@ -1016,9 +1444,20 @@ def validate_approval_binding(args: argparse.Namespace, cwd: Path, prompt_text: 
         approval = dict(approval, policy=normalized_policy(approval["policy"]))
         parent_id = approval.get("correction_of") or approval.get("follow_up_of")
         if parent_id:
-            _, round_number = correction_context(parent_id, approval["policy"], bool(approval.get("correction_of")))
+            parent, round_number = correction_context(parent_id, approval["policy"], bool(approval.get("correction_of")))
             if approval.get("correction_round") != round_number:
                 raise RuntimeError("Invalid correction lineage")
+            parent_scope = parent.get("scope")
+            if parent_scope and parent_scope.get("allowed_paths"):
+                if approval.get("allowed_paths") != parent_scope.get("allowed_paths"):
+                    raise RuntimeError("Correction allowed_paths do not match parent")
+                if approval.get("forbidden_paths") != parent_scope.get("forbidden_paths"):
+                    raise RuntimeError("Correction forbidden_paths do not match parent")
+                if approval.get("required_checks") != parent_scope.get("required_checks"):
+                    raise RuntimeError("Correction required_checks do not match parent")
+            else:
+                if approval.get("allowed_paths"):
+                    raise RuntimeError("Correction cannot add scope to an unscoped parent")
     return approval
 
 
@@ -1046,6 +1485,8 @@ def prepare_run(args: argparse.Namespace) -> dict:
         raise RuntimeError(f"Prompt file does not exist: {prompt_file}")
     prompt_text = prompt_file.read_text(encoding="utf-8")
     approval = validate_approval_binding(args, cwd, prompt_text)
+    if approval and approval.get("allowed_paths"):
+        verify_scoped_preflight(cwd, approval)
 
     trust_status = workspace_status(cwd, args.mode)
     if not trust_status["trusted"]:
@@ -1090,6 +1531,7 @@ def prepare_run(args: argparse.Namespace) -> dict:
         "correction_of": approval.get("correction_of") if approval else None,
         "follow_up_of": approval.get("follow_up_of") if approval else None,
         "correction_round": approval.get("correction_round", 0) if approval else None,
+        "approval": approval,
     }
 
 
@@ -1114,6 +1556,19 @@ def prompt_event(prompt_text: str) -> str:
     return json.dumps({"event": "user", "message": {"content": prompt_text}}, ensure_ascii=False) + "\n"
 
 
+def normalize_provider_result(event: dict | None) -> dict | None:
+    if not isinstance(event, dict):
+        return None
+    nested = event.get("result")
+    if isinstance(nested, dict):
+        normalized = dict(nested)
+        for key in ("event", "type"):
+            if key in event and key not in normalized:
+                normalized[key] = event[key]
+        return normalized
+    return event
+
+
 def parse_stream_result(stdout: str) -> dict | None:
     final = None
     for line in stdout.splitlines():
@@ -1125,7 +1580,7 @@ def parse_stream_result(stdout: str) -> dict | None:
             continue
         if event.get("event") == "result" or event.get("type") == "result" or "status" in event:
             final = event
-    return final
+    return normalize_provider_result(final)
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -1141,6 +1596,12 @@ def cmd_run(args: argparse.Namespace) -> int:
             prepared["cwd"],
             {"kind": "foreground", "pid": os.getpid(), "role": args.role},
         )
+        if prepared.get("approval") and prepared["approval"].get("allowed_paths"):
+            try:
+                verify_scoped_preflight(prepared["cwd"], prepared["approval"])
+            except Exception:
+                release_workspace_lock(lock_fd)
+                raise
     try:
         return run_foreground(args, prepared)
     finally:
@@ -1185,6 +1646,9 @@ def workspace_snapshot(cwd: Path) -> dict:
             detail = {"status": code}
             index += 1
             if "R" in code or "C" in code:
+                if index >= len(entries) or not entries[index]:
+                    snapshot["limitations"].append(f"Malformed rename/copy status entry: {name}")
+                    break
                 detail["original_path"] = os.fsdecode(entries[index])
                 index += 1
             if len(paths) >= 5000:
@@ -1193,8 +1657,10 @@ def workspace_snapshot(cwd: Path) -> dict:
             path = repo / name
             try:
                 if path.is_symlink():
-                    detail["sha256"] = hashlib.sha256(os.fsencode(os.readlink(path))).hexdigest()
+                    raw_target = os.readlink(path)
+                    detail["sha256"] = hashlib.sha256(os.fsencode(raw_target)).hexdigest()
                     detail["kind"] = "symlink"
+                    detail["target"] = os.fsdecode(raw_target)
                 elif path.is_file():
                     size = path.stat().st_size
                     if size > min(budget, 8 * 1024 * 1024):
@@ -1264,14 +1730,127 @@ def run_foreground(args: argparse.Namespace, prepared: dict) -> int:
         "approval_id": prepared.get("approval_id"), "policy": prepared.get("policy"),
         "correction_round": prepared.get("correction_round"),
     })
+    provider_code = 1
     try:
-        return execute_foreground(args, dispatched)
+        provider_code = execute_foreground(args, dispatched)
     finally:
         after = workspace_snapshot(prepared["cwd"])
         atomic_write_json(directory / "after.json", after)
         delta = workspace_delta(before, after)
         atomic_write_json(directory / "delta.json", delta)
-        print(json.dumps({"amc_evidence": str(directory), "workspace_delta": delta}, ensure_ascii=True), file=sys.stderr)
+
+        approval = prepared.get("approval")
+        is_scoped = bool(approval and approval.get("allowed_paths"))
+        if not is_scoped:
+            enforcement = {"status": "not_configured"}
+            final_code = provider_code
+        else:
+            repo_root = Path(before.get("repository", prepared["cwd"]))
+            allowed_paths = approval.get("allowed_paths", [])
+            forbidden_paths = approval.get("forbidden_paths", [])
+            required_checks = approval.get("required_checks", [])
+
+            scope_status, scope_detail = evaluate_scope(
+                before, after, allowed_paths, forbidden_paths, repo_root
+            )
+            if provider_code != 0:
+                if scope_status == "incomplete_evidence":
+                    enforcement = {
+                        "status": "incomplete_evidence",
+                        "limitations": scope_detail.get("limitations", []),
+                        "provider_exit_code": provider_code,
+                    }
+                    final_code = ENFORCEMENT_EXIT_CODE
+                elif scope_status == "scope_violation":
+                    enforcement = {
+                        "status": "scope_violation",
+                        "violations": scope_detail.get("violations", []),
+                        "provider_exit_code": provider_code,
+                    }
+                    final_code = ENFORCEMENT_EXIT_CODE
+                else:
+                    enforcement = {
+                        "status": "provider_error",
+                        "provider_exit_code": provider_code,
+                    }
+                    final_code = provider_code
+            elif scope_status == "incomplete_evidence":
+                enforcement = {
+                    "status": "incomplete_evidence",
+                    "limitations": scope_detail.get("limitations", []),
+                }
+                final_code = ENFORCEMENT_EXIT_CODE
+            elif scope_status == "scope_violation":
+                enforcement = {
+                    "status": "scope_violation",
+                    "violations": scope_detail.get("violations", []),
+                }
+                final_code = ENFORCEMENT_EXIT_CODE
+            else:
+                if required_checks:
+                    checks_evidence, check_failed_id = execute_required_checks(
+                        required_checks, repo_root, directory
+                    )
+                    after_checks = workspace_snapshot(prepared["cwd"])
+                    atomic_write_json(directory / "after_checks.json", after_checks)
+                    delta_checks = workspace_delta(before, after_checks)
+                    atomic_write_json(directory / "delta_checks.json", delta_checks)
+                    re_status, re_detail = evaluate_scope(
+                        before, after_checks, allowed_paths, forbidden_paths, repo_root
+                    )
+                    if re_status == "incomplete_evidence":
+                        enforcement = {
+                            "status": "incomplete_evidence",
+                            "limitations": re_detail.get("limitations", []),
+                            "checks": checks_evidence,
+                        }
+                        if check_failed_id is not None:
+                            enforcement["failed_check"] = check_failed_id
+                        final_code = ENFORCEMENT_EXIT_CODE
+                    elif re_status == "scope_violation":
+                        enforcement = {
+                            "status": "scope_violation",
+                            "violations": re_detail.get("violations", []),
+                            "checks": checks_evidence,
+                        }
+                        if check_failed_id is not None:
+                            enforcement["failed_check"] = check_failed_id
+                        final_code = ENFORCEMENT_EXIT_CODE
+                    elif check_failed_id is not None:
+                        enforcement = {
+                            "status": "check_failed",
+                            "failed_check": check_failed_id,
+                            "checks": checks_evidence,
+                            "changed_paths": re_detail.get("changed_paths", []),
+                        }
+                        final_code = ENFORCEMENT_EXIT_CODE
+                    else:
+                        enforcement = {
+                            "status": "passed",
+                            "checks": checks_evidence,
+                            "changed_paths": re_detail.get("changed_paths", []),
+                        }
+                        final_code = 0
+                else:
+                    enforcement = {
+                        "status": "scope_passed",
+                        "changed_paths": scope_detail.get("changed_paths", []),
+                    }
+                    final_code = 0
+
+        atomic_write_json(directory / "enforcement.json", enforcement)
+        print(
+            json.dumps(
+                {
+                    "amc_evidence": str(directory),
+                    "workspace_delta": delta,
+                    "enforcement": enforcement,
+                },
+                ensure_ascii=True,
+            ),
+            file=sys.stderr,
+        )
+    return final_code
 
 
 def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
@@ -1420,6 +1999,14 @@ def launch_background_job(
         os.chmod(approval_path, 0o600)
 
     command = build_child_run_args(args, prepared, prompt_path, schema_path, approval_path)
+    approval_data = prepared.get("approval") or {}
+    scope_data = None
+    if approval_data.get("allowed_paths"):
+        scope_data = {
+            "allowed_paths": list(approval_data["allowed_paths"]),
+            "forbidden_paths": list(approval_data.get("forbidden_paths", [])),
+            "required_checks": list(approval_data.get("required_checks", [])),
+        }
     job = {
         "job_id": job_id,
         "status": "starting",
@@ -1437,6 +2024,7 @@ def launch_background_job(
         "evidence_path": str(directory / "workspace-evidence"),
         "approval_id": prepared.get("approval_id"),
         "policy": prepared.get("policy"),
+        "scope": scope_data,
         "correction_of": prepared.get("correction_of"),
         "follow_up_of": prepared.get("follow_up_of"),
         "correction_round": prepared.get("correction_round"),
@@ -1484,7 +2072,7 @@ def launch_background_job(
 
 
 def parse_child_payload(stdout: str) -> dict | None:
-    return parse_stream_result(stdout)
+    return normalize_provider_result(parse_stream_result(stdout))
 
 
 def cmd_worker(args: argparse.Namespace) -> int:
@@ -1502,8 +2090,19 @@ def cmd_worker(args: argparse.Namespace) -> int:
         )
         payload = parse_child_payload(proc.stdout)
         status = "done" if proc.returncode == 0 else "error"
-        if '"status": "done_with_warnings"' in proc.stderr or '"status":"done_with_warnings"' in proc.stderr:
+        if proc.returncode == 0 and ('"status": "done_with_warnings"' in proc.stderr or '"status":"done_with_warnings"' in proc.stderr):
             status = "done_with_warnings"
+
+        evidence_dir = Path(job.get("evidence_path", ""))
+        enforcement = {"status": "not_configured"}
+        if evidence_dir.is_dir() and (evidence_dir / "enforcement.json").is_file():
+            try:
+                enforcement = json.loads((evidence_dir / "enforcement.json").read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                pass
+        elif job.get("policy") and proc.returncode != 0:
+            enforcement = {"status": "provider_error"}
+
         result = {
             "job_id": args.job_id,
             "status": status,
@@ -1517,8 +2116,10 @@ def cmd_worker(args: argparse.Namespace) -> int:
             "stderr": proc.stderr,
             "evidence_path": job.get("evidence_path"),
             "policy": job.get("policy"),
+            "scope": job.get("scope"),
             "correction_round": job.get("correction_round"),
             "acceptance": "not_evaluated",
+            "enforcement": enforcement,
         }
         atomic_write_json(job_result_path(args.job_id), result)
         current = read_job(args.job_id)
@@ -1527,7 +2128,7 @@ def cmd_worker(args: argparse.Namespace) -> int:
             current["conversation_id"] = result["conversation_id"] or current.get("conversation_id")
             current["finished_at"] = utc_now()
             write_job(current)
-        return 0 if status in {"done", "done_with_warnings"} else 1
+        return 0 if status in {"done", "done_with_warnings"} and proc.returncode == 0 else (proc.returncode or 1)
     except Exception as exc:
         result = {
             "job_id": args.job_id,
@@ -1537,6 +2138,9 @@ def cmd_worker(args: argparse.Namespace) -> int:
             "model": job.get("model"),
             "cwd": job.get("cwd"),
             "error": str(exc),
+            "evidence_path": job.get("evidence_path"),
+            "acceptance": "not_evaluated",
+            "enforcement": {"status": "provider_error"},
         }
         atomic_write_json(job_result_path(args.job_id), result)
         current = read_job(args.job_id)
@@ -1564,14 +2168,25 @@ def cmd_status(args: argparse.Namespace) -> int:
     if args.job_id:
         job = refresh_job(read_job(args.job_id))
         print(json.dumps(job, ensure_ascii=False, indent=2))
+        try:
+            res = job_result(args.job_id)
+            if "exit_code" in res and res["exit_code"] is not None:
+                return res["exit_code"]
+        except Exception:
+            pass
         return JOB_EXIT_CODES.get(job.get("status"), 1)
     print(json.dumps({"jobs": list_jobs()}, ensure_ascii=False, indent=2))
     return 0
 
 
 def cmd_result(args: argparse.Namespace) -> int:
-    print(json.dumps(job_result(args.job_id), ensure_ascii=False, indent=2))
-    return 0
+    res = job_result(args.job_id)
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    exit_code = res.get("exit_code")
+    if exit_code is not None:
+        return exit_code
+    job = refresh_job(read_job(args.job_id))
+    return JOB_EXIT_CODES.get(job.get("status"), 0)
 
 
 def cmd_wait(args: argparse.Namespace) -> int:
@@ -1590,7 +2205,11 @@ def cmd_wait(args: argparse.Namespace) -> int:
         job = refresh_job(read_job(args.job_id))
         status = job.get("status")
         if status not in {"starting", "running", "canceling"}:
-            print(json.dumps(job_result(args.job_id), ensure_ascii=False, indent=2))
+            res = job_result(args.job_id)
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+            exit_code = res.get("exit_code")
+            if exit_code is not None:
+                return exit_code
             return JOB_EXIT_CODES.get(status, 1)
         if time.monotonic() >= deadline:
             print(
@@ -1676,6 +2295,9 @@ def cmd_cancel(args: argparse.Namespace) -> int:
             "model": job.get("model"),
             "cwd": job.get("cwd"),
             "error": "Job canceled and process exit confirmed" if terminated else "Process did not exit after TERM and KILL",
+            "evidence_path": job.get("evidence_path"),
+            "acceptance": "not_evaluated",
+            "enforcement": {"status": "canceled"},
         },
     )
     print(json.dumps(job, ensure_ascii=False, indent=2))
@@ -1695,6 +2317,8 @@ def cmd_continue(args: argparse.Namespace) -> int:
     if not conversation_id:
         raise RuntimeError(f"Job {args.job_id} has no recorded AGY conversation id")
 
+    if job.get("policy") and not args.approval_file:
+        raise RuntimeError("Policy-bound continuation requires --approval-file to preserve its lineage")
     if args.approval_file:
         approval = load_approval(Path(args.approval_file).expanduser().resolve())
         parent_id = approval.get("correction_of") or approval.get("follow_up_of")
@@ -1761,6 +2385,13 @@ def build_parser() -> argparse.ArgumentParser:
     approve_parser.add_argument("--confirmed", action="store_true")
     approve_parser.add_argument("--unrestricted-confirmed", action="store_true")
     approve_parser.add_argument("--non-high-gemini-confirmed", action="store_true")
+    approve_parser.add_argument("--allowed-path", action="append", dest="allowed_paths", default=[],
+                                help="Repository-root-relative allowed path rule (repeatable)")
+    approve_parser.add_argument("--forbidden-path", action="append", dest="forbidden_paths", default=[],
+                                help="Repository-root-relative forbidden path rule (repeatable)")
+    approve_parser.add_argument("--required-check", action="append", dest="required_checks", default=[],
+                                help="Required check ID from .agy-mc/checks.json (repeatable)")
+    approve_parser.add_argument("--base-commit", help="Exact 40-hex base commit hash (optional, must match HEAD)")
     approve_parser.set_defaults(func=cmd_approve)
     usage_parser = subparsers.add_parser("usage", help="Show a sanitized AGY quota snapshot")
     usage_parser.add_argument("--watch", action="store_true", help="Refresh continuously until interrupted")
