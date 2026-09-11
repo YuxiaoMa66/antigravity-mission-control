@@ -49,6 +49,46 @@ class PermissionTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "expired"):
                     cli.load_approval(manifest)
 
+    def test_signed_approval_detects_tampering_of_scoped_fields(self):
+        from datetime import datetime, timedelta, timezone
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            key_path = root / "approval.key"
+            manifest = root / "approval.json"
+            with mock.patch.object(cli, "APPROVAL_KEY_PATH", key_path):
+                key = cli.approval_key(create=True)
+                payload = {
+                    "schema": "agy-mc-approval.v1",
+                    "approval_id": "test-scoped",
+                    "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
+                    "role": "implementer",
+                    "strategy": "A",
+                    "model": "gemini-3.7-flash-high",
+                    "cwd": str(root),
+                    "mode": "accept-edits",
+                    "base_commit": "a" * 40,
+                    "preflight_sha256": "b" * 64,
+                    "allowed_paths": ["src/"],
+                    "forbidden_paths": [".agy-mc/checks.json"],
+                    "required_checks": [{"id": "test", "argv": ["true"], "timeout_seconds": 300}],
+                }
+                payload["signature"] = cli.approval_signature(payload, key)
+                cli.atomic_write_json(manifest, payload)
+                self.assertEqual(cli.load_approval(manifest)["base_commit"], "a" * 40)
+
+                for field, tampered_val in [
+                    ("allowed_paths", ["docs/"]),
+                    ("forbidden_paths", []),
+                    ("base_commit", "c" * 40),
+                    ("preflight_sha256", "d" * 64),
+                    ("required_checks", [{"id": "test", "argv": ["false"], "timeout_seconds": 300}]),
+                ]:
+                    tampered = dict(payload, **{field: tampered_val})
+                    cli.atomic_write_json(manifest, tampered)
+                    with self.assertRaisesRegex(RuntimeError, "signature"):
+                        cli.load_approval(manifest)
+
     def test_run_never_auto_grants_workspace_trust(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

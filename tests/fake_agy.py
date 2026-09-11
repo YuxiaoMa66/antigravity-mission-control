@@ -34,7 +34,37 @@ elif "stream-json" in sys.argv:
         from pathlib import Path
         Path("user.txt").write_text("worker change\n")
         Path("worker-new.txt").write_text("new output\n")
+    if os.environ.get("FAKE_AGY_CUSTOM_ACTION"):
+        action = json.loads(os.environ["FAKE_AGY_CUSTOM_ACTION"])
+        from pathlib import Path
+        import subprocess
+        for item in action.get("write", []):
+            target = Path(item["path"])
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(item["content"])
+        for p in action.get("delete", []):
+            target = Path(p)
+            if target.is_symlink() or target.is_file():
+                target.unlink()
+        for item in action.get("symlink", []):
+            target = Path(item["link"])
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.is_symlink() or target.is_file():
+                target.unlink()
+            target.symlink_to(item["target"])
+        if action.get("git_commit"):
+            subprocess.run(["git", "commit", "-am", action["git_commit"]], check=False)
+        if action.get("exit_code"):
+            print("fake provider error", file=sys.stderr)
+            sys.exit(int(action["exit_code"]))
+    if os.environ.get("FAKE_AGY_PROVIDER_EXIT"):
+        print("fake provider error", file=sys.stderr)
+        sys.exit(int(os.environ["FAKE_AGY_PROVIDER_EXIT"]))
     print(json.dumps({"event": "init", "conversation_id": "fake-conversation"}))
-    print(json.dumps({"event": "result", "status": "ERROR" if os.environ.get("FAKE_AGY_WARNING") else "SUCCESS", "conversation_id": "fake-conversation", "response": request}))
+    if os.environ.get("FAKE_AGY_NESTED_RESULT"):
+        nested = json.loads(os.environ["FAKE_AGY_NESTED_RESULT"])
+        print(json.dumps({"event": "result", "result": nested}))
+    else:
+        print(json.dumps({"event": "result", "status": "ERROR" if os.environ.get("FAKE_AGY_WARNING") else "SUCCESS", "conversation_id": "fake-conversation", "response": request}))
 else:
     print(json.dumps({"status": "SUCCESS", "response": "fake"}))

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 - 2026-09-11
+
+- Added opt-in signed allowed/forbidden path scopes bound to the Git root, base commit and deterministic preflight digest, with Git metadata always forbidden.
+- Added frozen required-check catalogs with direct argv execution, private evidence and deterministic launch-failure handling.
+- Added post-run scope enforcement for renames, deletions, untracked files, HEAD changes and symlink targets, including provider-failure and check-side-effect paths.
+- Added explicit enforcement statuses and exit code 5 while preserving `acceptance: not_evaluated` for Codex-owned final acceptance.
+- Preserved signed scope across follow-up/correction lineage and rejected mutable job-metadata tampering.
+- Required signed lineage approvals for policy-bound continuations and hardened directory symlink matching.
+- Terminated entire required-check process groups on timeout to prevent orphaned descendants.
+
 ## 0.2.0 - 2026-09-06
 
 - Route quota and existing-job requests directly without starting a roster workflow.

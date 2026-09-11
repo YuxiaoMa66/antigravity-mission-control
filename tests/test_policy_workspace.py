@@ -1,10 +1,12 @@
 import json
 import os
 from pathlib import Path
+import re
 import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -102,6 +104,10 @@ class PolicyWorkspaceTests(unittest.TestCase):
 
     def test_continuation_cannot_silently_reset_lineage(self):
         parent, _ = self.run_job(self.approval('--policy', 'balanced'))
+        missing = self.call('continue', parent, '--prompt-file', str(self.prompt), '--roster-approved')
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn('requires --approval-file', missing.stderr)
+
         root = self.approval('--policy', 'balanced', '--conversation', 'fake-conversation')
         path = json.loads(root.stdout)['approval_file']
         denied = self.call('continue', parent, '--prompt-file', str(self.prompt), '--approval-file', path)
@@ -180,6 +186,463 @@ class PolicyWorkspaceTests(unittest.TestCase):
         self.assertEqual(snapshot['paths']['renamed\nfile.txt']['original_path'], 'user.txt')
         self.assertIsNotNone(snapshot['staged_diff_sha256'])
         self.assertFalse(marker.exists())
+
+    def test_malformed_rename_snapshot_becomes_incomplete_evidence(self):
+        responses = [
+            subprocess.CompletedProcess([], 0, stdout=(str(self.workspace) + '\n').encode(), stderr=b''),
+            subprocess.CompletedProcess([], 0, stdout=(b'a' * 40) + b'\n', stderr=b''),
+            subprocess.CompletedProcess([], 0, stdout=b'R  renamed-without-origin\0', stderr=b''),
+            subprocess.CompletedProcess([], 0, stdout=b'', stderr=b''),
+            subprocess.CompletedProcess([], 0, stdout=b'', stderr=b''),
+        ]
+        with mock.patch.object(cli.subprocess, 'run', side_effect=responses):
+            snapshot = cli.workspace_snapshot(self.workspace)
+        self.assertEqual(snapshot['status'], 'partial')
+        self.assertIn('Malformed rename/copy status entry', snapshot['limitations'][0])
+
+    def test_scoped_approval_validation(self):
+        denied = self.approval('--policy', 'balanced', '--forbidden-path', 'secret.txt')
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn('--forbidden-path requires at least one --allowed-path', denied.stderr)
+
+        denied = self.approval('--policy', 'balanced', '--required-check', 'test')
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn('--required-check requires at least one --allowed-path', denied.stderr)
+
+        denied = self.approval('--policy', 'balanced', '--base-commit', '0' * 40)
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn('--base-commit requires at least one --allowed-path', denied.stderr)
+
+        denied = self.call('approve', '--strategy', 'A', '--role', 'implementer',
+                           '--model', 'gemini-3.7-flash-high', '--cwd', str(self.workspace),
+                           '--prompt-file', str(self.prompt), '--mode', 'plan',
+                           '--confirmed', '--policy', 'balanced', '--allowed-path', 'user.txt')
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn('accept-edits mode', denied.stderr)
+
+        for invalid_rule in ('', '/abs/path', 'back\\slash', 'dup//sep', 'foo*bar', 'foo/../bar', '.', '..', './'):
+            denied = self.approval('--policy', 'balanced', '--allowed-path', invalid_rule)
+            self.assertNotEqual(denied.returncode, 0)
+            self.assertIn('Invalid path rule', denied.stderr)
+
+        # Scoped approve on non-git workspace
+        denied = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt')
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn('Git repository', denied.stderr)
+
+        self.init_repo()
+        nested = self.workspace / 'nested'
+        nested.mkdir()
+        nested_approval = self.call(
+            'approve', '--strategy', 'A', '--role', 'implementer',
+            '--model', 'gemini-3.7-flash-high', '--cwd', str(nested),
+            '--prompt-file', str(self.prompt), '--mode', 'accept-edits',
+            '--confirmed', '--policy', 'balanced', '--allowed-path', 'nested/'
+        )
+        self.assertNotEqual(nested_approval.returncode, 0)
+        self.assertIn('Git repository root', nested_approval.stderr)
+
+        # Invalid base-commit format
+        denied = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt', '--base-commit', 'not-a-hash')
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn('40-hex', denied.stderr)
+
+        # Base-commit mismatch
+        denied = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt', '--base-commit', '0' * 40)
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn('does not match current HEAD', denied.stderr)
+
+        # Valid scoped approve
+        head = self.git('rev-parse', 'HEAD').decode().strip()
+        ok = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt', '--base-commit', head)
+        self.assertEqual(ok.returncode, 0, ok.stderr)
+        data = json.loads(ok.stdout)
+        self.assertEqual(data['binding']['base_commit'], head)
+        self.assertIn('preflight_sha256', data['binding'])
+        self.assertEqual(data['binding']['allowed_paths'], ['user.txt'])
+        self.assertIn('.git', data['binding']['forbidden_paths'])
+        self.assertIn('.git/', data['binding']['forbidden_paths'])
+
+    def test_required_checks_catalog_validation(self):
+        self.init_repo()
+        denied = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt', '--required-check', 'lint')
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn('checks file does not exist', denied.stderr)
+
+        checks_dir = self.workspace / '.agy-mc'
+        checks_dir.mkdir()
+        checks_file = checks_dir / 'checks.json'
+
+        checks_file.write_text('{not valid json')
+        denied = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt', '--required-check', 'lint')
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn('invalid JSON', denied.stderr)
+
+        checks_file.write_text(json.dumps({'schema': 'wrong-schema', 'checks': {}}))
+        denied = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt', '--required-check', 'lint')
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn('Invalid required checks schema', denied.stderr)
+
+        checks_file.write_text(json.dumps({'schema': 'agy-mc-checks.v1', 'checks': {'test': {'argv': []}}}))
+        denied = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt', '--required-check', 'test')
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn('Invalid argv', denied.stderr)
+
+        # Valid catalog: .agy-mc/checks.json is automatically forbidden
+        checks_file.write_text(json.dumps({
+            'schema': 'agy-mc-checks.v1',
+            'checks': {
+                'ok_check': {'argv': ['true'], 'timeout_seconds': 60}
+            }
+        }))
+        ok = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt', '--required-check', 'ok_check')
+        self.assertEqual(ok.returncode, 0, ok.stderr)
+        manifest = json.loads(Path(json.loads(ok.stdout)['approval_file']).read_text())
+        self.assertIn('.agy-mc/checks.json', manifest['forbidden_paths'])
+        self.assertEqual(manifest['required_checks'][0]['id'], 'ok_check')
+
+    def test_scoped_preflight_drift_rejection(self):
+        self.init_repo()
+        app = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt')
+        self.assertEqual(app.returncode, 0, app.stderr)
+        app_file = json.loads(app.stdout)['approval_file']
+
+        # Commit drift
+        self.git('commit', '--allow-empty', '-qm', 'drift commit')
+        run = self.call('run', '--strategy', 'A', '--role', 'implementer', '--model', 'gemini-3.7-flash-high',
+                        '--cwd', str(self.workspace), '--mode', 'accept-edits', '--prompt-file', str(self.prompt),
+                        '--approval-file', app_file)
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn('Commit drift detected', run.stderr)
+
+        # Dirty tracked content drift
+        app2 = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt')
+        self.assertEqual(app2.returncode, 0, app2.stderr)
+        app_file2 = json.loads(app2.stdout)['approval_file']
+        (self.workspace / 'user.txt').write_text('dirty preflight content\n')
+        run2 = self.call('run', '--strategy', 'A', '--role', 'implementer', '--model', 'gemini-3.7-flash-high',
+                         '--cwd', str(self.workspace), '--mode', 'accept-edits', '--prompt-file', str(self.prompt),
+                         '--approval-file', app_file2)
+        self.assertNotEqual(run2.returncode, 0)
+        self.assertIn('preflight digest mismatch', run2.stderr)
+
+        # Untracked content drift
+        self.git('checkout', 'HEAD', '--', 'user.txt')
+        app3 = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt')
+        self.assertEqual(app3.returncode, 0, app3.stderr)
+        app_file3 = json.loads(app3.stdout)['approval_file']
+        (self.workspace / 'untracked_drift.txt').write_text('untracked\n')
+        run3 = self.call('run', '--strategy', 'A', '--role', 'implementer', '--model', 'gemini-3.7-flash-high',
+                         '--cwd', str(self.workspace), '--mode', 'accept-edits', '--prompt-file', str(self.prompt),
+                         '--approval-file', app_file3)
+        self.assertNotEqual(run3.returncode, 0)
+        self.assertIn('preflight digest mismatch', run3.stderr)
+
+    def test_scoped_enforcement_clean_scope_and_checks(self):
+        self.init_repo()
+        app = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt')
+        self.assertEqual(app.returncode, 0, app.stderr)
+        app_file = json.loads(app.stdout)['approval_file']
+
+        action = json.dumps({'write': [{'path': 'user.txt', 'content': 'clean edit\n'}]})
+        run = self.call('run', '--strategy', 'A', '--role', 'implementer', '--model', 'gemini-3.7-flash-high',
+                        '--cwd', str(self.workspace), '--mode', 'accept-edits', '--prompt-file', str(self.prompt),
+                        '--approval-file', app_file,
+                        env={**self.env, 'FAKE_AGY_CUSTOM_ACTION': action})
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn('"status": "scope_passed"', run.stderr)
+        self.assertIn('"acceptance": "not_evaluated"', run.stderr)
+
+        # With passing required check
+        checks_dir = self.workspace / '.agy-mc'
+        checks_dir.mkdir(exist_ok=True)
+        (checks_dir / 'checks.json').write_text(json.dumps({
+            'schema': 'agy-mc-checks.v1',
+            'checks': {
+                'pass_check': {'argv': [sys.executable, '-c', 'import sys; sys.exit(0)'], 'timeout_seconds': 30}
+            }
+        }))
+        self.git('add', '.')
+        self.git('commit', '-qm', 'add checks')
+        app_check = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt', '--required-check', 'pass_check')
+        self.assertEqual(app_check.returncode, 0, app_check.stderr)
+        app_check_file = json.loads(app_check.stdout)['approval_file']
+
+        run_check = self.call('run', '--strategy', 'A', '--role', 'implementer', '--model', 'gemini-3.7-flash-high',
+                              '--cwd', str(self.workspace), '--mode', 'accept-edits', '--prompt-file', str(self.prompt),
+                              '--approval-file', app_check_file,
+                              env={**self.env, 'FAKE_AGY_CUSTOM_ACTION': action})
+        self.assertEqual(run_check.returncode, 0, run_check.stderr)
+        self.assertIn('"status": "passed"', run_check.stderr)
+
+    def test_scoped_enforcement_violations_and_failures(self):
+        self.init_repo()
+        secret_dir = self.workspace / 'src' / 'secret-dir'
+        secret_dir.mkdir(parents=True)
+        (secret_dir / 'hidden.txt').write_text('hidden\n')
+        self.git('add', '.')
+        self.git('commit', '-qm', 'add forbidden directory fixture')
+        head_commit = self.git('rev-parse', 'HEAD').decode().strip()
+
+        def run_scenario(action, allowed=('user.txt', 'src/'), forbidden=('src/secret.txt',), checks=()):
+            self.git('reset', '--hard', head_commit)
+            self.git('clean', '-fdx')
+            args = ['--policy', 'balanced']
+            for a in allowed:
+                args.extend(['--allowed-path', a])
+            for f in forbidden:
+                args.extend(['--forbidden-path', f])
+            for c in checks:
+                args.extend(['--required-check', c])
+            app = self.approval(*args)
+            self.assertEqual(app.returncode, 0, app.stderr)
+            app_file = json.loads(app.stdout)['approval_file']
+            return self.call('run', '--strategy', 'A', '--role', 'implementer', '--model', 'gemini-3.7-flash-high',
+                             '--cwd', str(self.workspace), '--mode', 'accept-edits', '--prompt-file', str(self.prompt),
+                             '--approval-file', app_file,
+                             env={**self.env, 'FAKE_AGY_CUSTOM_ACTION': json.dumps(action)})
+
+        # Out-of-allowed path
+        run_out = run_scenario({'write': [{'path': 'outside.txt', 'content': 'out\n'}]})
+        self.assertEqual(run_out.returncode, 5, run_out.stderr)
+        self.assertIn('"status": "scope_violation"', run_out.stderr)
+
+        # Forbidden path
+        run_forbid = run_scenario({'write': [{'path': 'src/secret.txt', 'content': 'leak\n'}]})
+        self.assertEqual(run_forbid.returncode, 5, run_forbid.stderr)
+        self.assertIn('"status": "scope_violation"', run_forbid.stderr)
+
+        # Symlink escaping outside repo
+        run_sym_out = run_scenario({'symlink': [{'link': 'src/escape.txt', 'target': '/etc/passwd'}]})
+        self.assertEqual(run_sym_out.returncode, 5, run_sym_out.stderr)
+        self.assertIn('"status": "scope_violation"', run_sym_out.stderr)
+
+        # Symlink to forbidden file
+        run_sym_forbid = run_scenario({'symlink': [{'link': 'src/link.txt', 'target': 'secret.txt'}]})
+        self.assertEqual(run_sym_forbid.returncode, 5, run_sym_forbid.stderr)
+        self.assertIn('"status": "scope_violation"', run_sym_forbid.stderr)
+
+        # Symlink to the root of a forbidden directory
+        run_sym_forbid_dir = run_scenario(
+            {'symlink': [{'link': 'src/dir-link', 'target': 'secret-dir'}]},
+            forbidden=('src/secret-dir/',),
+        )
+        self.assertEqual(run_sym_forbid_dir.returncode, 5, run_sym_forbid_dir.stderr)
+        self.assertIn('"status": "scope_violation"', run_sym_forbid_dir.stderr)
+
+        # Symlink to Git metadata is always forbidden by scoped approvals
+        run_sym_git = run_scenario({'symlink': [{'link': 'src/git-link', 'target': '../.git'}]}, forbidden=())
+        self.assertEqual(run_sym_git.returncode, 5, run_sym_git.stderr)
+        self.assertIn('"status": "scope_violation"', run_sym_git.stderr)
+
+        # Symlink loop / unresolvable target
+        run_sym_loop = run_scenario({'symlink': [{'link': 'src/loop.txt', 'target': 'loop.txt'}]})
+        self.assertEqual(run_sym_loop.returncode, 5, run_sym_loop.stderr)
+        self.assertIn('"status": "scope_violation"', run_sym_loop.stderr)
+
+        # HEAD changed during run
+        run_head = run_scenario({'write': [{'path': 'user.txt', 'content': 'head change\n'}],
+                                 'git_commit': 'illegal commit'})
+        self.assertEqual(run_head.returncode, 5, run_head.stderr)
+        self.assertIn('"status": "scope_violation"', run_head.stderr)
+
+        # Provider failure with out-of-scope modification reports scope_violation with provider_exit_code
+        action_prov_viol = {'write': [{'path': 'outside.txt', 'content': 'bad\n'}], 'exit_code': 3}
+        run_prov_viol = run_scenario(action_prov_viol)
+        self.assertEqual(run_prov_viol.returncode, 5, run_prov_viol.stderr)
+        self.assertIn('"status": "scope_violation"', run_prov_viol.stderr)
+        self.assertIn('"provider_exit_code": 3', run_prov_viol.stderr)
+
+        # Provider failure with clean scope reports provider_error with provider exit code
+        action_prov_clean = {'exit_code': 3}
+        run_prov_clean = run_scenario(action_prov_clean)
+        self.assertEqual(run_prov_clean.returncode, 3, run_prov_clean.stderr)
+        self.assertIn('"status": "provider_error"', run_prov_clean.stderr)
+        self.assertIn('"provider_exit_code": 3', run_prov_clean.stderr)
+
+        # Setup checks in catalog
+        self.git('reset', '--hard', head_commit)
+        self.git('clean', '-fdx')
+        checks_dir = self.workspace / '.agy-mc'
+        checks_dir.mkdir(exist_ok=True)
+        (checks_dir / 'checks.json').write_text(json.dumps({
+            'schema': 'agy-mc-checks.v1',
+            'checks': {
+                'fail_check': {'argv': [sys.executable, '-c', 'import sys; sys.exit(2)'], 'timeout_seconds': 30},
+                'missing_check': {'argv': ['nonexistent_binary_xyz_123'], 'timeout_seconds': 30},
+                'timeout_check': {'argv': [sys.executable, '-c', 'import time; time.sleep(5)'], 'timeout_seconds': 1},
+                'orphan_timeout_check': {
+                    'argv': [
+                        sys.executable,
+                        '-c',
+                        'import subprocess, sys, time; '
+                        'subprocess.Popen([sys.executable, "-c", '
+                        '"import time; from pathlib import Path; time.sleep(1.2); '
+                        'Path(\\"orphan-after-timeout.txt\\").write_text(\\"bad\\\\n\\")"]); '
+                        'time.sleep(5)',
+                    ],
+                    'timeout_seconds': 1,
+                },
+                'side_effect_fail': {
+                    'argv': [sys.executable, '-c', 'from pathlib import Path; Path("side_effect_outside.txt").write_text("bad\\n"); import sys; sys.exit(2)'],
+                    'timeout_seconds': 30,
+                },
+            }
+        }))
+        self.git('add', '.')
+        self.git('commit', '-qm', 'add check catalog')
+        checks_commit = self.git('rev-parse', 'HEAD').decode().strip()
+
+        # Update head_commit for checks scenarios
+        head_commit = checks_commit
+
+        # Required check failing (scope clean)
+        action_clean = {'write': [{'path': 'user.txt', 'content': 'clean\n'}]}
+        run_fail = run_scenario(action_clean, checks=('fail_check',))
+        self.assertEqual(run_fail.returncode, 5, run_fail.stderr)
+        self.assertIn('"status": "check_failed"', run_fail.stderr)
+
+        # Missing executable check
+        run_missing = run_scenario(action_clean, checks=('missing_check',))
+        self.assertEqual(run_missing.returncode, 5, run_missing.stderr)
+        self.assertIn('"status": "check_failed"', run_missing.stderr)
+        ev_match = re.search(r'"amc_evidence":\s*"([^"]+)"', run_missing.stderr)
+        self.assertIsNotNone(ev_match)
+        checks_data = json.loads((Path(ev_match.group(1)) / "checks.json").read_text(encoding='utf-8'))
+        self.assertEqual(checks_data["checks"][0]["exit_code"], 127)
+
+        # Timeout check
+        run_timeout = run_scenario(action_clean, checks=('timeout_check',))
+        self.assertEqual(run_timeout.returncode, 5, run_timeout.stderr)
+        self.assertIn('"status": "check_failed"', run_timeout.stderr)
+        ev_match_to = re.search(r'"amc_evidence":\s*"([^"]+)"', run_timeout.stderr)
+        self.assertIsNotNone(ev_match_to)
+        checks_data_to = json.loads((Path(ev_match_to.group(1)) / "checks.json").read_text(encoding='utf-8'))
+        self.assertEqual(checks_data_to["checks"][0]["exit_code"], 124)
+        self.assertTrue(checks_data_to["checks"][0]["timed_out"])
+
+        # Timed-out checks terminate their whole process group, including descendants.
+        run_orphan_timeout = run_scenario(action_clean, checks=('orphan_timeout_check',))
+        self.assertEqual(run_orphan_timeout.returncode, 5, run_orphan_timeout.stderr)
+        time.sleep(0.5)
+        self.assertFalse((self.workspace / 'orphan-after-timeout.txt').exists())
+
+        # Failed check that also creates an out-of-scope change reports scope_violation
+        run_side_effect = run_scenario(action_clean, checks=('side_effect_fail',))
+        self.assertEqual(run_side_effect.returncode, 5, run_side_effect.stderr)
+        self.assertIn('"status": "scope_violation"', run_side_effect.stderr)
+        self.assertIn('"failed_check": "side_effect_fail"', run_side_effect.stderr)
+
+    def test_matches_path_rule_literal_backslash(self):
+        from antigravity_mission_control.cli import matches_path_rule
+        # On Unix, literal backslash in a filename must not match directory rules
+        if os.name != 'nt':
+            self.assertFalse(matches_path_rule("src\\secret.txt", "src/"))
+            self.assertFalse(matches_path_rule("src\\secret.txt", "src/secret.txt"))
+            self.assertTrue(matches_path_rule("src/file.txt", "src/"))
+            self.assertTrue(matches_path_rule("src", "src/"))
+            self.assertTrue(matches_path_rule("src/file.txt", "src/file.txt"))
+
+    def test_required_checks_rejects_null_bytes(self):
+        self.init_repo()
+        checks_dir = self.workspace / '.agy-mc'
+        checks_dir.mkdir(exist_ok=True)
+        (checks_dir / 'checks.json').write_text(json.dumps({
+            'schema': 'agy-mc-checks.v1',
+            'checks': {
+                'nul_check': {'argv': ['echo', 'hello\0world'], 'timeout_seconds': 30}
+            }
+        }))
+        denied = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt', '--required-check', 'nul_check')
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn('null bytes', denied.stderr)
+
+    def test_scope_lineage_inheritance_and_validation(self):
+        self.init_repo()
+        checks_dir = self.workspace / '.agy-mc'
+        checks_dir.mkdir(exist_ok=True)
+        (checks_dir / 'checks.json').write_text(json.dumps({
+            'schema': 'agy-mc-checks.v1',
+            'checks': {
+                'ok_check': {'argv': ['true'], 'timeout_seconds': 60}
+            }
+        }))
+        self.git('add', '.')
+        self.git('commit', '-qm', 'add checks')
+
+        # 1. Create a scoped background job
+        # fake_agy returns conversation_id="fake-conversation"
+        parent_conv = "fake-conversation"
+        app = self.approval('--policy', 'balanced', '--allowed-path', 'user.txt',
+                            '--required-check', 'ok_check', '--conversation', parent_conv)
+        self.assertEqual(app.returncode, 0, app.stderr)
+        app_file = json.loads(app.stdout)['approval_file']
+        start = self.call('run', '--strategy', 'A', '--role', 'implementer', '--model', 'gemini-3.7-flash-high',
+                          '--cwd', str(self.workspace), '--mode', 'accept-edits', '--prompt-file', str(self.prompt),
+                          '--approval-file', app_file, '--background', '--conversation', parent_conv)
+        self.assertEqual(start.returncode, 0, start.stderr)
+        job_id = json.loads(start.stdout)['job_id']
+        wait = self.call('wait', job_id, '--timeout', '60s')
+        self.assertEqual(wait.returncode, 0, wait.stderr)
+
+        # Verify job metadata contains scope and exact recorded conversation_id
+        status = self.call('status', job_id)
+        job_meta = json.loads(status.stdout)
+        self.assertEqual(job_meta['conversation_id'], parent_conv)
+        self.assertIn('scope', job_meta)
+        self.assertEqual(job_meta['scope']['allowed_paths'], ['user.txt'])
+        self.assertEqual(job_meta['scope']['required_checks'][0]['id'], 'ok_check')
+
+        # 2. Correction approval inherits exact scope when flags omitted
+        corr_inherit = self.approval('--policy', 'balanced', '--correction-of', job_id,
+                                     '--conversation', parent_conv)
+        self.assertEqual(corr_inherit.returncode, 0, corr_inherit.stderr)
+        inherit_data = json.loads(corr_inherit.stdout)['binding']
+        self.assertEqual(inherit_data['allowed_paths'], ['user.txt'])
+        self.assertEqual(inherit_data['required_checks'][0]['id'], 'ok_check')
+
+        # 3. Supplying matching flags succeeds
+        corr_matching = self.approval('--policy', 'balanced', '--correction-of', job_id,
+                                      '--conversation', parent_conv,
+                                      '--allowed-path', 'user.txt', '--required-check', 'ok_check')
+        self.assertEqual(corr_matching.returncode, 0, corr_matching.stderr)
+
+        # 4. Attempting to widen or change scope fails
+        widen = self.approval('--policy', 'balanced', '--correction-of', job_id,
+                              '--conversation', parent_conv,
+                              '--allowed-path', 'user.txt', '--allowed-path', 'other.txt')
+        self.assertNotEqual(widen.returncode, 0)
+        self.assertIn('Correction cannot widen or change', widen.stderr)
+
+        # 5. Tampered job metadata scope is rejected against signed approval authority
+        job_meta_file = self.root / 'state/jobs' / job_id / 'job.json'
+        meta = json.loads(job_meta_file.read_text(encoding='utf-8'))
+        meta['scope']['allowed_paths'].append('forged_dir/')
+        job_meta_file.write_text(json.dumps(meta), encoding='utf-8')
+        tampered_corr = self.approval('--policy', 'balanced', '--correction-of', job_id,
+                                      '--conversation', parent_conv)
+        self.assertNotEqual(tampered_corr.returncode, 0)
+        self.assertIn('Parent job metadata scope does not match its signed approval manifest', tampered_corr.stderr)
+
+        # 6. Create an unscoped background job
+        self.git('reset', '--hard', 'HEAD')
+        self.git('clean', '-fdx')
+        unscoped_conv = "fake-conversation"
+        app_unscoped = self.approval('--policy', 'balanced', '--conversation', unscoped_conv)
+        self.assertEqual(app_unscoped.returncode, 0, app_unscoped.stderr)
+        app_unscoped_file = json.loads(app_unscoped.stdout)['approval_file']
+        start_unscoped = self.call('run', '--strategy', 'A', '--role', 'implementer', '--model', 'gemini-3.7-flash-high',
+                                   '--cwd', str(self.workspace), '--mode', 'accept-edits', '--prompt-file', str(self.prompt),
+                                   '--approval-file', app_unscoped_file, '--background', '--conversation', unscoped_conv)
+        self.assertEqual(start_unscoped.returncode, 0, start_unscoped.stderr)
+        unscoped_job_id = json.loads(start_unscoped.stdout)['job_id']
+        self.call('wait', unscoped_job_id, '--timeout', '60s')
+
+        # 7. Attempting to add scope to unscoped job fails
+        add_scope = self.approval('--policy', 'balanced', '--correction-of', unscoped_job_id,
+                                  '--conversation', unscoped_conv, '--allowed-path', 'user.txt')
+        self.assertNotEqual(add_scope.returncode, 0)
+        self.assertIn('Correction of an unscoped job cannot add scoped rules', add_scope.stderr)
 
 
 if __name__ == '__main__':

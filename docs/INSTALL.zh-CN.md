@@ -17,13 +17,13 @@ Mission Control 不读取、不复制 AGY OAuth 材料。首次安装 AGY 后仍
 先查看精确路径，不写入文件：
 
 ```bash
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --dry-run --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control install --dry-run --lang zh
 ```
 
 交互式安装：
 
 ```bash
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control install --lang zh
 ```
 
 已有 AGY 时，启动安装器会直接使用。没有 AGY 时，交互模式会询问是否运行 `https://antigravity.google/cli/install.sh` 提供的 Google 官方安装器。
@@ -31,7 +31,7 @@ npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git
 同时安装 AGY 与 Mission Control：
 
 ```bash
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --install-agy --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control install --install-agy --lang zh
 agy
 agy-mc doctor
 ```
@@ -41,7 +41,7 @@ agy-mc doctor
 非交互安装需要分别确认 Mission Control 修改和 AGY 安装：
 
 ```bash
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --yes --install-agy --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control install --yes --install-agy --lang zh
 ```
 
 如果自动化环境已经准备并登录 AGY，请省略 `--install-agy`。
@@ -61,9 +61,9 @@ npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git
 ## 更新与状态
 
 ```bash
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control status --lang zh
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control update --lang zh
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control doctor
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control status --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control update --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control doctor
 ```
 
 `update` 会先更新托管 Python 包，再原子部署内置 Skill，并把旧 Skill 保存为带时间戳的备份。
@@ -71,7 +71,7 @@ npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git
 ## 可恢复卸载
 
 ```bash
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control uninstall --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control uninstall --lang zh
 ```
 
 Skill 会移动到 Codex 备份目录；托管 Python 环境会在原位置旁改名为时间戳备份。用户自己的 AGY 设置、信任项、OAuth 状态和 Mission Control 任务证据都不会删除。
@@ -79,7 +79,7 @@ Skill 会移动到 Codex 备份目录；托管 Python 环境会在原位置旁�
 ## 直接使用 Python
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.2.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.3.0"
 agy-mc skill install --lang zh
 ```
 
