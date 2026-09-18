@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 - 2026-09-18
+
+- Make A lightweight and Flash-first, with lower Flash intensity for low-risk roles and GPT models last.
+- Make B quality-first while routing implementers to Gemini Flash before other providers; retain cross-family review when available.
+- Make C reuse B's quality objective while routing every AGY role to the newest Gemini Flash High model.
+- Keep exact-model approval and the separate non-High Gemini confirmation boundary; no package or registry publication is included.
+- Refresh the repository visuals with a graphite, off-white and safety-orange operational control-board system.
+- Update the terminal preview, interface plates, bilingual documentation and release cover to the v0.3.0 routing model.
+
 ## 0.2.0 - 2026-09-06
 
 - Route quota and existing-job requests directly without starting a roster workflow.

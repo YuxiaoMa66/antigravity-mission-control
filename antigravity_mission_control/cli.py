@@ -23,29 +23,34 @@ import uuid
 from pathlib import Path
 
 
+FLASH_LOW = r"gemini-.*flash-low$"
+FLASH_MEDIUM = r"gemini-.*flash-medium$"
+FLASH_HIGH = r"gemini-.*flash-high$"
+
+
 STRATEGY_PATTERNS = {
     "A": {
-        "scout": [r"gemini-.*flash-high$", r"gpt-oss", r"claude.*sonnet"],
-        "planner": [r"gemini-.*flash-high$", r"claude.*sonnet", r"gemini-.*pro-high$", r"claude.*opus"],
-        "implementer": [r"claude.*sonnet", r"gemini-.*flash-high$", r"gemini-.*pro-high$", r"gpt-oss", r"claude.*opus"],
-        "reviewer": [r"gpt-oss", r"gemini-.*pro-high$", r"claude.*sonnet", r"claude.*opus", r"gemini-.*flash-high$"],
+        "scout": [FLASH_LOW, FLASH_MEDIUM, FLASH_HIGH, r"claude.*sonnet", r"gemini-.*pro-high$", r"claude.*opus", r"gpt-oss"],
+        "planner": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, r"claude.*sonnet", r"gemini-.*pro-high$", r"claude.*opus", r"gpt-oss"],
+        "implementer": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, r"gemini-.*pro-high$", r"claude.*sonnet", r"claude.*opus", r"gpt-oss"],
+        "reviewer": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, r"gemini-.*pro-high$", r"claude.*sonnet", r"claude.*opus", r"gpt-oss"],
     },
     "B": {
-        "scout": [r"claude.*opus", r"gemini-.*pro-high$", r"claude.*sonnet", r"gemini-.*flash-high$"],
-        "planner": [r"claude.*opus", r"gemini-.*pro-high$", r"claude.*sonnet", r"gemini-.*flash-high$"],
-        "implementer": [r"claude.*opus", r"gemini-.*pro-high$", r"claude.*sonnet", r"gemini-.*flash-high$"],
-        "reviewer": [r"claude.*opus", r"gemini-.*pro-high$", r"claude.*sonnet", r"gpt-oss", r"gemini-.*flash-high$"],
+        "scout": [r"claude.*opus", r"gemini-.*pro-high$", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],
+        "planner": [r"claude.*opus", r"gemini-.*pro-high$", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],
+        "implementer": [FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gemini-.*pro-high$", r"claude.*opus", r"claude.*sonnet", r"gpt-oss"],
+        "reviewer": [r"claude.*opus", r"gemini-.*pro-high$", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],
     },
     "C": {
-        "scout": [r"gemini-.*flash-high$"],
-        "planner": [r"gemini-.*flash-high$"],
-        "implementer": [r"gemini-.*flash-high$"],
-        "reviewer": [r"gemini-.*flash-high$"],
+        "scout": [FLASH_HIGH],
+        "planner": [FLASH_HIGH],
+        "implementer": [FLASH_HIGH],
+        "reviewer": [FLASH_HIGH],
     },
 }
 
 ROLES = tuple(STRATEGY_PATTERNS["A"])
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 AGY_BIN = os.environ.get("AGY_MC_BIN", os.environ.get("AGY_ORCHESTRATOR_BIN", "agy"))
 SETTINGS_PATH = Path(
     os.environ.get(
@@ -555,11 +560,16 @@ def ensure_workspace_trusted(workspace: Path, mode: str, approved: bool) -> bool
 
 
 def select_model(role: str, models: list[dict[str, str]], avoid_family: str | None = None, strategy: str = "A") -> str:
-    candidates = [m for m in models if not is_non_high_gemini(m["id"])]
+    candidates = [
+        m for m in models
+        if not is_non_high_gemini(m["id"])
+        or re.search(FLASH_LOW, m["id"], re.IGNORECASE)
+        or re.search(FLASH_MEDIUM, m["id"], re.IGNORECASE)
+    ]
     if strategy == "C":
         if avoid_family:
             raise RuntimeError("Strategy C does not support --avoid-family; every AGY call must use Gemini")
-        candidates = [m for m in candidates if re.search(r"gemini-.*flash-high$", m["id"], re.IGNORECASE)]
+        candidates = [m for m in candidates if re.search(FLASH_HIGH, m["id"], re.IGNORECASE)]
         if not candidates:
             raise RuntimeError("Strategy C is unavailable: no Gemini Flash High model is currently available")
     if avoid_family:

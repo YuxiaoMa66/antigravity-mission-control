@@ -2,7 +2,7 @@
 
 ## Confirmation gate
 
-For a new strict assignment, use read-only scope inspection, model discovery, and `agy-mc workspace --cwd <path>` to draft exactly three complete role/model rosters: A recommended/cost-effective, B best result, and C all AGY calls on the latest Gemini Flash High. Include AGY and Codex roles when useful. Present the executor, exact model, responsibility, and access for every role in each option, then wait for the user to select or revise one. The access cell must name both filesystem scope and execution profile. Standard permission handling is the default; unrestricted execution requires a concrete need and separate explicit confirmation. If the workspace is untrusted, disclose the exact trust mutation and request separate approval.
+For a new strict assignment, use read-only scope inspection, model discovery, and `agy-mc workspace --cwd <path>` to draft exactly three complete role/model rosters: A lightweight and Flash-first, B quality-first with a Flash-first implementer, and C the B-quality roster with every AGY call on the latest Gemini Flash High. Include AGY and Codex roles when useful. Present the executor, exact model, responsibility, and access for every role in each option, then wait for the user to select or revise one. The access cell must name both filesystem scope and execution profile. Standard permission handling is the default; unrestricted execution requires a concrete need and separate explicit confirmation. If the workspace is untrusted, disclose the exact trust mutation and request separate approval.
 
 Approval is roster-specific. A replacement model, added role, executor change, broader write scope, or execution-profile change requires reconfirmation of the affected entry. After approval, create a short-lived `agy-mc approve` manifest and pin every AGY run to the approved slug. Roster approval alone never authorizes `--dangerously-skip-permissions`; an unrestricted manifest requires both `--permission-profile unrestricted` and the separate `--unrestricted-confirmed` assertion.
 
@@ -14,18 +14,18 @@ Use the following structure whenever the three-roster gate applies. Do not repla
 Objective: <one sentence>
 Catalog: <agy-mc models check time and model count>
 
-### A: Recommended
-Intent: smallest adequate team and best project-specific quality/cost balance
+### A: Lightweight Flash-first
+Intent: smallest adequate team, Gemini Flash at role-appropriate intensity, and GPT as the final fallback
 | Role | Executor | Exact model | Responsibility | Filesystem scope | Execution profile |
 | ...  | ...      | ...         | ...            | ...              | plan|accept-edits |
 Tradeoff: <specific cost, latency and review-independence effect>
 
-### B: Best result
-Intent: strongest suitable roles and cross-family review when available
+### B: Quality-first Flash implementer
+Intent: strongest suitable planning and review, Gemini Flash first for implementation, and GPT as the final fallback
 <same table and tradeoff fields>
 
-### C: Gemini Flash High
-Intent: every AGY call uses the newest exact gemini-.*flash-high slug
+### C: Quality-first Gemini Flash High
+Intent: keep B's quality objective and use the newest exact gemini-.*flash-high slug for every AGY call
 <same table and tradeoff fields>
 
 Reply with A, B or C, or name the entries you want changed. No worker has been dispatched.

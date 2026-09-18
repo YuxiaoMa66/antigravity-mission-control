@@ -32,10 +32,10 @@ SCREENS = (
     Screen('guided-install.svg', 'Install with intent.', 'Inspect the exact target before installing the CLI and skill.', 'install', (
         Line('$ npx antigravity-mission-control@latest install --dry-run', 'prompt'),
         Line('', 'text'),
-        Line('CLI version       0.2.0', 'text'),
+        Line('CLI version       0.3.0', 'text'),
         Line('Skill target      ~/.codex/skills/antigravity-mission-control', 'text'),
         Line('Runtime           ~/.local/share/antigravity-mission-control/venv', 'text'),
-        Line('Source tag        v0.2.0', 'text'),
+        Line('Source tag        v0.3.0', 'text'),
         Line('', 'text'),
         Line('$ npx antigravity-mission-control@latest install', 'prompt'),
         Line('', 'text'),
@@ -68,9 +68,9 @@ SCREENS = (
     )),
     Screen('roster-selection.svg', 'Choose the right team.', 'Strict is the default. Balanced is an explicit user choice.', 'assignment policy', (
         Line('STRICT-YUXIAO', 'accent'),
-        Line('A   Smallest adequate team', 'text'),
-        Line('B   Capability and independent review', 'text'),
-        Line('C   Latest available Gemini Flash High', 'text'),
+        Line('A   Lightweight Flash-first team', 'text'),
+        Line('B   Quality-first Flash implementer', 'text'),
+        Line('C   Every role on Gemini Flash High', 'text'),
         Line('', 'text'),
         Line('BALANCED', 'accent'),
         Line('One exact assignment for approval', 'text'),
@@ -130,30 +130,38 @@ SCREENS = (
 )
 
 PALETTE = {
-    "text": "#dce5e9", "heading": "#f3f7f8", "prompt": "#79d8e2",
-    "accent": "#79d8e2", "success": "#79d8e2", "muted": "#9cabb2", "dim": "#3b4a52",
+    "text": "#d8d4ca", "heading": "#f2eee5", "prompt": "#e6a15d",
+    "accent": "#e6a15d", "success": "#c7d5b7", "muted": "#a4a59c", "dim": "#555b53",
 }
 
 
 def render(screen: Screen) -> str:
     rows = []
-    y = 254
-    for line in screen.lines:
-        rows.append(f'<text x="72" y="{y}" fill="{PALETTE[line.tone]}">{escape(line.text)}</text>')
+    y = 286
+    for index, line in enumerate(screen.lines, start=1):
+        rows.append(f'<text x="92" y="{y}" fill="{PALETTE["dim"]}">{index:02d}</text>')
+        rows.append(f'<text x="142" y="{y}" fill="{PALETTE[line.tone]}">{escape(line.text)}</text>')
         y += 34
     content = "\n".join(rows)
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" role="img" aria-labelledby="title desc">
 <title id="title">{escape(screen.title)}</title>
 <desc id="desc">{escape(screen.description)} Illustrative command and field excerpts, not a live screenshot.</desc>
-<rect width="1280" height="800" rx="20" fill="#10191e"/>
-<rect x="48" y="48" width="5" height="96" fill="#79d8e2"/>
-<text x="72" y="88" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" letter-spacing="-1" fill="#f3f7f8">{escape(screen.title)}</text>
-<text x="72" y="133" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#acbbc2">{escape(screen.description)}</text>
-<rect x="48" y="182" width="1184" height="524" rx="10" fill="#162229" stroke="#2d3e47"/>
-<text x="72" y="215" font-family="Menlo, monospace" font-size="17" fill="#9cabb2">{escape(screen.tab)}</text>
-<g xml:space="preserve" font-family="Menlo, Consolas, monospace" font-size="21">{content}</g>
-<text x="72" y="756" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#9cabb2">Antigravity Mission Control  /  v0.2.0</text>
-<text x="1208" y="756" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#9cabb2">Illustrative commands and fields</text>
+<rect width="1280" height="800" rx="12" fill="#141615"/>
+<path d="M48 48H1232M48 748H1232" stroke="#30352f"/>
+<rect x="64" y="48" width="7" height="94" fill="#e6a15d"/>
+<text x="92" y="76" font-family="Menlo, Consolas, monospace" font-size="15" letter-spacing="2" fill="#e6a15d">MISSION CONTROL  /  V0.3.0</text>
+<text x="92" y="122" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" letter-spacing="-1.2" fill="#f2eee5">{escape(screen.title)}</text>
+<text x="92" y="162" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#a4a59c">{escape(screen.description)}</text>
+<text x="1232" y="76" text-anchor="end" font-family="Menlo, Consolas, monospace" font-size="14" letter-spacing="1.4" fill="#a4a59c">OPERATIONAL EVIDENCE PLATE</text>
+<rect x="64" y="208" width="1152" height="502" rx="8" fill="#20231f" stroke="#454a42"/>
+<rect x="64" y="208" width="8" height="502" fill="#e6a15d"/>
+<text x="92" y="244" font-family="Menlo, Consolas, monospace" font-size="16" fill="#a4a59c">{escape(screen.tab)}</text>
+<rect x="978" y="222" width="210" height="32" rx="6" fill="#2b302a" stroke="#555b53"/>
+<text x="1083" y="243" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="13" letter-spacing="1" fill="#e6a15d">ROUTE / GUARD / VERIFY</text>
+<path d="M92 260H1188" stroke="#343a33"/>
+<g xml:space="preserve" font-family="Menlo, Consolas, monospace" font-size="20">{content}</g>
+<text x="92" y="774" font-family="Menlo, Consolas, monospace" font-size="14" letter-spacing="1" fill="#a4a59c">ANTIGRAVITY MISSION CONTROL  /  STATIC ILLUSTRATION</text>
+<text x="1232" y="774" text-anchor="end" font-family="Menlo, Consolas, monospace" font-size="14" fill="#a4a59c">TEXT AND VALUES ARE EXAMPLES</text>
 </svg>
 '''
 

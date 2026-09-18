@@ -3,17 +3,19 @@
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10%2B-7c3aed" alt="Python 3.10+">
-  <img src="https://img.shields.io/badge/Node.js-18%2B-0891b2" alt="Node.js 18+">
-  <img src="https://img.shields.io/badge/AGY-tested_1.1.27-22d3ee" alt="AGY tested 1.1.27">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a78bfa" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/Python-3.10%2B-4b5048" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/Node.js-18%2B-6f756c" alt="Node.js 18+">
+  <img src="https://img.shields.io/badge/AGY-tested_1.2.6-e6a15d" alt="AGY tested 1.2.6">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b9188" alt="MIT License"></a>
 </p>
 
 面向 Antigravity CLI（`agy`）的策略化任务控制层：将工作路由到精确模型，把批准绑定到具体任务，串行保护编辑 worker，确认取消结果并实时查看额度；最终验收始终由 Codex 负责。
 
-<!-- <p align="center"><img src="assets/release-v0.2.0.png" width="920" alt="Mission Control 终端界面预览"></p> -->
+<p align="center"><img src="assets/release-v0.3.0.svg" width="920" alt="Antigravity Mission Control v0.3.0 操作控制板"></p>
 
-> **v0.2：** 支持策略编排与独立验收，权限和运行限制见下文。本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
+> **v0.3.0：** Flash 优先路由、质量优先的实现方案，以及 C 方案全角色 Gemini Flash High。
+>
+> 已审查的源码 tag 已推送到 GitHub；npm registry 发布是另一件事，本次不包含。本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
 
 ## 直接把本页交给 Agent 安装
 
@@ -24,7 +26,7 @@
 
 1. 检查 `agy` 是否已经安装并完成登录。
 2. 向我展示将执行的精确命令和目标路径，等我确认后再继续。
-3. 如果 AGY 已经可用，通过下方 Git tag 命令安装 v0.2.0。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
+3. 如果 AGY 已经可用，通过下方 Git tag 命令安装 v0.3.0。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
 4. 运行 `agy-mc doctor`，然后报告安装版本和路径。
 5. 开始委派项目任务前，使用当前可用的精确模型 slug 向我展示 A/B/C 三套阵容，等我选择后再执行。
 
@@ -35,7 +37,7 @@ Agent 会阅读本页的安装步骤和安全边界，完成检查后回报结�
 
 ## 看看实际操作界面
 
-以下为 v0.2.0 命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
+以下为 v0.3.0 命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
 
 <table>
   <tr>
@@ -81,11 +83,11 @@ Mission Control 会先读取当前 AGY 模型目录，再提出阵容。每套�
 
 | 方案 | 阵容设计 | 适合场景 | 取舍 |
 |---|---|---|---|
-| A：推荐方案 | 使用能够完成任务的最小团队。高效率模型负责实现；增加一次 AGY 调用帮助不大时，由 Codex 保留规划或审核职责。 | 日常开发、边界明确的修改和需要节省额度的任务 | 在质量和消耗之间取得平衡，独立模型复核次数较少 |
-| B：最佳结果 | 使用最强的合适 planner 和 implementer，并优先安排不同模型家族的 reviewer。 | 设计模糊、大范围修改、安全敏感任务和返工代价高的项目 | 使用更多额度和时间，换取更深入的规划与独立检查 |
-| C：Gemini Flash High | 所有 AGY 角色都使用当前最新且匹配 `gemini-.*flash-high` 的精确 slug。审核通过独立会话和对抗提示分离。 | 快速迭代、保持 Gemini 行为一致，或者希望优先消耗 Gemini 额度 | 速度快、模型一致；由于 AGY 调用属于同一模型家族，审核独立性主要依靠流程设计 |
+| A：轻量 Flash 优先 | 使用能够完成任务的最小团队，按角色风险优先选择合适强度的 Gemini Flash；GPT 放在最后。 | 日常开发、边界明确的修改和需要节省额度的任务 | 成本和延迟较低，独立模型复核次数较少 |
+| B：质量优先，implementer 用 Flash | 保持较强的规划和审核，但 implementer 优先使用 Gemini Flash；GPT 放在最后。 | 设计模糊、大范围修改、安全敏感任务和返工代价高的项目 | 使用更多额度和时间，换取更深入的规划与独立检查 |
+| C：质量优先，全部 Gemini Flash High | 沿用 B 的质量目标，但所有 AGY 角色都使用当前最新的 `gemini-.*flash-high` 精确 slug。 | 需要质量和速度，同时希望统一使用 Gemini 的任务 | 所有 AGY 调用属于同一模型家族，审核独立性主要依靠独立会话、对抗提示和 Codex 验收 |
 
-这三套方案是动态路由规则，不是永久模型名单，也不是模型排行榜。Mission Control 在运行时读取 `agy-mc models`，并固定你批准的精确 slug。模型、角色、写入范围或权限配置发生变化时，需要重新确认。Gemini medium 和 low 还需要单独授权；默认 Gemini 路由只使用 High。
+这三套方案是动态路由规则，不是永久模型名单，也不是模型排行榜。Mission Control 在运行时读取 `agy-mc models`，并固定你批准的精确 slug。A、B 可以为低强度任务提出 Gemini Flash medium 或 low；实际批准仍需要单独确认非 High Gemini。C 始终使用 High。模型、角色、写入范围或权限配置发生变化时，需要重新确认。
 
 安装后的 Skill 会按照上面“阵容选择”和“修改确认”图片中的相同字段顺序输出。阵容提案最后要求明确选择 A/B/C；修改时暂停受影响的条目，列出已批准值、拟修改值、原因、范围影响和审核独立性影响，然后重新请求确认。
 
@@ -96,13 +98,13 @@ Mission Control 会先读取当前 AGY 模型目录，再提出阵容。每套�
 ```bash
 agy --version
 agy
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control install --lang zh
 ```
 
 还没有 AGY：让安装器先调用 Google 官方安装器：
 
 ```bash
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --install-agy --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control install --install-agy --lang zh
 ```
 
 交互安装检测不到 AGY 时会先询问；非交互安装必须明确增加 `--install-agy`。新装 AGY 后运行 `agy` 完成 Google 登录。Mission Control 不读取、不复制登录材料。
@@ -110,15 +112,15 @@ npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git
 安装器会先展示所有目标，再创建私有 Python 运行环境、安装 `agy-mc`、部署 Codex Skill。全程使用参数数组，不使用 shell 拼接。CI 或 agent 环境需要加 `--yes`；可以先用 `--dry-run` 查看影响。
 
 ```bash
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --dry-run --lang zh
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --yes --lang zh
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control status --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control install --dry-run --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control install --yes --lang zh
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control status --lang zh
 ```
 
 也支持直接使用 Python：
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.2.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.3.0"
 agy-mc skill install --lang zh
 agy-mc doctor
 ```
@@ -153,16 +155,17 @@ agy-mc usage --format json
 ```bash
 agy-mc approve \
   --policy strict --three-rosters-presented \
-  --strategy A --role implementer --model gemini-3.7-flash-high \
+  --strategy A --role implementer --model gemini-3.8-flash-medium \
   --cwd /absolute/project --prompt-file /private/prompt.txt \
-  --mode accept-edits --expires-minutes 60 --confirmed
+  --mode accept-edits --expires-minutes 60 \
+  --non-high-gemini-confirmed --confirmed
 ```
 
 将返回的文件传给 `run`。本机 HMAC 会绑定策略、角色、模型、规范工作区、prompt 哈希、模式、权限配置、会话和过期时间；任何字段变化都会拒绝执行。
 
 ```bash
 agy-mc run \
-  --strategy A --role implementer --model gemini-3.7-flash-high \
+  --strategy A --role implementer --model gemini-3.8-flash-medium \
   --cwd /absolute/project --prompt-file /private/prompt.txt \
   --mode accept-edits --approval-file ~/.local/state/antigravity-mission-control/approvals/<id>.json
 ```

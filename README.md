@@ -3,17 +3,19 @@
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10%2B-7c3aed" alt="Python 3.10+">
-  <img src="https://img.shields.io/badge/Node.js-18%2B-0891b2" alt="Node.js 18+">
-  <img src="https://img.shields.io/badge/AGY-tested_1.1.27-22d3ee" alt="AGY tested 1.1.27">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a78bfa" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/Python-3.10%2B-4b5048" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/Node.js-18%2B-6f756c" alt="Node.js 18+">
+  <img src="https://img.shields.io/badge/AGY-tested_1.2.6-e6a15d" alt="AGY tested 1.2.6">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b9188" alt="MIT License"></a>
 </p>
 
 Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota. Codex remains responsible for acceptance.
 
-<!-- <p align="center"><img src="assets/release-v0.2.0.png" width="920" alt="Antigravity Mission Control v0.2.0 release cover"></p> -->
+<p align="center"><img src="assets/release-v0.3.0.svg" width="920" alt="Antigravity Mission Control v0.3.0 operational control board"></p>
 
-> **v0.2:** policy-aware orchestration with independently reviewed worker output; permission limits are documented below. Independent community project; not affiliated with Google or Antigravity.
+> **v0.3.0:** Flash-first routing for practical work, quality-first implementation when it matters, and Gemini Flash High across every AGY role in C.
+>
+> The reviewed source tag is available on GitHub. npm registry publication is separate and is not included. Independent community project; not affiliated with Google or Antigravity.
 
 ## Hand this page to your agent
 
@@ -24,7 +26,7 @@ Open and read https://github.com/YuxiaoMa66/antigravity-mission-control before m
 
 1. Check whether `agy` is installed and signed in.
 2. Show me the exact commands and target paths, then wait for my confirmation.
-3. If AGY is ready, install v0.2.0 from the Git tag using the command below. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
+3. If AGY is ready, install v0.3.0 from the Git tag using the command below. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
 4. Run `agy-mc doctor` and report the installed versions and paths.
 5. Before delegating project work, show me the A/B/C roster choices with exact available model slugs and wait for my selection.
 
@@ -35,7 +37,7 @@ The agent reads the same installation and security boundaries you see on this pa
 
 ## See the flight deck
 
-These v0.2.0 illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
+These v0.3.0 illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
 
 <table>
   <tr>
@@ -81,11 +83,11 @@ Mission Control discovers the current AGY model catalog before proposing a roste
 
 | Strategy | Team design | Best fit | Tradeoff |
 |---|---|---|---|
-| A: Recommended | Uses the smallest adequate team. Efficient models handle implementation; Codex keeps planning or review work when another AGY call adds little value. | Routine development, bounded changes and quota-aware work | Best quality/cost balance, with fewer independent model passes |
-| B: Best result | Uses the strongest suitable planner and implementer, then prefers a reviewer from another model family. | Ambiguous design, large changes, security-sensitive work and costly mistakes | More quota and time in exchange for deeper planning and independent checking |
-| C: Gemini Flash High | Routes every AGY role to the newest available exact slug matching `gemini-.*flash-high`. Separate conversations and adversarial prompts provide review separation. | Fast iteration, consistent Gemini behavior and users who want to spend Gemini quota | Fast and consistent, but reviewer diversity comes from process because all AGY calls stay in one model family |
+| A: Lightweight Flash-first | Uses the smallest adequate team and prefers Gemini Flash at role-appropriate intensity; GPT stays last. | Routine development, bounded changes and quota-aware work | Lower cost and latency, with fewer independent model passes |
+| B: Quality-first Flash implementer | Keeps the strongest planning and review available, but sends implementation to Gemini Flash first and keeps GPT last. | Ambiguous design, large changes, security-sensitive work and costly mistakes | More quota and time in exchange for deeper planning and independent checking |
+| C: Quality-first Gemini Flash High | Keeps B's quality objective while routing every AGY role to the newest exact `gemini-.*flash-high` slug. | Quality-focused Gemini work with consistent, fast routing | Review diversity comes from separate conversations and Codex verification because all AGY calls share one model family |
 
-These strategies are routing rules, not permanent model lists or benchmark rankings. Mission Control reads `agy-mc models` at run time and pins the exact slug you approve. A changed model, role, write scope or permission profile requires confirmation again. Gemini medium and low variants also require a separate exception; the default Gemini route uses High.
+These strategies are routing rules, not permanent model lists or benchmark rankings. Mission Control reads `agy-mc models` at run time and pins the exact slug you approve. A and B may propose Gemini Flash medium or low for lower-intensity work; actual approval still requires the separate non-High Gemini confirmation. C always uses High. A changed model, role, write scope or permission profile requires confirmation again.
 
 The installed Skill uses the same field order shown in the roster selection and change-confirmation images above. A roster proposal ends with an explicit A/B/C choice. A modification pauses the affected entry and shows the approved value, proposed value, reason, scope impact and review-independence impact before asking again.
 
@@ -96,13 +98,13 @@ Already have AGY? Verify it, launch it once to finish Google sign-in, then insta
 ```bash
 agy --version
 agy
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control install
 ```
 
 No AGY yet? The installer can fetch Google's official installer first:
 
 ```bash
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --install-agy
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control install --install-agy
 ```
 
 Interactive installation asks before adding AGY when it is missing. Non-interactive installation requires the explicit `--install-agy` flag. After a fresh AGY install, run `agy` to complete Google sign-in. Mission Control never reads or copies that login state.
@@ -110,15 +112,15 @@ Interactive installation asks before adding AGY when it is missing. Non-interact
 The bootstrapper shows every target before writing, creates a private managed Python environment, installs `agy-mc`, deploys the Codex Skill, and runs without shell interpolation. For CI or agents, add `--yes`; inspect first with `--dry-run`.
 
 ```bash
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --dry-run
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control install --yes
-npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.2.0' antigravity-mission-control status
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control install --dry-run
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control install --yes
+npx --package='git+https://github.com/YuxiaoMa66/antigravity-mission-control.git#v0.3.0' antigravity-mission-control status
 ```
 
 Direct Python installation is also supported:
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.2.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.3.0"
 agy-mc skill install
 agy-mc doctor
 ```
@@ -153,16 +155,17 @@ After the user approves the exact roster and permission profile, create a short-
 ```bash
 agy-mc approve \
   --policy strict --three-rosters-presented \
-  --strategy A --role implementer --model gemini-3.7-flash-high \
+  --strategy A --role implementer --model gemini-3.8-flash-medium \
   --cwd /absolute/project --prompt-file /private/prompt.txt \
-  --mode accept-edits --expires-minutes 60 --confirmed
+  --mode accept-edits --expires-minutes 60 \
+  --non-high-gemini-confirmed --confirmed
 ```
 
 Pass the returned file to `run`. The machine-local HMAC binds strategy, role, model, canonical workspace, prompt hash, mode, permission profile, conversation and expiration. Changing any bound field invalidates the run.
 
 ```bash
 agy-mc run \
-  --strategy A --role implementer --model gemini-3.7-flash-high \
+  --strategy A --role implementer --model gemini-3.8-flash-medium \
   --cwd /absolute/project --prompt-file /private/prompt.txt \
   --mode accept-edits --approval-file ~/.local/state/antigravity-mission-control/approvals/<id>.json
 ```

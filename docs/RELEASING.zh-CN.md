@@ -4,8 +4,8 @@
 
 Mission Control 在两个生态中使用不同的合法版本格式：
 
-- Python 与 Git tag：`0.2.0` / `v0.2.0`
-- npm SemVer：`0.2.0`
+- Python 与 Git tag：`0.3.0` / `v0.3.0`
+- npm SemVer：`0.3.0`
 
 它们代表同一个版本。每次发布必须同步更新 `VERSION`、`__version__`、`pyproject.toml`、`package.json`、npm bootstrap 常量、CHANGELOG 和发布说明。
 
@@ -28,7 +28,7 @@ git status --short
 ## 发布顺序
 
 1. 将审查后的 `main` 提交推送到 GitHub。
-2. 在同一提交创建 `v0.2.0` tag。
+2. 在同一提交创建 `v0.3.0` tag。
 3. 使用双语说明创建 GitHub Release。
 4. 在隔离环境验证从该 tag 安装。
 5. 执行 `npm publish --tag latest --access public`。

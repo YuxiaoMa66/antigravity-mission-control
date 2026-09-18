@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "antigravity-mission-control"
-version = "0.2.0"
+version = "0.3.0"
 description = "Policy-aware orchestration and quota telemetry for the Antigravity CLI"
 readme = "README.md"
 requires-python = ">=3.10"

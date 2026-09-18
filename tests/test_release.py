@@ -18,12 +18,12 @@ class ReleaseIntegrityTests(unittest.TestCase):
         package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         npm_cli = (ROOT / "npm" / "cli.mjs").read_text(encoding="utf-8")
-        self.assertEqual(cli.VERSION, "0.2.0")
+        self.assertEqual(cli.VERSION, "0.3.0")
         self.assertEqual(__version__, cli.VERSION)
-        self.assertIn('version = "0.2.0"', pyproject)
-        self.assertEqual(package["version"], "0.2.0")
-        self.assertIn("const VERSION = '0.2.0'", npm_cli)
-        self.assertIn("const PYTHON_VERSION = '0.2.0'", npm_cli)
+        self.assertIn('version = "0.3.0"', pyproject)
+        self.assertEqual(package["version"], "0.3.0")
+        self.assertIn("const VERSION = '0.3.0'", npm_cli)
+        self.assertIn("const PYTHON_VERSION = '0.3.0'", npm_cli)
         self.assertIn("assets/", package["files"])
         self.assertIn('skill_bundle/**/__pycache__/*', pyproject)
 
@@ -38,6 +38,7 @@ class ReleaseIntegrityTests(unittest.TestCase):
             ("docs/releases/v0.1.0a3.md", "docs/releases/v0.1.0a3.zh-CN.md"),
             ("docs/releases/v0.1.0a4.md", "docs/releases/v0.1.0a4.zh-CN.md"),
             ("docs/releases/v0.2.0.md", "docs/releases/v0.2.0.zh-CN.md"),
+            ("docs/releases/v0.3.0.md", "docs/releases/v0.3.0.zh-CN.md"),
         )
         for english, chinese in pairs:
             with self.subTest(english=english):
@@ -92,6 +93,28 @@ class ReleaseIntegrityTests(unittest.TestCase):
             for asset in assets:
                 with self.subTest(readme=readme_name, asset=asset):
                     self.assertIn(f'assets/interfaces/{asset}', text)
+
+    def test_current_release_assets_and_install_refs(self):
+        self.assertTrue((ROOT / "assets" / "release-v0.3.0.svg").is_file())
+        self.assertTrue((ROOT / "docs" / "visual-design-v0.3.0.md").is_file())
+        for document_name in (
+            "README.md",
+            "README.zh-CN.md",
+            "docs/INSTALL.md",
+            "docs/INSTALL.zh-CN.md",
+            "docs/RELEASING.md",
+            "docs/RELEASING.zh-CN.md",
+            "docs/releases/v0.3.0.md",
+            "docs/releases/v0.3.0.zh-CN.md",
+        ):
+            text = (ROOT / document_name).read_text(encoding="utf-8")
+            with self.subTest(document=document_name):
+                self.assertIn("v0.3.0", text)
+                self.assertNotIn("v0.2.0", text)
+        for readme_name in ("README.md", "README.zh-CN.md"):
+            text = (ROOT / readme_name).read_text(encoding="utf-8")
+            self.assertIn("assets/release-v0.3.0.svg", text)
+            self.assertNotIn("release-v0.2.0.png", text)
 
 
 if __name__ == "__main__":
