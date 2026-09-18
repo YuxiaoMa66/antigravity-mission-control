@@ -11,11 +11,11 @@
 
 面向 Antigravity CLI（`agy`）的策略化任务控制层：将工作路由到精确模型，把批准绑定到具体任务，串行保护编辑 worker，确认取消结果并实时查看额度；最终验收始终由 Codex 负责。
 
-<p align="center"><img src="assets/release-v0.3.0.svg" width="920" alt="Antigravity Mission Control v0.3.0 操作控制板"></p>
+<p align="center"><img src="assets/release-v0.3.1.svg" width="920" alt="Antigravity Mission Control v0.3.1 操作控制板"></p>
 
-> **v0.3.0：** Flash 优先路由、质量优先的实现方案，以及 C 方案全角色 Gemini Flash High。
+> **v0.3.1：** GitHub 与 npm 协调发布的修订版本：修正 Agent 交接说明、稳定安装命令并同步全部版本元数据。运行时路由行为保持 v0.3.0 的 Flash 优先设计。
 >
-> v0.3.0 的已审查源码 tag 和 npm 包都已发布。本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
+> v0.3.1 的已审查源码 tag、GitHub Release 和 npm 包都已发布。本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
 
 ## 直接把本页交给 Agent 安装
 
@@ -26,18 +26,20 @@
 
 1. 检查 `agy` 是否已经安装并完成登录。
 2. 向我展示将执行的精确命令和目标路径，等我确认后再继续。
-3. 如果 AGY 已经可用，使用 `npx antigravity-mission-control@latest install` 安装稳定版；需要固定版本时使用 `@0.3.0`。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
+3. 如果 AGY 已经可用，使用 `npx antigravity-mission-control@latest install` 安装稳定版；需要固定版本时使用 `@0.3.1`。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
 4. 运行 `agy-mc doctor`，然后报告安装版本和路径。
 5. 开始委派项目任务前，使用当前可用的精确模型 slug 向我展示 A/B/C 三套阵容，等我选择后再执行。
 
 把 workspace trust 和 unrestricted 权限当作两项独立操作。没有我的批准，不要增加其中任何一项。
+
+保留 Codex 的最终验收权；AGY worker 只能在已批准范围内执行。
 ```
 
 Agent 会阅读本页的安装步骤和安全边界，完成检查后回报结果。你不需要自己把 README 翻译成一串终端命令。
 
 ## 看看实际操作界面
 
-以下为 v0.3.0 命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
+以下为 v0.3.1 命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
 
 <table>
   <tr>
@@ -120,7 +122,7 @@ npx antigravity-mission-control@latest status --lang zh
 也支持直接使用 Python：
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.3.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.3.1"
 agy-mc skill install --lang zh
 agy-mc doctor
 ```

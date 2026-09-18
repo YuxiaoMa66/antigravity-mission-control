@@ -50,7 +50,7 @@ STRATEGY_PATTERNS = {
 }
 
 ROLES = tuple(STRATEGY_PATTERNS["A"])
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 AGY_BIN = os.environ.get("AGY_MC_BIN", os.environ.get("AGY_ORCHESTRATOR_BIN", "agy"))
 SETTINGS_PATH = Path(
     os.environ.get(

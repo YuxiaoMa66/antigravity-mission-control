@@ -11,11 +11,11 @@
 
 Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota. Codex remains responsible for acceptance.
 
-<p align="center"><img src="assets/release-v0.3.0.svg" width="920" alt="Antigravity Mission Control v0.3.0 operational control board"></p>
+<p align="center"><img src="assets/release-v0.3.1.svg" width="920" alt="Antigravity Mission Control v0.3.1 operational control board"></p>
 
-> **v0.3.0:** Flash-first routing for practical work, quality-first implementation when it matters, and Gemini Flash High across every AGY role in C.
+> **v0.3.1:** Coordinated GitHub and npm patch release: corrected agent handoff, stable installation commands, and synchronized version metadata. Runtime routing behavior remains the v0.3.0 Flash-first design.
 >
-> The reviewed source tag and the npm package are both available for v0.3.0. Independent community project; not affiliated with Google or Antigravity.
+> The reviewed source tag, GitHub Release and npm package are all available for v0.3.1. Independent community project; not affiliated with Google or Antigravity.
 
 ## Hand this page to your agent
 
@@ -26,18 +26,20 @@ Open and read https://github.com/YuxiaoMa66/antigravity-mission-control before m
 
 1. Check whether `agy` is installed and signed in.
 2. Show me the exact commands and target paths, then wait for my confirmation.
-3. If AGY is ready, install the stable npm package with `npx antigravity-mission-control@latest install`; use `@0.3.0` when you need a pinned release. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
+3. If AGY is ready, install the stable npm package with `npx antigravity-mission-control@latest install`; use `@0.3.1` when you need a pinned release. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
 4. Run `agy-mc doctor` and report the installed versions and paths.
 5. Before delegating project work, show me the A/B/C roster choices with exact available model slugs and wait for my selection.
 
 Treat workspace trust and unrestricted permissions as separate actions. Do not grant either one without my approval.
+
+Keep Codex as the acceptance authority; AGY workers execute only within the approved scope.
 ```
 
 The agent reads the same installation and security boundaries you see on this page, performs the checks, and reports the result. You do not need to translate the README into a chain of shell commands.
 
 ## See the flight deck
 
-These v0.3.0 illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
+These v0.3.1 illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
 
 <table>
   <tr>
@@ -120,7 +122,7 @@ npx antigravity-mission-control@latest status
 Direct Python installation is also supported:
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.3.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.3.1"
 agy-mc skill install
 agy-mc doctor
 ```

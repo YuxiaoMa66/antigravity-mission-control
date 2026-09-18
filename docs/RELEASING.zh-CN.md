@@ -2,12 +2,12 @@
 
 [English](RELEASING.md) · [简体中文](RELEASING.zh-CN.md)
 
-Mission Control 在两个生态中使用不同的合法版本格式：
+Mission Control 在各生态中使用同一套协调发布版本：
 
-- Python 与 Git tag：`0.3.0` / `v0.3.0`
-- npm SemVer：`0.3.0`
+- Python 与 Git tag：`0.3.1` / `v0.3.1`
+- npm SemVer：`0.3.1`
 
-它们代表同一个版本。每次发布必须同步更新 `VERSION`、`__version__`、`pyproject.toml`、`package.json`、npm bootstrap 常量、CHANGELOG 和发布说明。
+它们代表同一个版本。每次发布必须同步更新 `__version__`、`pyproject.toml`、`package.json`、npm bootstrap 常量、CHANGELOG 和中英文发布说明。历史发布说明和资产保持不可变。
 
 ## 发布门禁
 
@@ -28,13 +28,13 @@ git status --short
 ## 发布顺序
 
 1. 将审查后的 `main` 提交推送到 GitHub。
-2. 在同一提交创建 `v0.3.0` tag。
+2. 在同一提交创建 `v0.3.1` tag。
 3. 使用双语说明创建 GitHub Release。
 4. 在隔离环境验证从该 tag 安装。
 5. 执行 `npm publish --tag latest --access public`。
 6. 验证 `npm view antigravity-mission-control dist-tags` 和 `npx antigravity-mission-control status`。
 
-npm bootstrap 默认安装 Git tag，因此必须先确保 GitHub tag 可访问，再发布 npm。目前暂不发布 PyPI；Python 直接安装从 GitHub 获取。
+npm bootstrap 默认安装 Git tag，因此必须先确保 GitHub tag 可访问，再发布 npm。Trusted Publisher/OIDC 不是必需项；没有发布工作流时，使用维护者的 2FA 交互发布即可。目前暂不发布 PyPI；Python 直接安装从 GitHub 获取。
 
 ## 回滚
 

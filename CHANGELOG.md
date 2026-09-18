@@ -1,11 +1,18 @@
 # Changelog
 
+## 0.3.1 - 2026-09-18
+
+- Publish the coordinated GitHub tag, GitHub Release and npm package for the corrected stable handoff.
+- Replace stale Git-source installation instructions with `npx antigravity-mission-control@latest install` and an explicit `@0.3.1` pin.
+- Keep Codex as the acceptance authority and make that boundary explicit in the copy-ready agent prompt.
+- Synchronize runtime versions, current release assets, bilingual documentation and release checks; no routing behavior changes.
+
 ## 0.3.0 - 2026-09-18
 
 - Make A lightweight and Flash-first, with lower Flash intensity for low-risk roles and GPT models last.
 - Make B quality-first while routing implementers to Gemini Flash before other providers; retain cross-family review when available.
 - Make C reuse B's quality objective while routing every AGY role to the newest Gemini Flash High model.
-- Keep exact-model approval and the separate non-High Gemini confirmation boundary; no package or registry publication is included.
+- Keep exact-model approval and the separate non-High Gemini confirmation boundary.
 - Refresh the repository visuals with a graphite, off-white and safety-orange operational control-board system.
 - Update the terminal preview, interface plates, bilingual documentation and release cover to the v0.3.0 routing model.
 

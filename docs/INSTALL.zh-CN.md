@@ -14,7 +14,7 @@ Mission Control 不读取、不复制 AGY OAuth 材料。首次安装 AGY 后仍
 
 ## 推荐方式：npm 包
 
-`@latest` 会跟随稳定版 npm 发布；需要可复现安装时固定使用 `@0.3.0`，npm 安装器随后会解析对应的已验证 Git tag。
+`@latest` 会跟随稳定版 npm 发布；需要可复现安装时固定使用 `@0.3.1`，npm 安装器随后会解析对应的已验证 Git tag。
 
 先查看精确路径，不写入文件：
 
@@ -81,7 +81,7 @@ Skill 会移动到 Codex 备份目录；托管 Python 环境会在原位置旁�
 ## 直接使用 Python
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.3.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.3.1"
 agy-mc skill install --lang zh
 ```
 
