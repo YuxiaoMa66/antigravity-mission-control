@@ -39,7 +39,9 @@ def canonical_workspace(raw_path: str) -> Path:
     workspace = Path(raw_path).expanduser().resolve()
     if not workspace.is_dir():
         raise RuntimeError(f"Workspace does not exist: {workspace}")
-    if workspace == Path(workspace.anchor) or workspace == Path.home().resolve():
+    home = Path.home().resolve()
+    broad = {home, *home.parents, Path(tempfile.gettempdir()).resolve(), Path("/tmp").resolve()}
+    if workspace == Path(workspace.anchor) or workspace in broad:
         raise RuntimeError(f"Refusing to trust a broad workspace: {workspace}")
     return workspace
 

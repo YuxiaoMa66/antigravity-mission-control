@@ -302,7 +302,8 @@ def cmd_worker(args: argparse.Namespace) -> int:
         )
         payload = parse_child_payload(proc.stdout)
         status = "done" if proc.returncode == 0 else "error"
-        if '"status": "done_with_warnings"' in proc.stderr or '"status":"done_with_warnings"' in proc.stderr:
+        # Only a successful child may carry the warning label; AGY's own stderr is relayed here.
+        if proc.returncode == 0 and ('"status": "done_with_warnings"' in proc.stderr or '"status":"done_with_warnings"' in proc.stderr):
             status = "done_with_warnings"
         result = {
             "job_id": args.job_id,

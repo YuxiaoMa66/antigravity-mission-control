@@ -34,6 +34,8 @@ elif "stream-json" in sys.argv:
         from pathlib import Path
         Path("user.txt").write_text("worker change\n")
         Path("worker-new.txt").write_text("new output\n")
+    if os.environ.get("FAKE_AGY_STDERR"):
+        print(os.environ["FAKE_AGY_STDERR"], file=sys.stderr)
     print(json.dumps({"event": "init", "conversation_id": "fake-conversation"}))
     print(json.dumps({"event": "result", "status": "ERROR" if os.environ.get("FAKE_AGY_WARNING") else "SUCCESS", "conversation_id": "fake-conversation", "response": request}))
 else:

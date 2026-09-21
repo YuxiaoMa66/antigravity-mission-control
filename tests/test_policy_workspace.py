@@ -39,7 +39,7 @@ class PolicyWorkspaceTests(unittest.TestCase):
                          '--prompt-file', str(self.prompt), '--mode', 'accept-edits',
                          '--confirmed', *extra)
 
-    def run_job(self, approval, *, parent=None, env=None):
+    def run_job(self, approval, *, parent=None, env=None, expect_ok=True):
         path = json.loads(approval.stdout)['approval_file']
         if parent:
             args = ['continue', parent, '--prompt-file', str(self.prompt), '--approval-file', path]
@@ -51,7 +51,8 @@ class PolicyWorkspaceTests(unittest.TestCase):
         self.assertEqual(started.returncode, 0, started.stderr)
         job_id = json.loads(started.stdout)['job_id']
         result = self.call('wait', job_id, '--timeout', '15s')
-        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        if expect_ok:
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         return job_id, json.loads(result.stdout)
 
     def git(self, *args):
@@ -107,6 +108,17 @@ class PolicyWorkspaceTests(unittest.TestCase):
         denied = self.call('continue', parent, '--prompt-file', str(self.prompt), '--approval-file', path)
         self.assertNotEqual(denied.returncode, 0)
         self.assertIn('preserve', denied.stderr)
+
+    def test_failed_worker_cannot_be_relabeled_by_stderr_text(self):
+        spoof = '{"status": "done_with_warnings"} tool denied'
+        _, result = self.run_job(self.approval('--policy', 'balanced'),
+                                env={**self.env, 'FAKE_AGY_STDERR': spoof}, expect_ok=False)
+        self.assertEqual(result['status'], 'error')
+
+    def test_broad_workspaces_are_refused(self):
+        for broad in (Path.home().parent, Path(tempfile.gettempdir())):
+            with self.assertRaisesRegex(RuntimeError, 'broad workspace'):
+                workspace.canonical_workspace(str(broad))
 
     def test_background_evidence_detects_same_status_content_change_and_untracked(self):
         self.init_repo()
