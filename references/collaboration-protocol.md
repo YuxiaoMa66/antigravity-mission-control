@@ -2,7 +2,7 @@
 
 ## Confirmation gate
 
-For a new strict assignment, use read-only scope inspection, model discovery, and `agy-mc workspace --cwd <path>` to draft exactly three complete role/model rosters: A lightweight and Flash-first, B quality-first with a Flash-first implementer, and C the B-quality roster with every AGY call on the latest Gemini Flash High. Include AGY and Codex roles when useful. Present the executor, exact model, responsibility, and access for every role in each option, then wait for the user to select or revise one. The access cell must name both filesystem scope and execution profile. Standard permission handling is the default; unrestricted execution requires a concrete need and separate explicit confirmation. If the workspace is untrusted, disclose the exact trust mutation and request separate approval.
+For a new strict assignment, use read-only scope inspection, model discovery, and `agy-mc workspace --cwd <path>` to draft exactly three complete role/model rosters: A lightweight and Flash-first, B quality-first with a Flash-first implementer, and C the B-quality roster with every AGY call on the latest Gemini Flash High. Include AGY and host-agent roles when useful. Present the executor, exact model, responsibility, and access for every role in each option, then wait for the user to select or revise one. The access cell must name both filesystem scope and execution profile. Standard permission handling is the default; unrestricted execution requires a concrete need and separate explicit confirmation. If the workspace is untrusted, disclose the exact trust mutation and request separate approval.
 
 Approval is roster-specific. A replacement model, added role, executor change, broader write scope, or execution-profile change requires reconfirmation of the affected entry. After approval, create a short-lived `agy-mc approve` manifest and pin every AGY run to the approved slug. Roster approval alone never authorizes `--dangerously-skip-permissions`; an unrestricted manifest requires both `--permission-profile unrestricted` and the separate `--unrestricted-confirmed` assertion.
 
@@ -31,7 +31,7 @@ Intent: keep B's quality objective and use the newest exact gemini-.*flash-high 
 Reply with A, B or C, or name the entries you want changed. No worker has been dispatched.
 ```
 
-Every role row must name both the filesystem scope and execution profile. Use `Codex / current session` when Codex owns a role. Mark omitted roles as omitted and explain who retains that responsibility. The tradeoff line must cover expected quota use, latency and reviewer independence without presenting routing heuristics as benchmark results.
+Every role row must name both the filesystem scope and execution profile. Use `Host agent / current session` when the host agent owns a role. Mark omitted roles as omitted and explain who retains that responsibility. The tradeoff line must cover expected quota use, latency and reviewer independence without presenting routing heuristics as benchmark results.
 
 ## Required roster-change interface
 
@@ -64,15 +64,15 @@ Compose prompts from [role contracts](role-prompts.md), the single source for sh
 
 ## Recommended sequence
 
-1. Codex establishes the minimal read-only baseline needed to define acceptance criteria and propose roles.
-2. For strict, Codex presents A/B/C and obtains selection. With a user-selected balanced policy, confirm the exact proposed assignment without requiring three alternatives. Reuse unchanged prior decisions.
+1. The host agent establishes the minimal read-only baseline needed to define acceptance criteria and propose roles.
+2. For strict, the host agent presents A/B/C and obtains selection. With a user-selected balanced policy, confirm the exact proposed assignment without requiring three alternatives. Reuse unchanged prior decisions.
 3. A confirmed planner is optional. Use one when the design is ambiguous or the code area is unfamiliar; require a plan with risks and verification points, not edits.
    The planner may choose its own steps inside the approved objective. Require explicit alternatives only when a choice changes scope, cost, reversibility, or product behavior.
-4. The confirmed implementer owns named paths. Codex inspects the actual resulting diff immediately after the run.
+4. The confirmed implementer owns named paths. The host agent inspects the actual resulting diff immediately after the run.
 5. A confirmed reviewer is optional for meaningful risk. Give it the original objective, criteria, and actual diff/current files, not the implementer's conclusions. Require it to check both scope drift and completion quality.
-6. Codex triages reviewer findings against source evidence. Do not forward every speculative comment into a correction loop.
+6. The host agent triages reviewer findings against source evidence. Do not forward every speculative comment into a correction loop.
 7. Corrections use `approve --correction-of`; ordinary in-scope follow-ups use `--follow-up-of`. Resume the exact job with `continue` and the new prompt-bound manifest. Both retain the policy and correction count; only changed approved choices need renewed confirmation.
-8. Codex runs final tests and checks repository cleanliness/scope before reporting completion.
+8. The host agent runs final tests and checks repository cleanliness/scope before reporting completion.
 
 For a long-running worker or independent read-only work, pass `--background` to the already-approved `run` command. Collect each returned job with its own `wait <job-id>` command; a wait timeout is not a worker failure and should be retried. `status`, `result`, and `cancel` are lifecycle operations, not substitutes for acceptance checks. Job prompts, logs, and result envelopes are kept outside the repository by default.
 
@@ -87,6 +87,6 @@ The wrapper enforces this boundary for queued `accept-edits` jobs by rejecting a
 - Nonzero exit or non-`SUCCESS` status: preserve the error, diagnose authentication/model/timeout separately, and retry once only when the cause is transient or corrected.
 - Untrusted workspace: after separate trust approval, run `workspace --cwd <exact-path> --mode <mode> --grant --trust-approved`. Never broaden to its parent. If an explicit matching `deny` or `ask` exists, stop for manual resolution rather than overriding it.
 - `SUCCESS` with no expected diff: treat as incomplete, inspect permission diagnostics, and send one precise correction.
-- Soft-denied file access after trust: treat the run as failed and inspect project/shared/global permission rules. Soft-denied commands: have Codex run the safe check directly; do not escalate to blanket approval.
-- Conflicting model recommendations: Codex resolves them using repository evidence, tests, and user priorities.
+- Soft-denied file access after trust: treat the run as failed and inspect project/shared/global permission rules. Soft-denied commands: have the host agent run the safe check directly; do not escalate to blanket approval.
+- Conflicting model recommendations: the host agent resolves them using repository evidence, tests, and user priorities.
 - Timeout: inspect whether useful edits exist before retrying. Avoid overlapping a timed-out worker with a new editor in the same tree.

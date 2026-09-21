@@ -50,7 +50,7 @@ STRATEGY_PATTERNS = {
 }
 
 ROLES = tuple(STRATEGY_PATTERNS["A"])
-VERSION = "0.3.1"
+VERSION = "0.4.0"
 AGY_BIN = os.environ.get("AGY_MC_BIN", os.environ.get("AGY_ORCHESTRATOR_BIN", "agy"))
 SETTINGS_PATH = Path(
     os.environ.get(
@@ -758,20 +758,50 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     except OSError as exc:
         state_ok, detail = False, str(exc)
     checks.append({"name": "private-state", "ok": state_ok, "detail": detail})
+    for host in HOSTS:
+        marker = skill_marker(default_skill_target(host))
+        if marker and marker.get("version") != VERSION:
+            checks.append({"name": f"skill-{host}", "ok": True, "warning": f"installed skill {marker.get('version')} != CLI {VERSION}; run `agy-mc skill update --host {host}`"})
     result = {"schema": "agy-mc-doctor.v1", "version": VERSION, "status": "ok" if all(c["ok"] for c in checks) else "error", "checks": checks}
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result["status"] == "ok" else 1
 
 
-def default_skill_target() -> Path:
-    codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
-    return codex_home / "skills" / "antigravity-mission-control"
+HOSTS = {"codex": ("CODEX_HOME", ".codex"), "claude": ("CLAUDE_CONFIG_DIR", ".claude")}
 
 
-def skill_backup_path(target: Path) -> Path:
-    codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
+def host_home(host: str) -> Path:
+    env, default = HOSTS[host]
+    return Path(os.environ.get(env) or Path.home() / default).expanduser()
+
+
+def default_skill_target(host: str = "codex") -> Path:
+    return host_home(host) / "skills" / "antigravity-mission-control"
+
+
+def skill_backup_path(host: str = "codex") -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-    return codex_home / "skill-backups" / f"antigravity-mission-control-{stamp}"
+    return host_home(host) / "skill-backups" / f"antigravity-mission-control-{stamp}"
+
+
+def resolve_skill_hosts(args: argparse.Namespace) -> list[str]:
+    if args.host in HOSTS:
+        hosts = [args.host]
+    elif args.host == "all":
+        hosts = list(HOSTS)
+    elif args.target:
+        hosts = ["codex"]
+    elif args.action == "status":
+        hosts = list(HOSTS)
+    elif args.action == "install":
+        hosts = [h for h in HOSTS if host_home(h).is_dir()]
+    else:
+        hosts = [h for h in HOSTS if skill_marker(default_skill_target(h))]
+    if not hosts:
+        raise RuntimeError("No supported host detected; pass --host codex|claude")
+    if args.target and len(hosts) > 1:
+        raise RuntimeError("--target names one directory; pass a single --host")
+    return hosts
 
 
 def skill_marker(target: Path) -> dict | None:
@@ -802,23 +832,33 @@ def render_skill_result(payload: dict, language: str) -> str:
     if payload.get("backup"):
         label = "备份" if zh else "Backup"
         lines.extend([f"  ↪ {label}", f"    {payload['backup']}"])
+    if payload.get("host"):
+        lines.extend(["  ◇ Host", f"    {payload['host']}"])
     if payload.get("version"):
         lines.extend(["  ◇ Version", f"    {payload['version']}"])
     return "\n".join(lines)
 
 
-def emit_skill_result(payload: dict, args: argparse.Namespace) -> None:
+def emit_skill_results(payloads: list[dict], args: argparse.Namespace) -> None:
     if args.format == "json":
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        body = payloads[0] if len(payloads) == 1 else {"schema": "agy-mc-skill-operations.v1", "results": payloads}
+        print(json.dumps(body, ensure_ascii=False, indent=2))
         return
     language = args.lang
     if language == "auto":
         language = "zh" if any(token in os.environ.get("LANG", "").lower() for token in ("zh", "cn")) else "en"
-    print(render_skill_result(payload, language))
+    for payload in payloads:
+        print(render_skill_result(payload, language))
 
 
 def cmd_skill(args: argparse.Namespace) -> int:
-    requested = Path(args.target).expanduser().absolute() if args.target else default_skill_target().absolute()
+    results = [skill_operation(args, host) for host in resolve_skill_hosts(args)]
+    emit_skill_results([payload for payload, _ in results], args)
+    return min(code for _, code in results)
+
+
+def skill_operation(args: argparse.Namespace, host: str) -> tuple[dict, int]:
+    requested = Path(args.target).expanduser().absolute() if args.target else default_skill_target(host).absolute()
     if requested.is_symlink():
         raise RuntimeError(f"Refusing a symlink Skill target: {requested}")
     target = requested.parent.resolve() / requested.name
@@ -827,20 +867,18 @@ def cmd_skill(args: argparse.Namespace) -> int:
     marker = skill_marker(target)
     if args.action == "status":
         status = "present" if target.is_dir() else "missing"
-        payload = {"schema": "agy-mc-skill-operation.v1", "status": status, "target": str(target), "version": (marker or {}).get("version")}
-        emit_skill_result(payload, args)
-        return 0 if status == "present" else 1
+        payload = {"schema": "agy-mc-skill-operation.v1", "host": host, "status": status, "target": str(target), "version": (marker or {}).get("version")}
+        return payload, 0 if status == "present" else 1
 
     if args.action == "uninstall":
         if not target.is_dir():
             raise RuntimeError(f"Skill is not installed: {target}")
-        backup = skill_backup_path(target)
-        payload = {"schema": "agy-mc-skill-operation.v1", "status": "dry-run" if args.dry_run else "uninstalled", "target": str(target), "backup": str(backup), "version": (marker or {}).get("version")}
+        backup = skill_backup_path(host)
+        payload = {"schema": "agy-mc-skill-operation.v1", "host": host, "status": "dry-run" if args.dry_run else "uninstalled", "target": str(target), "backup": str(backup), "version": (marker or {}).get("version")}
         if not args.dry_run:
             backup.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             os.replace(target, backup)
-        emit_skill_result(payload, args)
-        return 0
+        return payload, 0
 
     exists = target.exists()
     if args.action == "install" and exists and not args.force:
@@ -853,20 +891,21 @@ def cmd_skill(args: argparse.Namespace) -> int:
         raise RuntimeError(f"Existing skill is not managed by agy-mc: {target}; use --force only after inspection")
 
     status = "installed" if args.action == "install" else "updated"
-    backup = skill_backup_path(target) if exists else None
-    payload = {"schema": "agy-mc-skill-operation.v1", "status": "dry-run" if args.dry_run else status, "target": str(target), "backup": str(backup) if backup else None, "version": VERSION}
+    backup = skill_backup_path(host) if exists else None
+    payload = {"schema": "agy-mc-skill-operation.v1", "host": host, "status": "dry-run" if args.dry_run else status, "target": str(target), "backup": str(backup) if backup else None, "version": VERSION}
     if args.dry_run:
-        emit_skill_result(payload, args)
-        return 0
+        return payload, 0
 
     target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     staging = target.parent / f".{target.name}.staging-{uuid.uuid4().hex[:8]}"
     bundle = resources.files("antigravity_mission_control").joinpath("skill_bundle")
     with resources.as_file(bundle) as bundle_path:
-        shutil.copytree(bundle_path, staging)
+        # agents/ holds Codex-only interface metadata
+        skip = ("__pycache__", "*.py[co]") if host == "codex" else ("__pycache__", "*.py[co]", "agents")
+        shutil.copytree(bundle_path, staging, ignore=shutil.ignore_patterns(*skip))
     atomic_write_json(
         staging / ".agy-mc-install.json",
-        {"schema": "agy-mc-skill-install.v1", "version": VERSION, "installed_at": utc_now(), "source": "python-package"},
+        {"schema": "agy-mc-skill-install.v1", "version": VERSION, "host": host, "installed_at": utc_now(), "source": "python-package"},
     )
     try:
         if exists:
@@ -877,8 +916,7 @@ def cmd_skill(args: argparse.Namespace) -> int:
         if backup and backup.exists() and not target.exists():
             os.replace(backup, target)
         raise
-    emit_skill_result(payload, args)
-    return 0
+    return payload, 0
 
 
 def cmd_select(args: argparse.Namespace) -> int:
@@ -1742,9 +1780,11 @@ def build_parser() -> argparse.ArgumentParser:
     policy_parser.set_defaults(func=cmd_policy)
     doctor_parser = subparsers.add_parser("doctor", help="Check AGY, authenticated model access, and Mission Control runtime capabilities")
     doctor_parser.set_defaults(func=cmd_doctor)
-    skill_parser = subparsers.add_parser("skill", help="Install, update, inspect, or uninstall the bundled Codex skill")
+    skill_parser = subparsers.add_parser("skill", help="Install, update, inspect, or uninstall the bundled skill for Codex and/or Claude Code")
     skill_parser.add_argument("action", choices=["install", "update", "status", "uninstall"])
-    skill_parser.add_argument("--target", help="Override the exact Codex skill directory")
+    skill_parser.add_argument("--host", choices=["auto", "codex", "claude", "all"], default="auto",
+                              help="Agent host to install for; auto detects installed hosts")
+    skill_parser.add_argument("--target", help="Override the exact skill directory (single host)")
     skill_parser.add_argument("--force", action="store_true", help="Back up and replace an unmanaged existing target")
     skill_parser.add_argument("--dry-run", action="store_true")
     skill_parser.add_argument("--format", choices=["pretty", "json"], default="pretty")

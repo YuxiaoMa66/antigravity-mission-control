@@ -18,14 +18,22 @@ class ReleaseIntegrityTests(unittest.TestCase):
         package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         npm_cli = (ROOT / "npm" / "cli.mjs").read_text(encoding="utf-8")
-        self.assertEqual(cli.VERSION, "0.3.1")
+        self.assertEqual(cli.VERSION, "0.4.0")
         self.assertEqual(__version__, cli.VERSION)
-        self.assertIn('version = "0.3.1"', pyproject)
-        self.assertEqual(package["version"], "0.3.1")
-        self.assertIn("const VERSION = '0.3.1'", npm_cli)
-        self.assertIn("const PYTHON_VERSION = '0.3.1'", npm_cli)
+        self.assertIn('version = "0.4.0"', pyproject)
+        self.assertEqual(package["version"], "0.4.0")
+        self.assertIn("const VERSION = '0.4.0'", npm_cli)
+        self.assertIn("const PYTHON_VERSION = '0.4.0'", npm_cli)
         self.assertIn("assets/", package["files"])
         self.assertIn('skill_bundle/**/__pycache__/*', pyproject)
+
+    def test_skill_sources_are_host_neutral(self):
+        # Only host-notes.md may name a specific host.
+        for path in [ROOT / "SKILL.md", *sorted((ROOT / "references").glob("*.md"))]:
+            if path.name == "host-notes.md":
+                continue
+            with self.subTest(path=path.name):
+                self.assertNotIn("Codex", path.read_text(encoding="utf-8").replace("Codex or Claude Code", ""))
 
     def test_bilingual_document_pairs_exist(self):
         pairs = (
@@ -40,6 +48,7 @@ class ReleaseIntegrityTests(unittest.TestCase):
             ("docs/releases/v0.2.0.md", "docs/releases/v0.2.0.zh-CN.md"),
             ("docs/releases/v0.3.0.md", "docs/releases/v0.3.0.zh-CN.md"),
             ("docs/releases/v0.3.1.md", "docs/releases/v0.3.1.zh-CN.md"),
+            ("docs/releases/v0.4.0.md", "docs/releases/v0.4.0.zh-CN.md"),
         )
         for english, chinese in pairs:
             with self.subTest(english=english):
@@ -59,7 +68,7 @@ class ReleaseIntegrityTests(unittest.TestCase):
                 self.assertEqual(source.read_bytes(), target.read_bytes())
 
     def test_local_markdown_links_resolve(self):
-        markdown_files = [path for path in ROOT.rglob("*.md") if ".git" not in path.parts]
+        markdown_files = [path for path in ROOT.rglob("*.md") if not {".git", "build", "node_modules"} & set(path.parts)]
         for document in markdown_files:
             text = document.read_text(encoding="utf-8")
             for raw_target in re.findall(r"\[[^\]]*\]\(([^)]+)\)", text):
@@ -96,8 +105,8 @@ class ReleaseIntegrityTests(unittest.TestCase):
                     self.assertIn(f'assets/interfaces/{asset}', text)
 
     def test_current_release_assets_and_install_refs(self):
-        self.assertTrue((ROOT / "assets" / "release-v0.3.1.svg").is_file())
-        self.assertTrue((ROOT / "docs" / "visual-design-v0.3.1.md").is_file())
+        self.assertTrue((ROOT / "assets" / "release-v0.4.0.svg").is_file())
+        self.assertTrue((ROOT / "docs" / "visual-design-v0.4.0.md").is_file())
         for document_name in (
             "README.md",
             "README.zh-CN.md",
@@ -105,16 +114,16 @@ class ReleaseIntegrityTests(unittest.TestCase):
             "docs/INSTALL.zh-CN.md",
             "docs/RELEASING.md",
             "docs/RELEASING.zh-CN.md",
-            "docs/releases/v0.3.1.md",
-            "docs/releases/v0.3.1.zh-CN.md",
+            "docs/releases/v0.4.0.md",
+            "docs/releases/v0.4.0.zh-CN.md",
         ):
             text = (ROOT / document_name).read_text(encoding="utf-8")
             with self.subTest(document=document_name):
-                self.assertIn("v0.3.1", text)
+                self.assertIn("v0.4.0", text)
                 self.assertNotIn("v0.2.0", text)
         for readme_name in ("README.md", "README.zh-CN.md"):
             text = (ROOT / readme_name).read_text(encoding="utf-8")
-            self.assertIn("assets/release-v0.3.1.svg", text)
+            self.assertIn("assets/release-v0.4.0.svg", text)
             self.assertNotIn("release-v0.2.0.png", text)
 
 

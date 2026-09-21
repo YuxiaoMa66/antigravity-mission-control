@@ -12,7 +12,7 @@ Objective: <one bounded outcome>
 Workspace: <absolute canonical path>
 Ownership: <named paths the worker may change; say "none" for read-only work>
 Do not touch: <unrelated paths, prohibited actions, and authority not granted>
-Known context: <facts already verified by Codex; label assumptions>
+Known context: <facts already verified by the host agent; label assumptions>
 Acceptance criteria:
 - <observable criterion>
 Checks: <safe commands or inspections to attempt>
@@ -31,7 +31,7 @@ Use when the work is ambiguous, unfamiliar, or has meaningful risk. Require a bo
 
 ## Implementer
 
-Use only for a confirmed write scope. Require a minimal diff, existing project conventions, no drive-by cleanup or dependency additions, and relevant tests/build/lint checks. The worker leaves changes uncommitted; Codex inspects the actual diff and decides whether to keep or correct it. If ambiguity would materially change the diff, choose the most conservative interpretation and flag the alternatives.
+Use only for a confirmed write scope. Require a minimal diff, existing project conventions, no drive-by cleanup or dependency additions, and relevant tests/build/lint checks. The worker leaves changes uncommitted; the host agent inspects the actual diff and decides whether to keep or correct it. If ambiguity would materially change the diff, choose the most conservative interpretation and flag the alternatives.
 
 ## Reviewer
 

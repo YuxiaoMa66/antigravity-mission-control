@@ -30,7 +30,7 @@ test('help presents the product and command surface', () => {
 
 test('AGY installation is a separate explicit non-interactive choice', () => {
   const home = mkdtempSync(resolve(tmpdir(), 'agy-mc-npm-no-agy-'));
-  const result = run(['install', '--yes', '--source', root], {
+  const result = run(['install', '--yes', '--host', 'codex', '--source', root], {
     HOME: home,
     PATH: dirname(process.execPath),
   });
@@ -43,7 +43,7 @@ test('AGY install dry-run names the official source without executing it', () =>
   const bin = resolve(home, 'bin');
   mkdirSync(bin);
   symlinkSync(python3, resolve(bin, 'python3'));
-  const result = run(['install', '--dry-run', '--install-agy', '--lang', 'en', '--source', root], { HOME: home, PATH: bin });
+  const result = run(['install', '--dry-run', '--install-agy', '--host', 'codex', '--lang', 'en', '--source', root], { HOME: home, PATH: bin });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /https:\/\/antigravity\.google\/cli\/install\.sh/);
 });
@@ -57,7 +57,7 @@ test('status is read-only and reports missing managed components', () => {
 
 test('dry-run shows exact bilingual installation targets without writes', () => {
   const home = mkdtempSync(resolve(tmpdir(), 'agy-mc-npm-dry-'));
-  const result = run(['install', '--dry-run', '--lang', 'zh', '--source', root], { HOME: home });
+  const result = run(['install', '--dry-run', '--host', 'codex', '--lang', 'zh', '--source', root], { HOME: home });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /预演模式/);
   assert.match(result.stdout, new RegExp(home.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
@@ -108,4 +108,31 @@ test('unmanaged Skill collision fails before creating the Python runtime', () =>
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /not managed by agy-mc/);
   assert.equal(existsSync(resolve(home, '.local/share/antigravity-mission-control/venv')), false);
+});
+
+test('auto host detection installs to Claude when only ~/.claude exists', () => {
+  const home = mkdtempSync(resolve(tmpdir(), 'agy-mc-npm-claude-'));
+  const bin = resolve(home, 'bin');
+  mkdirSync(bin, { recursive: true });
+  mkdirSync(resolve(home, '.claude'));
+  symlinkSync(fakeAgy, resolve(bin, 'agy'));
+
+  const result = run(['install', '--yes', '--lang', 'en', '--source', root], { HOME: home, PATH: `${bin}:${process.env.PATH}` });
+
+  assert.equal(result.status, 0, result.stderr);
+  const skill = resolve(home, '.claude/skills/antigravity-mission-control');
+  assert.equal(existsSync(resolve(skill, 'SKILL.md')), true);
+  assert.equal(existsSync(resolve(skill, 'agents')), false);
+  assert.equal(existsSync(resolve(home, '.codex')), false);
+});
+
+test('all shows both host targets in the plan and no host detected is an error', () => {
+  const home = mkdtempSync(resolve(tmpdir(), 'agy-mc-npm-hosts-'));
+  const dry = run(['install', '--dry-run', '--host', 'all', '--lang', 'en', '--source', root], { HOME: home });
+  assert.equal(dry.status, 0, dry.stderr);
+  assert.match(dry.stdout, /\.codex\/skills\/antigravity-mission-control/);
+  assert.match(dry.stdout, /\.claude\/skills\/antigravity-mission-control/);
+  const none = run(['install', '--dry-run', '--source', root], { HOME: home });
+  assert.notEqual(none.status, 0);
+  assert.match(none.stderr, /--host codex\|claude/);
 });

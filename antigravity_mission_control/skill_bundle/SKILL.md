@@ -5,7 +5,7 @@ description: Coordinate bounded Antigravity CLI workers with approved model rost
 
 # Antigravity Mission Control
 
-Codex owns the user's objective and final acceptance. AGY workers own bounded assignments; their responses are evidence to inspect.
+The host agent (Codex or Claude Code, whichever runs this skill) owns the user's objective and final acceptance. AGY workers own bounded assignments; their responses are evidence to inspect. "Claude" below means a worker model in the AGY roster, never the host. Host-specific mechanics: [host notes](references/host-notes.md).
 
 ## Choose the route first
 

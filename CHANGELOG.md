@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0 - 2026-09-21
+
+- Run the Skill in Claude Code as well as Codex: one host-neutral Skill, deployed to `${CLAUDE_CONFIG_DIR:-~/.claude}/skills` or `${CODEX_HOME:-~/.codex}/skills`.
+- Add `--host auto|codex|claude|all` to `agy-mc skill` and the npm bootstrapper. `auto` (default) targets every host whose config directory exists; existing Codex installs keep their paths, marker file and `CODEX_HOME` behavior.
+- Add `CLAUDE_CONFIG_DIR`, per-host recoverable backups, and a per-host `status` listing. `agents/openai.yaml` is copied for Codex only.
+- Rewrite Skill prose from "Codex" to "host agent" and add `references/host-notes.md` (roster choice with `AskUserQuestion`, `--background` plus bounded `wait`, minimal `Bash(agy-mc *)` allowlist).
+- `agy-mc doctor` warns when an installed Skill is older than the CLI.
+- No routing, approval or worker-execution changes.
+
 ## 0.3.1 - 2026-09-18
 
 - Publish the coordinated GitHub tag, GitHub Release and npm package for the corrected stable handoff.

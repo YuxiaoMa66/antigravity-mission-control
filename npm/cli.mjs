@@ -8,11 +8,12 @@ import process from 'node:process';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
-const VERSION = '0.3.1';
-const PYTHON_VERSION = '0.3.1';
+const VERSION = '0.4.0';
+const PYTHON_VERSION = '0.4.0';
 const REPOSITORY = 'https://github.com/YuxiaoMa66/antigravity-mission-control.git';
 const DEFAULT_SOURCE = `git+${REPOSITORY}@v${PYTHON_VERSION}`;
 const AGY_INSTALL_URL = 'https://antigravity.google/cli/install.sh';
+const HOSTS = { codex: ['CODEX_HOME', '.codex'], claude: ['CLAUDE_CONFIG_DIR', '.claude'] };
 const colorEnabled = process.stdout.isTTY && !process.env.NO_COLOR;
 
 const c = {
@@ -26,7 +27,7 @@ const c = {
 };
 
 function parseArgs(argv) {
-  const args = { command: 'help', lang: 'auto', yes: false, dryRun: false, force: false, installAgy: false, source: DEFAULT_SOURCE };
+  const args = { command: 'help', lang: 'auto', host: 'auto', yes: false, dryRun: false, force: false, installAgy: false, source: DEFAULT_SOURCE };
   const rest = [...argv];
   if (rest[0] && !rest[0].startsWith('-')) args.command = rest.shift();
   while (rest.length) {
@@ -39,6 +40,10 @@ function parseArgs(argv) {
       if (!rest.length) throw new Error('--lang requires a value');
       args.lang = rest.shift();
     }
+    else if (flag === '--host') {
+      if (!rest.length) throw new Error('--host requires a value');
+      args.host = rest.shift();
+    }
     else if (flag === '--source') {
       if (!rest.length) throw new Error('--source requires a value');
       args.source = rest.shift();
@@ -48,6 +53,7 @@ function parseArgs(argv) {
     else throw new Error(`Unknown option: ${flag}`);
   }
   if (!['auto', 'en', 'zh'].includes(args.lang)) throw new Error('--lang must be auto, en, or zh');
+  if (!['auto', 'all', ...Object.keys(HOSTS)].includes(args.host)) throw new Error('--host must be auto, codex, claude, or all');
   return args;
 }
 
@@ -83,8 +89,31 @@ function paths() {
   const home = resolve(process.env.HOME || homedir());
   const dataRoot = resolve(process.env.AGY_MC_INSTALL_ROOT || `${home}/.local/share/antigravity-mission-control`);
   const binRoot = resolve(process.env.AGY_MC_BIN_DIR || `${home}/.local/bin`);
-  const skillTarget = resolve(process.env.AGY_MC_SKILL_TARGET || `${process.env.CODEX_HOME || `${home}/.codex`}/skills/antigravity-mission-control`);
-  return { home, dataRoot, venv: `${dataRoot}/venv`, binRoot, shim: `${binRoot}/agy-mc`, skillTarget };
+  return { home, dataRoot, venv: `${dataRoot}/venv`, binRoot, shim: `${binRoot}/agy-mc` };
+}
+
+function hostHome(host, home) {
+  const [env, dir] = HOSTS[host];
+  return resolve(process.env[env] || `${home}/${dir}`);
+}
+
+function skillTarget(host, home) {
+  return resolve(process.env.AGY_MC_SKILL_TARGET || `${hostHome(host, home)}/skills/antigravity-mission-control`);
+}
+
+// Returns [{ host, target }] for the requested command; mirrors `agy-mc skill --host`.
+function resolveTargets(args, home) {
+  const all = Object.keys(HOSTS);
+  let hosts;
+  if (HOSTS[args.host]) hosts = [args.host];
+  else if (args.host === 'all') hosts = all;
+  else if (process.env.AGY_MC_SKILL_TARGET) hosts = ['codex'];
+  else if (args.command === 'status') hosts = all;
+  else if (args.command === 'install') hosts = all.filter((h) => existsSync(hostHome(h, home)));
+  else hosts = all.filter((h) => existsSync(`${skillTarget(h, home)}/.agy-mc-install.json`));
+  if (!hosts.length) throw new Error('No supported host detected; pass --host codex|claude');
+  if (process.env.AGY_MC_SKILL_TARGET && hosts.length > 1) throw new Error('AGY_MC_SKILL_TARGET names one directory; pass a single --host');
+  return hosts.map((host) => ({ host, target: skillTarget(host, home) }));
 }
 
 function assertSafePath(path, home) {
@@ -162,7 +191,7 @@ function showPlan(args, p, msg) {
   banner();
   const action = msg[args.command] || args.command;
   row('◆', action, args.dryRun ? msg.dryRun : `v${VERSION}`, c.violet);
-  row('◇', msg.target, p.skillTarget);
+  for (const t of p.targets) row('◇', `${msg.target} (${t.host})`, t.target);
   row('◇', msg.runtime, p.venv);
   if (['install', 'update'].includes(args.command)) row('◇', msg.source, args.source);
   if (args.installAgy) row('◇', msg.installAgy, AGY_INSTALL_URL);
@@ -227,14 +256,14 @@ async function installOfficialAgy(p) {
   return installed;
 }
 
-function resolveSkillAction(args, p) {
-  const targetExists = existsSync(p.skillTarget);
-  const managedMarker = `${p.skillTarget}/.agy-mc-install.json`;
+function resolveSkillAction(args, { target }) {
+  const targetExists = existsSync(target);
+  const managedMarker = `${target}/.agy-mc-install.json`;
   if (args.command === 'update' && !targetExists) {
-    throw new Error(`Skill is not installed: ${p.skillTarget}; use install`);
+    throw new Error(`Skill is not installed: ${target}; use install`);
   }
   if (targetExists && !existsSync(managedMarker) && !args.force) {
-    throw new Error(`Existing Skill is not managed by agy-mc: ${p.skillTarget}; inspect it or rerun with --force`);
+    throw new Error(`Existing Skill is not managed by agy-mc: ${target}; inspect it or rerun with --force`);
   }
   if (args.command === 'install' && targetExists && existsSync(managedMarker)) return 'update';
   return args.command === 'install' ? 'install' : 'update';
@@ -264,7 +293,7 @@ async function installOrUpdate(args, p, msg) {
   // Resolve target compatibility before installing AGY or mutating the managed
   // Python runtime. A pre-existing managed Skill makes `install` idempotent and
   // follows the recoverable update path; an unmanaged collision fails cleanly.
-  const skillAction = resolveSkillAction(args, p);
+  const skillActions = p.targets.map((t) => resolveSkillAction(args, t));
   let installedAgy = false;
   if (!agy && args.installAgy) {
     agy = await installOfficialAgy(p);
@@ -275,9 +304,11 @@ async function installOrUpdate(args, p, msg) {
   if (!existsSync(p.venv)) run(python.command, ['-m', 'venv', p.venv]);
   const venvPython = process.platform === 'win32' ? `${p.venv}/Scripts/python.exe` : `${p.venv}/bin/python`;
   run(venvPython, ['-m', 'pip', 'install', '--disable-pip-version-check', '--no-deps', '--upgrade', '--force-reinstall', args.source]);
-  const skillArgs = ['skill', skillAction, '--target', p.skillTarget, '--lang', args.lang, '--format', 'pretty'];
-  if (args.force) skillArgs.push('--force');
-  run(managedAgyMc(p), skillArgs);
+  p.targets.forEach((t, i) => {
+    const skillArgs = ['skill', skillActions[i], '--host', t.host, '--target', t.target, '--lang', args.lang, '--format', 'pretty'];
+    if (args.force) skillArgs.push('--force');
+    run(managedAgyMc(p), skillArgs);
+  });
   ensureShim(p, args.force);
   console.log(`\n${c.green}✓ ${msg.complete}${c.reset}`);
   if (!(process.env.PATH || '').split(':').includes(p.binRoot)) console.log(`${c.amber}! ${msg.pathWarning}: ${p.binRoot}${c.reset}`);
@@ -287,7 +318,10 @@ async function installOrUpdate(args, p, msg) {
 function showStatus(p, msg) {
   banner();
   row(existsSync(managedAgyMc(p)) ? '✓' : '○', msg.runtime, existsSync(managedAgyMc(p)) ? managedAgyMc(p) : 'not installed', existsSync(managedAgyMc(p)) ? c.green : c.muted);
-  row(existsSync(`${p.skillTarget}/SKILL.md`) ? '✓' : '○', msg.target, p.skillTarget, existsSync(`${p.skillTarget}/SKILL.md`) ? c.green : c.muted);
+  for (const t of p.targets) {
+    const present = existsSync(`${t.target}/SKILL.md`);
+    row(present ? '✓' : '○', `${msg.target} (${t.host})`, present ? t.target : `${t.target} — not installed`, present ? c.green : c.muted);
+  }
   const agy = commandExists('agy');
   row(agy ? '✓' : '!', 'AGY', agy || msg.missingAgy, agy ? c.green : c.amber);
 }
@@ -300,7 +334,9 @@ async function uninstall(args, p, msg) {
   }
   if (args.dryRun) return;
   const executable = managedAgyMc(p);
-  if (existsSync(executable) && existsSync(p.skillTarget)) run(executable, ['skill', 'uninstall', '--target', p.skillTarget, '--lang', args.lang]);
+  for (const t of p.targets) {
+    if (existsSync(executable) && existsSync(t.target)) run(executable, ['skill', 'uninstall', '--host', t.host, '--target', t.target, '--lang', args.lang]);
+  }
   if (managedShim(p)) unlinkSync(p.shim);
   if (existsSync(p.dataRoot)) {
     const backup = `${p.dataRoot}.backup-${new Date().toISOString().replace(/[:.]/g, '-')}`;
@@ -313,8 +349,8 @@ async function uninstall(args, p, msg) {
 function help() {
   banner();
   console.log(`\n${c.bold}Usage${c.reset}\n  npx antigravity-mission-control <command> [options]\n`);
-  console.log(`${c.bold}Commands${c.reset}\n  install      Install the managed Python CLI and Codex Skill\n  update       Upgrade both layers and preserve a backup\n  status       Show AGY, runtime, and Skill status\n  doctor       Run the installed Mission Control doctor\n  uninstall    Recoverably remove managed files\n`);
-  console.log(`${c.bold}Options${c.reset}\n  --lang auto|en|zh   Interface language\n  --source PATH|URL   Python package source\n  --install-agy       Install AGY from Google’s official installer when missing\n  --dry-run           Show exact targets without writing\n  --yes, -y           Confirm non-interactively\n  --force             Back up and replace an unmanaged Skill target\n  --version, -v       Print version\n`);
+  console.log(`${c.bold}Commands${c.reset}\n  install      Install the managed Python CLI and the Skill for Codex and/or Claude Code\n  update       Upgrade both layers and preserve a backup\n  status       Show AGY, runtime, and Skill status\n  doctor       Run the installed Mission Control doctor\n  uninstall    Recoverably remove managed files\n`);
+  console.log(`${c.bold}Options${c.reset}\n  --lang auto|en|zh   Interface language\n  --source PATH|URL   Python package source\n  --host auto|codex|claude|all  Agent host(s) to install the Skill for (default: auto-detect)\n  --install-agy       Install AGY from Google’s official installer when missing\n  --dry-run           Show exact targets without writing\n  --yes, -y           Confirm non-interactively\n  --force             Back up and replace an unmanaged Skill target\n  --version, -v       Print version\n`);
 }
 
 async function main() {
@@ -325,7 +361,10 @@ async function main() {
   const p = paths();
   assertSafePath(p.dataRoot, p.home);
   assertSafePath(p.binRoot, p.home);
-  assertSafePath(p.skillTarget, p.home);
+  if (args.command !== 'doctor') {
+    p.targets = resolveTargets(args, p.home);
+    for (const t of p.targets) assertSafePath(t.target, p.home);
+  }
   const msg = messages[language(args.lang)];
   if (args.command === 'status') return showStatus(p, msg);
   if (args.command === 'doctor') {

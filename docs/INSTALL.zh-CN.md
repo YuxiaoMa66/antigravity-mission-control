@@ -8,13 +8,13 @@
 - npm 启动安装器需要 Node.js 18+
 - Python 3.10+
 - Antigravity CLI（`agy`）；缺少时可由启动安装器调用 Google 官方脚本安装
-- 使用内置 Skill 时需要 Codex
+- 使用内置 Skill 时需要 Codex 或 Claude Code
 
 Mission Control 不读取、不复制 AGY OAuth 材料。首次安装 AGY 后仍需运行 `agy`，在 Google 的交互流程中完成登录。
 
 ## 推荐方式：npm 包
 
-`@latest` 会跟随稳定版 npm 发布；需要可复现安装时固定使用 `@0.3.1`，npm 安装器随后会解析对应的已验证 Git tag。
+`@latest` 会跟随稳定版 npm 发布；需要可复现安装时固定使用 `@0.4.0`，npm 安装器随后会解析对应的已验证 Git tag。
 
 先查看精确路径，不写入文件：
 
@@ -55,10 +55,21 @@ npx antigravity-mission-control@latest install --yes --install-agy --lang zh
 | Python 环境 | `~/.local/share/antigravity-mission-control/venv` |
 | CLI 符号链接 | `~/.local/bin/agy-mc` |
 | Codex Skill | `${CODEX_HOME:-~/.codex}/skills/antigravity-mission-control` |
+| Claude Code Skill | `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/antigravity-mission-control` |
 | 运行状态 | `${XDG_STATE_HOME:-~/.local/state}/antigravity-mission-control` |
-| Skill 可恢复备份 | `${CODEX_HOME:-~/.codex}/skill-backups/` |
+| Skill 可恢复备份 | `${CODEX_HOME:-~/.codex}/skill-backups/` 或 `${CLAUDE_CONFIG_DIR:-~/.claude}/skill-backups/` |
 
 如果安装器提示 PATH 缺少目录，请将 `~/.local/bin` 加入 PATH。
+
+## 选择宿主
+
+`--host auto`（默认）会为每个已存在配置目录的宿主安装（`~/.codex`、`~/.claude`）；`update` 和 `uninstall` 只处理已有托管 Skill 的宿主。也可以显式指定 `--host codex`、`--host claude` 或 `--host all`。两个宿主都检测不到时，安装器会停止并要求提供 `--host`。
+
+```bash
+npx antigravity-mission-control@latest install --host claude
+```
+
+已有的 Codex 安装保持原路径、标记文件和 `CODEX_HOME` 行为。`agents/openai.yaml` 只属于 Codex，不会复制到 Claude Code。`agy-mc doctor` 会在已安装 Skill 比 CLI 旧时给出警告。
 
 ## 更新与状态
 
@@ -76,12 +87,12 @@ npx antigravity-mission-control@latest doctor
 npx antigravity-mission-control@latest uninstall --lang zh
 ```
 
-Skill 会移动到 Codex 备份目录；托管 Python 环境会在原位置旁改名为时间戳备份。用户自己的 AGY 设置、信任项、OAuth 状态和 Mission Control 任务证据都不会删除。
+Skill 会移动到对应宿主的备份目录；托管 Python 环境会在原位置旁改名为时间戳备份。用户自己的 AGY 设置、信任项、OAuth 状态和 Mission Control 任务证据都不会删除。
 
 ## 直接使用 Python
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.3.1"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.4.0"
 agy-mc skill install --lang zh
 ```
 
@@ -100,4 +111,4 @@ npx antigravity-mission-control install \
 
 如果现有目录没有 `.agy-mc-install.json`，安装器默认拒绝覆盖。请先检查；确实要替换时才使用 `--force`。替换前仍会备份旧目录。
 
-安装或更新后需要重启或刷新 Codex，让技能发现机制重新加载文件。
+安装或更新后需要重启或刷新 Codex，或新开一个 Claude Code 会话，让技能发现机制重新加载文件。

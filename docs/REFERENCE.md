@@ -16,14 +16,14 @@
 | `status`, `wait`, `result` | Observe and collect jobs |
 | `cancel` | Confirmed TERM/KILL cancellation |
 | `continue` | Continue one exact recorded conversation |
-| `skill` | Install, update, inspect or recoverably uninstall the Codex Skill |
+| `skill` | Install, update, inspect or recoverably uninstall the Skill (`--host auto\|codex\|claude\|all`) |
 
 ## Job states and exit codes
 
 | State | Exit | Meaning |
 |---|---:|---|
 | `starting`, `running`, `canceling` | 2 | Incomplete; observe again |
-| `done`, `done_with_warnings` | 0 | Provider execution finished; acceptance still belongs to Codex |
+| `done`, `done_with_warnings` | 0 | Provider execution finished; acceptance still belongs to the host agent |
 | `error`, `crashed`, `cancel_failed` | 3 | Infrastructure or execution failure |
 | `canceled` | 4 | Process exit confirmed after caller cancellation |
 
@@ -48,6 +48,7 @@ The signing key is created at `${XDG_STATE_HOME:-~/.local/state}/antigravity-mis
 | `AGY_MC_STATE_ROOT` | Mission Control state root |
 | `AGY_MC_JOB_ROOT` | Job evidence root |
 | `CODEX_HOME` | Codex home used for Skill deployment |
+| `CLAUDE_CONFIG_DIR` | Claude Code config directory used for Skill deployment (default `~/.claude`) |
 | `XDG_STATE_HOME` | Standard state parent |
 | `NO_COLOR` | Disable npm terminal colors |
 

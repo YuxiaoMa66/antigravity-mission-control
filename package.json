@@ -1,7 +1,7 @@
 {
   "name": "antigravity-mission-control",
-  "version": "0.3.1",
-  "description": "Install and operate Antigravity Mission Control for Codex and the AGY CLI",
+  "version": "0.4.0",
+  "description": "Install and operate Antigravity Mission Control for Codex, Claude Code and the AGY CLI",
   "type": "module",
   "license": "MIT",
   "author": "YuxiaoMa66",
@@ -38,6 +38,7 @@
     "antigravity",
     "agy",
     "codex",
+    "claude-code",
     "ai-agents",
     "orchestration"
   ]

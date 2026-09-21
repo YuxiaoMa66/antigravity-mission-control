@@ -19,7 +19,7 @@ The wrapper starts in standard permission handling. If the confirmed roster need
 - `403`, `PERMISSION_DENIED`, or a pre-invocation authorization failure: treat it as an account/service permission problem unless the diagnostic clearly identifies a local sandbox. Do not change the prompt or silently switch models. Ask the user to refresh/login or confirm model/service entitlement, then rerun the same approved roster only after the environment changes.
 - Expired authentication: ask the user to complete the interactive AGY login flow. Do not expose tokens or copy credential files.
 - Unknown or unavailable model: rerun `agy models`, stop, and reconfirm the affected roster entry before changing the model.
-- Soft-denied tool permission after trust: treat the run as failed. Codex may perform the safe in-scope check directly; do not infer that workspace trust authorizes unrelated commands.
+- Soft-denied tool permission after trust: treat the run as failed. The host agent may perform the safe in-scope check directly; do not infer that workspace trust authorizes unrelated commands.
 - Timeout: inspect whether useful output or edits exist, then retry at most once with a larger timeout or a narrower task. Use the exact prior conversation id when a continuation is appropriate.
 
 ## Retry rule

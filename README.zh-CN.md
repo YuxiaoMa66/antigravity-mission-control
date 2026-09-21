@@ -9,37 +9,37 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b9188" alt="MIT License"></a>
 </p>
 
-面向 Antigravity CLI（`agy`）的策略化任务控制层：将工作路由到精确模型，把批准绑定到具体任务，串行保护编辑 worker，确认取消结果并实时查看额度；最终验收始终由 Codex 负责。
+面向 Antigravity CLI（`agy`）的策略化任务控制层：将工作路由到精确模型，把批准绑定到具体任务，串行保护编辑 worker，确认取消结果并实时查看额度；最终验收始终由你的 coding agent（Codex 或 Claude Code）负责。
 
-<p align="center"><img src="assets/release-v0.3.1.svg" width="920" alt="Antigravity Mission Control v0.3.1 操作控制板"></p>
+<p align="center"><img src="assets/release-v0.4.0.svg" width="920" alt="Antigravity Mission Control v0.4.0 操作控制板"></p>
 
-> **v0.3.1：** GitHub 与 npm 协调发布的修订版本：修正 Agent 交接说明、稳定安装命令并同步全部版本元数据。运行时路由行为保持 v0.3.0 的 Flash 优先设计。
+> **v0.4.0：** Skill 现在既能在 Codex 中使用，也能在 Claude Code 中使用。同一份与宿主无关的 Skill，用 `--host codex|claude|all` 安装（默认自动检测）。运行时路由行为保持 v0.3.0 的 Flash 优先设计。
 >
-> v0.3.1 的已审查源码 tag、GitHub Release 和 npm 包都已发布。本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
+> 本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
 
 ## 直接把本页交给 Agent 安装
 
-把下面整段复制给 Codex 或其他 coding agent。GitHub 代码块右上角自带复制按钮。
+把下面整段复制给 Codex、Claude Code 或其他 coding agent。GitHub 代码块右上角自带复制按钮。
 
 ```text
 开始修改前，请先打开并阅读 https://github.com/YuxiaoMa66/antigravity-mission-control 。
 
 1. 检查 `agy` 是否已经安装并完成登录。
 2. 向我展示将执行的精确命令和目标路径，等我确认后再继续。
-3. 如果 AGY 已经可用，使用 `npx antigravity-mission-control@latest install` 安装稳定版；需要固定版本时使用 `@0.3.1`。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
+3. 如果 AGY 已经可用，使用 `npx antigravity-mission-control@latest install` 安装稳定版；需要固定版本时使用 `@0.4.0`。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
 4. 运行 `agy-mc doctor`，然后报告安装版本和路径。
 5. 开始委派项目任务前，使用当前可用的精确模型 slug 向我展示 A/B/C 三套阵容，等我选择后再执行。
 
 把 workspace trust 和 unrestricted 权限当作两项独立操作。没有我的批准，不要增加其中任何一项。
 
-保留 Codex 的最终验收权；AGY worker 只能在已批准范围内执行。
+保留你（宿主 agent）的最终验收权；AGY worker 只能在已批准范围内执行。
 ```
 
 Agent 会阅读本页的安装步骤和安全边界，完成检查后回报结果。你不需要自己把 README 翻译成一串终端命令。
 
 ## 看看实际操作界面
 
-以下为 v0.3.1 命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
+以下为 v0.4.0 命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
 
 <table>
   <tr>
@@ -62,9 +62,9 @@ Agent 会阅读本页的安装步骤和安全边界，完成检查后回报结�
 
 ## 别让已经薅到的 Gemini 在账号里吃灰
 
-如果你手里正好有 Google One AI 订阅，或者拿到了符合条件的学生一年福利，账号里可能已经躺着一批 Gemini 额度。Antigravity 客户端像写到一半换键盘，CLI 也未必顺手；Codex 倒是已经用出肌肉记忆，可额度常常午饭前就见底，模型偶尔还爱走观光路线。Gemini Flash 跑得快，这份速度值得派上用场。
+如果你手里正好有 Google One AI 订阅，或者拿到了符合条件的学生一年福利，账号里可能已经躺着一批 Gemini 额度。Antigravity 客户端像写到一半换键盘，CLI 也未必顺手；你的 coding agent 倒是已经用出肌肉记忆，可额度常常午饭前就见底，模型偶尔还爱走观光路线。Gemini Flash 跑得快，这份速度值得派上用场。
 
-把 Mission Control 装进你熟悉的 Codex harness。让 Codex 当产品经理、总监和爱挑刺的验收官，把实现工单交给 Antigravity。Codex 定范围、批权限、看 diff、跑测试；AGY worker 负责干活。
+把 Mission Control 装进你熟悉的 harness，Codex 或 Claude Code 都行。让它当产品经理、总监和爱挑刺的验收官，把实现工单交给 Antigravity。宿主 agent 定范围、批权限、看 diff、跑测试；AGY worker 负责干活。
 
 Google 账号资格和额度由你自己提供。Mission Control 不送订阅，也不会把提供商额度凭空变多。
 
@@ -72,10 +72,10 @@ Google 账号资格和额度由你自己提供。Mission Control 不送订阅，
 
 | 阶段 | 谁负责 | 防偏离设计 |
 |---|---|---|
-| 结构设计 | Codex | 把需求整理成范围、约束、验收标准和有边界的角色 |
-| 方案选择 | Codex + 你 | 提供 A/B/C 模型阵容和有实际差异的设计选项；关键选择由你确认或修改 |
+| 结构设计 | 宿主 agent | 把需求整理成范围、约束、验收标准和有边界的角色 |
+| 方案选择 | 宿主 agent + 你 | 提供 A/B/C 模型阵容和有实际差异的设计选项；关键选择由你确认或修改 |
 | 执行 | AGY worker | 在已批准目标内自己制定步骤并完成工作，不为每个无害动作反复请示 |
-| 监督验收 | reviewer + Codex | 检查范围漂移、证据、测试和交付质量；Codex 决定接受、纠正或退回 |
+| 监督验收 | reviewer + 宿主 agent | 检查范围漂移、证据、测试和交付质量；宿主 agent 决定接受、纠正或退回 |
 
 planner 可以在批准目标内自己决定路线。某个选择会改变范围、成本、可逆性或产品行为时，它必须把可选方案摆出来。reviewer 会同时拿到原始任务书和真实产物，专门识别“答案写得很漂亮，完成的却是另一件事”。
 
@@ -87,7 +87,7 @@ Mission Control 会先读取当前 AGY 模型目录，再提出阵容。每套�
 |---|---|---|---|
 | A：轻量 Flash 优先 | 使用能够完成任务的最小团队，按角色风险优先选择合适强度的 Gemini Flash；GPT 放在最后。 | 日常开发、边界明确的修改和需要节省额度的任务 | 成本和延迟较低，独立模型复核次数较少 |
 | B：质量优先，implementer 用 Flash | 保持较强的规划和审核，但 implementer 优先使用 Gemini Flash；GPT 放在最后。 | 设计模糊、大范围修改、安全敏感任务和返工代价高的项目 | 使用更多额度和时间，换取更深入的规划与独立检查 |
-| C：质量优先，全部 Gemini Flash High | 沿用 B 的质量目标，但所有 AGY 角色都使用当前最新的 `gemini-.*flash-high` 精确 slug。 | 需要质量和速度，同时希望统一使用 Gemini 的任务 | 所有 AGY 调用属于同一模型家族，审核独立性主要依靠独立会话、对抗提示和 Codex 验收 |
+| C：质量优先，全部 Gemini Flash High | 沿用 B 的质量目标，但所有 AGY 角色都使用当前最新的 `gemini-.*flash-high` 精确 slug。 | 需要质量和速度，同时希望统一使用 Gemini 的任务 | 所有 AGY 调用属于同一模型家族，审核独立性主要依靠独立会话、对抗提示和宿主验收 |
 
 这三套方案是动态路由规则，不是永久模型名单，也不是模型排行榜。Mission Control 在运行时读取 `agy-mc models`，并固定你批准的精确 slug。A、B 可以为低强度任务提出 Gemini Flash medium 或 low；实际批准仍需要单独确认非 High Gemini。C 始终使用 High。模型、角色、写入范围或权限配置发生变化时，需要重新确认。
 
@@ -111,7 +111,7 @@ npx antigravity-mission-control@latest install --install-agy --lang zh
 
 交互安装检测不到 AGY 时会先询问；非交互安装必须明确增加 `--install-agy`。新装 AGY 后运行 `agy` 完成 Google 登录。Mission Control 不读取、不复制登录材料。
 
-安装器会先展示所有目标，再创建私有 Python 运行环境、安装 `agy-mc`、部署 Codex Skill。全程使用参数数组，不使用 shell 拼接。CI 或 agent 环境需要加 `--yes`；可以先用 `--dry-run` 查看影响。
+安装器会先展示所有目标，再创建私有 Python 运行环境、安装 `agy-mc`、把 Skill 部署到 Codex 和/或 Claude Code（自动检测，也可用 `--host` 指定）。全程使用参数数组，不使用 shell 拼接。CI 或 agent 环境需要加 `--yes`；可以先用 `--dry-run` 查看影响。
 
 ```bash
 npx antigravity-mission-control@latest install --dry-run --lang zh
@@ -122,7 +122,7 @@ npx antigravity-mission-control@latest status --lang zh
 也支持直接使用 Python：
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.3.1"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.4.0"
 agy-mc skill install --lang zh
 agy-mc doctor
 ```
@@ -133,7 +133,7 @@ agy-mc doctor
 
 | 层 | 职责 |
 |---|---|
-| Codex Skill | 阵容选择、范围、权限边界和独立验收 |
+| 宿主 Skill（Codex / Claude Code） | 阵容选择、范围、权限边界和独立验收 |
 | `agy-mc` 核心 | 模型发现、签名批准、AGY 传输、任务、锁、证据和额度 |
 | npm bootstrap | 托管 Python 环境、Skill 部署、更新与可恢复卸载 |
 | AGY | 执行精确且有边界的 worker 任务 |
@@ -192,7 +192,7 @@ agy-mc continue <job-id> --prompt-file /private/follow-up.txt
 
 - 每次从当前 AGY 会话发现精确模型，不把历史 slug 当成事实。
 - 工作区信任与 unrestricted 执行是两项独立授权。
-- worker 成功不等于任务通过；Codex 必须检查真实 diff、诊断和测试。
+- worker 成功不等于任务通过；宿主 agent 必须检查真实 diff、诊断和测试。
 - prompt 通过 `stream-json` stdin 发送，不进入进程参数。
 - 状态目录权限为 `0700`，prompt、批准、锁和结果为 `0600`。
 - 安装、更新和卸载均保留可恢复备份。

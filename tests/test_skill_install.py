@@ -16,14 +16,17 @@ class SkillInstallTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.codex_home = Path(self.temp.name) / "codex"
         self.env = os.environ.copy()
+        self.claude_home = Path(self.temp.name) / "claude"
         self.env["CODEX_HOME"] = str(self.codex_home)
+        self.env["CLAUDE_CONFIG_DIR"] = str(self.claude_home)
 
     def tearDown(self):
         self.temp.cleanup()
 
-    def cli(self, *args):
+    def cli(self, *args, host="codex"):
+        host_args = ["--host", host] if host else []
         return subprocess.run(
-            [sys.executable, str(CLI), "skill", *args, "--format", "json"],
+            [sys.executable, str(CLI), "skill", *args, *host_args, "--format", "json"],
             cwd=ROOT,
             env=self.env,
             text=True,
@@ -42,7 +45,7 @@ class SkillInstallTests(unittest.TestCase):
 
         status = self.cli("status")
         self.assertEqual(status.returncode, 0, status.stderr)
-        self.assertEqual(json.loads(status.stdout)["version"], "0.3.1")
+        self.assertEqual(json.loads(status.stdout)["version"], "0.4.0")
 
         updated = self.cli("update")
         self.assertEqual(updated.returncode, 0, updated.stderr)
@@ -74,6 +77,68 @@ class SkillInstallTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("symlink Skill target", result.stderr)
         self.assertEqual(marker.read_text(encoding="utf-8"), "keep")
+
+    def test_claude_install_skips_codex_only_metadata_and_uses_claude_paths(self):
+        target = self.claude_home / "skills" / "antigravity-mission-control"
+        installed = self.cli("install", host="claude")
+        self.assertEqual(installed.returncode, 0, installed.stderr)
+        self.assertEqual(json.loads(installed.stdout)["host"], "claude")
+        self.assertTrue((target / "SKILL.md").is_file())
+        self.assertTrue((target / "references" / "host-notes.md").is_file())
+        self.assertFalse((target / "agents").exists())
+        marker = json.loads((target / ".agy-mc-install.json").read_text(encoding="utf-8"))
+        self.assertEqual(marker["host"], "claude")
+        self.assertFalse((self.codex_home / "skills").exists())
+        removed = self.cli("uninstall", host="claude")
+        self.assertEqual(removed.returncode, 0, removed.stderr)
+        self.assertTrue(Path(json.loads(removed.stdout)["backup"]).is_relative_to(self.claude_home / "skill-backups"))
+
+    def test_codex_install_keeps_interface_metadata(self):
+        self.assertEqual(self.cli("install").returncode, 0)
+        target = self.codex_home / "skills" / "antigravity-mission-control"
+        self.assertTrue((target / "agents" / "openai.yaml").is_file())
+
+    def test_all_installs_both_hosts(self):
+        result = self.cli("install", host="all")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        hosts = [item["host"] for item in json.loads(result.stdout)["results"]]
+        self.assertEqual(hosts, ["codex", "claude"])
+
+    def test_auto_installs_only_detected_hosts_and_errors_when_none(self):
+        none = self.cli("install", host="auto")
+        self.assertNotEqual(none.returncode, 0)
+        self.assertIn("--host", none.stderr)
+        self.claude_home.mkdir()
+        result = self.cli("install", host="auto")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["host"], "claude")
+        self.assertFalse((self.codex_home / "skills").exists())
+
+    def test_auto_uninstall_touches_only_managed_hosts_and_status_lists_both(self):
+        self.assertEqual(self.cli("install", host="claude").returncode, 0)
+        unmanaged = self.codex_home / "skills" / "antigravity-mission-control"
+        unmanaged.mkdir(parents=True)
+        status = self.cli("status", host="auto")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        by_host = {item["host"]: item["status"] for item in json.loads(status.stdout)["results"]}
+        self.assertEqual(by_host, {"codex": "present", "claude": "present"})
+        removed = self.cli("uninstall", host="auto")
+        self.assertEqual(json.loads(removed.stdout)["host"], "claude")
+        self.assertTrue(unmanaged.is_dir())
+
+    def test_target_requires_a_single_host(self):
+        result = self.cli("install", "--target", str(Path(self.temp.name) / "t"), host="all")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("single --host", result.stderr)
+
+    def test_doctor_warns_when_installed_skill_is_stale(self):
+        target = self.claude_home / "skills" / "antigravity-mission-control"
+        target.mkdir(parents=True)
+        (target / ".agy-mc-install.json").write_text(json.dumps({"version": "0.3.1"}), encoding="utf-8")
+        env = {**self.env, "AGY_MC_BIN": str(ROOT / "tests" / "fake_agy.py"), "AGY_MC_STATE_ROOT": str(Path(self.temp.name) / "state")}
+        proc = subprocess.run([sys.executable, str(CLI), "doctor"], cwd=ROOT, env=env, text=True, capture_output=True, check=False)
+        checks = {c["name"]: c for c in json.loads(proc.stdout)["checks"]}
+        self.assertIn("agy-mc skill update --host claude", checks["skill-claude"]["warning"])
 
 
 if __name__ == "__main__":

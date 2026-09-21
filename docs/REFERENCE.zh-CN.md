@@ -16,14 +16,14 @@
 | `status`、`wait`、`result` | 观察并收集任务 |
 | `cancel` | 经确认的 TERM/KILL 取消流程 |
 | `continue` | 续接一个精确记录的会话 |
-| `skill` | 安装、更新、检查或可恢复卸载 Codex Skill |
+| `skill` | 安装、更新、检查或可恢复卸载 Skill（`--host auto\|codex\|claude\|all`） |
 
 ## 任务状态与退出码
 
 | 状态 | 退出码 | 含义 |
 |---|---:|---|
 | `starting`、`running`、`canceling` | 2 | 尚未完成，需要继续观察 |
-| `done`、`done_with_warnings` | 0 | provider 执行结束；是否验收仍由 Codex 决定 |
+| `done`、`done_with_warnings` | 0 | provider 执行结束；是否验收仍由宿主 agent 决定 |
 | `error`、`crashed`、`cancel_failed` | 3 | 基础设施或执行失败 |
 | `canceled` | 4 | 调用方取消后已经确认进程退出 |
 
@@ -48,6 +48,7 @@
 | `AGY_MC_STATE_ROOT` | Mission Control 状态根目录 |
 | `AGY_MC_JOB_ROOT` | 任务证据目录 |
 | `CODEX_HOME` | Skill 部署使用的 Codex 主目录 |
+| `CLAUDE_CONFIG_DIR` | Skill 部署使用的 Claude Code 配置目录（默认 `~/.claude`） |
 | `XDG_STATE_HOME` | 标准状态父目录 |
 | `NO_COLOR` | 关闭 npm 终端颜色 |
 

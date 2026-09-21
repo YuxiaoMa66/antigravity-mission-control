@@ -9,37 +9,37 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b9188" alt="MIT License"></a>
 </p>
 
-Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota. Codex remains responsible for acceptance.
+Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota. Your coding agent (Codex or Claude Code) remains responsible for acceptance.
 
-<p align="center"><img src="assets/release-v0.3.1.svg" width="920" alt="Antigravity Mission Control v0.3.1 operational control board"></p>
+<p align="center"><img src="assets/release-v0.4.0.svg" width="920" alt="Antigravity Mission Control v0.4.0 operational control board"></p>
 
-> **v0.3.1:** Coordinated GitHub and npm patch release: corrected agent handoff, stable installation commands, and synchronized version metadata. Runtime routing behavior remains the v0.3.0 Flash-first design.
+> **v0.4.0:** The Skill now runs in Claude Code as well as Codex. One host-neutral Skill, installed with `--host codex|claude|all` (auto-detected by default). Runtime routing behavior remains the v0.3.0 Flash-first design.
 >
-> The reviewed source tag, GitHub Release and npm package are all available for v0.3.1. Independent community project; not affiliated with Google or Antigravity.
+> Independent community project; not affiliated with Google or Antigravity.
 
 ## Hand this page to your agent
 
-Paste the block below into Codex or another coding agent. GitHub adds a copy button to the code block.
+Paste the block below into Codex, Claude Code or another coding agent. GitHub adds a copy button to the code block.
 
 ```text
 Open and read https://github.com/YuxiaoMa66/antigravity-mission-control before making changes.
 
 1. Check whether `agy` is installed and signed in.
 2. Show me the exact commands and target paths, then wait for my confirmation.
-3. If AGY is ready, install the stable npm package with `npx antigravity-mission-control@latest install`; use `@0.3.1` when you need a pinned release. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
+3. If AGY is ready, install the stable npm package with `npx antigravity-mission-control@latest install`; use `@0.4.0` when you need a pinned release. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
 4. Run `agy-mc doctor` and report the installed versions and paths.
 5. Before delegating project work, show me the A/B/C roster choices with exact available model slugs and wait for my selection.
 
 Treat workspace trust and unrestricted permissions as separate actions. Do not grant either one without my approval.
 
-Keep Codex as the acceptance authority; AGY workers execute only within the approved scope.
+Keep yourself (the host agent) as the acceptance authority; AGY workers execute only within the approved scope.
 ```
 
 The agent reads the same installation and security boundaries you see on this page, performs the checks, and reports the result. You do not need to translate the README into a chain of shell commands.
 
 ## See the flight deck
 
-These v0.3.1 illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
+These v0.4.0 illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
 
 <table>
   <tr>
@@ -62,9 +62,9 @@ These v0.3.1 illustrations show command excerpts and workflow summaries. Paths, 
 
 ## Put the quota you already have to work
 
-If your account includes a Google One AI plan or an eligible student offer, you may already have a year of Gemini access. That quota can sit idle while Antigravity's desktop client breaks your rhythm and its CLI never quite becomes home. Codex has become muscle memory, but its allowance can vanish before lunch and a slow turn may take the scenic route. Gemini Flash brings the speed you wanted to use.
+If your account includes a Google One AI plan or an eligible student offer, you may already have a year of Gemini access. That quota can sit idle while Antigravity's desktop client breaks your rhythm and its CLI never quite becomes home. Your coding agent has become muscle memory, but its allowance can vanish before lunch and a slow turn may take the scenic route. Gemini Flash brings the speed you wanted to use.
 
-Install Mission Control in the Codex harness you already know. Let Codex act as product manager, supervising editor, and suspicious acceptance reviewer. Give the implementation tickets to Antigravity. Codex defines scope, approves authority, inspects diffs, and runs the checks; AGY workers do the typing.
+Install Mission Control in the harness you already know, Codex or Claude Code. Let it act as product manager, supervising editor, and suspicious acceptance reviewer. Give the implementation tickets to Antigravity. The host agent defines scope, approves authority, inspects diffs, and runs the checks; AGY workers do the typing.
 
 Bring your own eligible Google account and quota. Mission Control neither creates a subscription nor increases provider limits.
 
@@ -72,10 +72,10 @@ Bring your own eligible Google account and quota. Mission Control neither create
 
 | Stage | Who owns it | Guardrail |
 |---|---|---|
-| Structure | Codex | Converts the request into scope, constraints, acceptance criteria, and bounded roles |
-| Choices | Codex + you | Offers A/B/C model rosters and meaningful design alternatives; you select or revise the consequential choices |
+| Structure | Host agent | Converts the request into scope, constraints, acceptance criteria, and bounded roles |
+| Choices | Host agent + you | Offers A/B/C model rosters and meaningful design alternatives; you select or revise the consequential choices |
 | Execution | AGY workers | Plans and implements inside the approved objective without asking for permission on every harmless step |
-| Supervision | Reviewer + Codex | Checks drift, evidence, tests, and delivery quality; Codex accepts, corrects, or rejects the result |
+| Supervision | Reviewer + host agent | Checks drift, evidence, tests, and delivery quality; the host agent accepts, corrects, or rejects the result |
 
 The planner can choose its own route inside the approved objective. It surfaces alternatives when a choice changes scope, cost, reversibility, or product behavior. The reviewer receives the original brief and the real artifacts, so it can catch a polished answer that solved the wrong problem.
 
@@ -87,7 +87,7 @@ Mission Control discovers the current AGY model catalog before proposing a roste
 |---|---|---|---|
 | A: Lightweight Flash-first | Uses the smallest adequate team and prefers Gemini Flash at role-appropriate intensity; GPT stays last. | Routine development, bounded changes and quota-aware work | Lower cost and latency, with fewer independent model passes |
 | B: Quality-first Flash implementer | Keeps the strongest planning and review available, but sends implementation to Gemini Flash first and keeps GPT last. | Ambiguous design, large changes, security-sensitive work and costly mistakes | More quota and time in exchange for deeper planning and independent checking |
-| C: Quality-first Gemini Flash High | Keeps B's quality objective while routing every AGY role to the newest exact `gemini-.*flash-high` slug. | Quality-focused Gemini work with consistent, fast routing | Review diversity comes from separate conversations and Codex verification because all AGY calls share one model family |
+| C: Quality-first Gemini Flash High | Keeps B's quality objective while routing every AGY role to the newest exact `gemini-.*flash-high` slug. | Quality-focused Gemini work with consistent, fast routing | Review diversity comes from separate conversations and host verification because all AGY calls share one model family |
 
 These strategies are routing rules, not permanent model lists or benchmark rankings. Mission Control reads `agy-mc models` at run time and pins the exact slug you approve. A and B may propose Gemini Flash medium or low for lower-intensity work; actual approval still requires the separate non-High Gemini confirmation. C always uses High. A changed model, role, write scope or permission profile requires confirmation again.
 
@@ -111,7 +111,7 @@ npx antigravity-mission-control@latest install --install-agy
 
 Interactive installation asks before adding AGY when it is missing. Non-interactive installation requires the explicit `--install-agy` flag. After a fresh AGY install, run `agy` to complete Google sign-in. Mission Control never reads or copies that login state.
 
-The bootstrapper shows every target before writing, creates a private managed Python environment, installs `agy-mc`, deploys the Codex Skill, and runs without shell interpolation. For CI or agents, add `--yes`; inspect first with `--dry-run`.
+The bootstrapper shows every target before writing, creates a private managed Python environment, installs `agy-mc`, deploys the Skill to Codex and/or Claude Code (auto-detected, or choose with `--host`), and runs without shell interpolation. For CI or agents, add `--yes`; inspect first with `--dry-run`.
 
 ```bash
 npx antigravity-mission-control@latest install --dry-run
@@ -122,8 +122,8 @@ npx antigravity-mission-control@latest status
 Direct Python installation is also supported:
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.3.1"
-agy-mc skill install
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.4.0"
+agy-mc skill install --host auto
 agy-mc doctor
 ```
 
@@ -133,7 +133,7 @@ Full setup, upgrade, uninstall, local-source and PATH notes: [Installation guide
 
 | Layer | Responsibility |
 |---|---|
-| Codex Skill | Roster choice, scope, permission boundaries, independent acceptance |
+| Host Skill (Codex / Claude Code) | Roster choice, scope, permission boundaries, independent acceptance |
 | `agy-mc` core | Model discovery, signed approvals, AGY transport, jobs, locks, evidence, quota |
 | npm bootstrap | Managed Python environment, Skill deployment, update and recoverable uninstall |
 | AGY | Executes the exact bounded worker assignment |
@@ -192,7 +192,7 @@ Editing jobs use an OS-level non-blocking lock per canonical workspace. `cancel`
 
 - Exact models are discovered from the current AGY session; no remembered slug is treated as truth.
 - Workspace trust and unrestricted execution are separate user-approved mutations.
-- Worker success is not task acceptance. Codex checks the real diff, diagnostics and tests.
+- Worker success is not task acceptance. the host agent checks the real diff, diagnostics and tests.
 - Prompts travel over `stream-json` stdin, never in process arguments.
 - State directories are `0700`; prompts, manifests, locks and results are `0600`.
 - Installation and uninstall preserve recoverable backups.
