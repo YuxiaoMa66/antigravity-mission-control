@@ -7,7 +7,7 @@ import unittest
 import xml.etree.ElementTree as ET
 
 from antigravity_mission_control import __version__
-from antigravity_mission_control import cli
+from antigravity_mission_control import common
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,8 +18,8 @@ class ReleaseIntegrityTests(unittest.TestCase):
         package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         npm_cli = (ROOT / "npm" / "cli.mjs").read_text(encoding="utf-8")
-        self.assertEqual(cli.VERSION, "0.4.1")
-        self.assertEqual(__version__, cli.VERSION)
+        self.assertEqual(common.VERSION, "0.4.1")
+        self.assertEqual(__version__, common.VERSION)
         self.assertIn('version = "0.4.1"', pyproject)
         self.assertEqual(package["version"], "0.4.1")
         self.assertIn("const VERSION = '0.4.1'", npm_cli)

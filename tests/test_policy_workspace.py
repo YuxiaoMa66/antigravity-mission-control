@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from antigravity_mission_control import cli
+from antigravity_mission_control import approvals, workspace
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -143,7 +143,7 @@ class PolicyWorkspaceTests(unittest.TestCase):
         # Model a genuine pre-rename signed manifest without changing other fields.
         payload['policy']['name'] = 'strict-yuxiao'
         key = (self.root / 'state/approval.key').read_bytes()
-        payload['signature'] = cli.approval_signature(payload, key)
+        payload['signature'] = approvals.approval_signature(payload, key)
         path.write_text(json.dumps(payload))
         _, completed = self.run_job(result)
         self.assertEqual(completed['policy']['name'], 'strict')
@@ -157,11 +157,11 @@ class PolicyWorkspaceTests(unittest.TestCase):
         self.assertFalse(json.loads(policy.stdout)['policy']['require_three_rosters'])
 
     def test_non_git_and_oversize_fingerprints_are_not_clean_claims(self):
-        snapshot = cli.workspace_snapshot(self.workspace)
+        snapshot = workspace.workspace_snapshot(self.workspace)
         self.assertEqual(snapshot['status'], 'unknown')
         self.init_repo()
         (self.workspace / 'large.bin').write_bytes(b'x' * (8 * 1024 * 1024 + 1))
-        snapshot = cli.workspace_snapshot(self.workspace)
+        snapshot = workspace.workspace_snapshot(self.workspace)
         self.assertEqual(snapshot['status'], 'partial')
         self.assertIn('skipped', snapshot['paths']['large.bin']['fingerprint'])
 
@@ -174,7 +174,7 @@ class PolicyWorkspaceTests(unittest.TestCase):
         script.write_text('#!/bin/sh\ntouch "' + str(marker) + '"\n')
         script.chmod(0o700)
         self.git('config', 'diff.external', str(script))
-        snapshot = cli.workspace_snapshot(self.workspace)
+        snapshot = workspace.workspace_snapshot(self.workspace)
         self.assertEqual(snapshot['status'], 'ok', snapshot)
         self.assertIn('renamed\nfile.txt', snapshot['paths'])
         self.assertEqual(snapshot['paths']['renamed\nfile.txt']['original_path'], 'user.txt')
