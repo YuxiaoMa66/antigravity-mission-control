@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2rc1 - 2026-09-21
+
+- Pre-release (npm `0.4.2-rc.1`, published under the `next` tag; `latest` stays on 0.4.1). Split the 1938-line `antigravity_mission_control/cli.py` into `common`, `routing`, `workspace`, `jobstore`, `approvals`, `usage`, `skill` and `jobs` modules; `cli.py` keeps `doctor`, the argument parser and `main`. No behavior change: `--help` output is byte-identical and every definition is AST-equal to the original apart from the two places that name `cli.py` for worker launch.
+- Background workers are still re-run by path, not with `-m`, because their working directory is the user's workspace and `-m` would put it first on `sys.path`. `cli.py` gains a `__package__` shim so its relative imports resolve when it runs as a script.
+- Tests patch module state where it is read: `JOB_ROOT` lives only in `jobstore`, `SETTINGS_PATH` in `workspace` and `APPROVAL_KEY_PATH` in `approvals`.
+
 ## 0.4.1 - 2026-09-21
 
 - Fix npm `uninstall`: with no managed Skill found it errored out and left the runtime behind (regression in v0.4.0); it now removes the runtime and CLI link again.

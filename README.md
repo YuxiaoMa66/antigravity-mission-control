@@ -11,9 +11,9 @@
 
 Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota. Your coding agent (Codex or Claude Code) remains responsible for acceptance.
 
-<p align="center"><img src="assets/release-v0.4.1.svg" width="920" alt="Antigravity Mission Control v0.4.1 operational control board"></p>
+<p align="center"><img src="assets/release-v0.4.2rc1.svg" width="920" alt="Antigravity Mission Control v0.4.2rc1 operational control board"></p>
 
-> **v0.4.1:** Patch release for the Codex + Claude Code Skill introduced in v0.4.0 (one host-neutral Skill, installed with `--host codex|claude|all`, auto-detected by default). Fixes npm `uninstall` and `status` edge cases and narrows the suggested Claude Code permission allowlist. Runtime routing behavior remains the v0.3.0 Flash-first design.
+> **v0.4.2rc1 (pre-release, npm `0.4.2-rc.1`):** Release candidate for an internal refactor: the Python CLI is split from one 1900-line file into modules. Behavior, `--help` output and the Skill are unchanged, and stable stays v0.4.1 until this is promoted. Try it with `npx antigravity-mission-control@next install`. Runtime routing behavior remains the v0.3.0 Flash-first design.
 >
 > Independent community project; not affiliated with Google or Antigravity.
 
@@ -26,7 +26,7 @@ Open and read https://github.com/YuxiaoMa66/antigravity-mission-control before m
 
 1. Check whether `agy` is installed and signed in.
 2. Show me the exact commands and target paths, then wait for my confirmation.
-3. If AGY is ready, install the stable npm package with `npx antigravity-mission-control@latest install`; use `@0.4.1` when you need a pinned release. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
+3. If AGY is ready, install the stable npm package with `npx antigravity-mission-control@latest install`; use `@0.4.1` when you need a pinned release, or `@next` to try the v0.4.2rc1 pre-release. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
 4. Run `agy-mc doctor` and report the installed versions and paths.
 5. Before delegating project work, show me the A/B/C roster choices with exact available model slugs and wait for my selection.
 
@@ -39,7 +39,7 @@ The agent reads the same installation and security boundaries you see on this pa
 
 ## See the flight deck
 
-These v0.4.1 illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
+These v0.4.2rc1 illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
 
 <table>
   <tr>
@@ -126,6 +126,8 @@ python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-co
 agy-mc skill install --host auto
 agy-mc doctor
 ```
+
+For the v0.4.2rc1 pre-release, use `@v0.4.2rc1` instead of `@v0.4.1`.
 
 Full setup, upgrade, uninstall, local-source and PATH notes: [Installation guide](docs/INSTALL.md).
 

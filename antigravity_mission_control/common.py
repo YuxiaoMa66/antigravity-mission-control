@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 
 
-VERSION = "0.4.1"
+VERSION = "0.4.2rc1"
 
 
 AGY_BIN = os.environ.get("AGY_MC_BIN", os.environ.get("AGY_ORCHESTRATOR_BIN", "agy"))

@@ -4,8 +4,8 @@
 
 Mission Control keeps one coordinated release version across its ecosystems:
 
-- Python and Git tag: `0.4.1` / `v0.4.1`
-- npm SemVer: `0.4.1`
+- Python and Git tag: `0.4.2rc1` / `v0.4.2rc1`
+- npm SemVer: `0.4.2-rc.1`
 
 Both identify the same release. Update `__version__`, `pyproject.toml`, `package.json`, npm bootstrap constants, changelog and bilingual release notes together. Keep historical release notes and assets immutable.
 
@@ -28,13 +28,17 @@ Also run Skill Creator's `quick_validate.py`, inspect the wheel contents, perfor
 ## Publication order
 
 1. Push the reviewed `main` commit to GitHub.
-2. Create tag `v0.4.1` at that exact commit.
+2. Create tag `v0.4.2rc1` at that exact commit.
 3. Create a GitHub Release from the bilingual notes.
 4. Verify Git installation from the tag in an isolated environment.
 5. Run `npm publish --tag latest --access public`.
 6. Verify `npm view antigravity-mission-control dist-tags` and `npx antigravity-mission-control status`.
 
 The npm bootstrap default source points at the Git tag, so npm must be published only after the GitHub tag is reachable. Trusted Publisher/OIDC is optional; if no publish workflow exists, publish interactively with the maintainer's 2FA. PyPI publication is intentionally deferred; direct Python installs use GitHub.
+
+## Pre-releases
+
+A pre-release spells the version `X.Y.ZrcN` for Python and the Git tag, and `X.Y.Z-rc.N` for npm SemVer. Tag the reviewed commit on its branch and mark the GitHub Release as a pre-release; `main` moves only when the stable version is cut. Publish npm with `npm publish --tag next --access public`, so `latest`, the stable npm package and the stable install instructions stay on the last stable version. Promote a pre-release by cutting the stable version through the gates above.
 
 ## Rollback
 
