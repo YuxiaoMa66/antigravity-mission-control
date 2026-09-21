@@ -45,7 +45,7 @@ class SkillInstallTests(unittest.TestCase):
 
         status = self.cli("status")
         self.assertEqual(status.returncode, 0, status.stderr)
-        self.assertEqual(json.loads(status.stdout)["version"], "0.4.2rc1")
+        self.assertEqual(json.loads(status.stdout)["version"], "0.4.2rc2")
 
         updated = self.cli("update")
         self.assertEqual(updated.returncode, 0, updated.stderr)

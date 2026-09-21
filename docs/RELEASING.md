@@ -4,8 +4,8 @@
 
 Mission Control keeps one coordinated release version across its ecosystems:
 
-- Python and Git tag: `0.4.2rc1` / `v0.4.2rc1`
-- npm SemVer: `0.4.2-rc.1`
+- Python and Git tag: `0.4.2rc2` / `v0.4.2rc2`
+- npm SemVer: `0.4.2-rc.2`
 
 Both identify the same release. Update `__version__`, `pyproject.toml`, `package.json`, npm bootstrap constants, changelog and bilingual release notes together. Keep historical release notes and assets immutable.
 
@@ -28,7 +28,7 @@ Also run Skill Creator's `quick_validate.py`, inspect the wheel contents, perfor
 ## Publication order
 
 1. Push the reviewed `main` commit to GitHub.
-2. Create tag `v0.4.2rc1` at that exact commit.
+2. Create tag `v0.4.2rc2` at that exact commit.
 3. Create a GitHub Release from the bilingual notes.
 4. Verify Git installation from the tag in an isolated environment.
 5. Run `npm publish --tag latest --access public`.

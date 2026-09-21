@@ -32,10 +32,10 @@ SCREENS = (
     Screen('guided-install.svg', 'Install with intent.', 'Inspect the exact target before installing the CLI and skill.', 'install', (
         Line('$ npx antigravity-mission-control@latest install --dry-run', 'prompt'),
         Line('', 'text'),
-        Line('CLI version       0.4.2rc1', 'text'),
+        Line('CLI version       0.4.2rc2', 'text'),
         Line('Skill target      codex / claude (auto-detect)', 'text'),
         Line('Runtime           ~/.local/share/antigravity-mission-control/venv', 'text'),
-        Line('Source tag        v0.4.2rc1', 'text'),
+        Line('Source tag        v0.4.2rc2', 'text'),
         Line('', 'text'),
         Line('$ npx antigravity-mission-control@latest install', 'prompt'),
         Line('', 'text'),
@@ -149,7 +149,7 @@ def render(screen: Screen) -> str:
 <rect width="1280" height="800" rx="12" fill="#141615"/>
 <path d="M48 48H1232M48 748H1232" stroke="#30352f"/>
 <rect x="64" y="48" width="7" height="94" fill="#e6a15d"/>
-<text x="92" y="76" font-family="Menlo, Consolas, monospace" font-size="15" letter-spacing="2" fill="#e6a15d">MISSION CONTROL  /  V0.4.2RC1</text>
+<text x="92" y="76" font-family="Menlo, Consolas, monospace" font-size="15" letter-spacing="2" fill="#e6a15d">MISSION CONTROL  /  V0.4.2RC2</text>
 <text x="92" y="122" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" letter-spacing="-1.2" fill="#f2eee5">{escape(screen.title)}</text>
 <text x="92" y="162" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#a4a59c">{escape(screen.description)}</text>
 <text x="1232" y="76" text-anchor="end" font-family="Menlo, Consolas, monospace" font-size="14" letter-spacing="1.4" fill="#a4a59c">OPERATIONAL EVIDENCE PLATE</text>

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Antigravity Mission Control v0.4.2rc2</title>
+  <desc id="desc">An operational control board showing model routing, approval and evidence for Flash-first orchestration.</desc>
+  <rect width="1600" height="900" fill="#141615"/>
+  <path d="M72 74H1528M72 826H1528" stroke="#30352f" stroke-width="2"/>
+  <rect x="86" y="112" width="8" height="128" fill="#e6a15d"/>
+  <text x="124" y="150" fill="#e6a15d" font-family="Menlo, Consolas, monospace" font-size="22" letter-spacing="3">V0.4.2RC2  /  PRE-RELEASE</text>
+  <text x="124" y="286" fill="#f2eee5" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="700" letter-spacing="-3">Antigravity</text>
+  <text x="124" y="372" fill="#f2eee5" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="700" letter-spacing="-3">Mission Control</text>
+  <text x="128" y="448" fill="#c8c5bb" font-family="Arial, Helvetica, sans-serif" font-size="28">Route the work. Keep the proof.</text>
+  <path d="M124 528H592" stroke="#4a5048" stroke-width="2"/>
+  <text x="124" y="574" fill="#a4a59c" font-family="Menlo, Consolas, monospace" font-size="18">A  LIGHTWEIGHT FLASH-FIRST</text>
+  <text x="124" y="608" fill="#a4a59c" font-family="Menlo, Consolas, monospace" font-size="18">B  QUALITY-FIRST IMPLEMENTATION</text>
+  <text x="124" y="642" fill="#a4a59c" font-family="Menlo, Consolas, monospace" font-size="18">C  GEMINI FLASH HIGH FOR EVERY ROLE</text>
+  <text x="124" y="746" fill="#686e66" font-family="Menlo, Consolas, monospace" font-size="16" letter-spacing="1">MODEL  /  APPROVAL  /  WORKSPACE  /  EVIDENCE</text>
+
+  <rect x="748" y="112" width="704" height="650" rx="14" fill="#e9e3d7"/>
+  <rect x="782" y="146" width="636" height="582" rx="8" fill="#20231f" stroke="#555b53" stroke-width="2"/>
+  <rect x="782" y="146" width="636" height="58" rx="8" fill="#2b302a"/>
+  <text x="816" y="183" fill="#e6a15d" font-family="Menlo, Consolas, monospace" font-size="17" letter-spacing="2">CONTROL BOARD</text>
+  <text x="1386" y="183" text-anchor="end" fill="#a4a59c" font-family="Menlo, Consolas, monospace" font-size="15">STATIC EVIDENCE PLATE</text>
+
+  <path d="M878 272V626M1060 272V626M1242 272V626" stroke="#3b413a" stroke-width="2"/>
+  <text x="816" y="252" fill="#a4a59c" font-family="Menlo, Consolas, monospace" font-size="14">ROLE</text>
+  <text x="854" y="252" fill="#a4a59c" font-family="Menlo, Consolas, monospace" font-size="14">PLAN</text>
+  <text x="1036" y="252" fill="#a4a59c" font-family="Menlo, Consolas, monospace" font-size="14">IMPLEMENT</text>
+  <text x="1218" y="252" fill="#a4a59c" font-family="Menlo, Consolas, monospace" font-size="14">REVIEW</text>
+
+  <text x="816" y="316" fill="#f2eee5" font-family="Menlo, Consolas, monospace" font-size="16">A</text>
+  <text x="816" y="396" fill="#f2eee5" font-family="Menlo, Consolas, monospace" font-size="16">B</text>
+  <text x="816" y="476" fill="#f2eee5" font-family="Menlo, Consolas, monospace" font-size="16">C</text>
+  <path d="M854 310H1370M854 390H1370M854 470H1370" stroke="#3b413a" stroke-width="1"/>
+
+  <circle cx="924" cy="310" r="13" fill="#e6a15d"/>
+  <circle cx="1106" cy="310" r="13" fill="#c7d5b7"/>
+  <circle cx="1288" cy="310" r="13" fill="#e6a15d"/>
+  <path d="M937 310H1093M1119 310H1275" stroke="#e6a15d" stroke-width="3"/>
+
+  <circle cx="924" cy="390" r="13" fill="#c7d5b7"/>
+  <circle cx="1106" cy="390" r="13" fill="#e6a15d"/>
+  <circle cx="1288" cy="390" r="13" fill="#c7d5b7"/>
+  <path d="M937 390H1093M1119 390H1275" stroke="#c7d5b7" stroke-width="3"/>
+
+  <circle cx="924" cy="470" r="13" fill="#e6a15d"/>
+  <circle cx="1106" cy="470" r="13" fill="#e6a15d"/>
+  <circle cx="1288" cy="470" r="13" fill="#e6a15d"/>
+  <path d="M937 470H1093M1119 470H1275" stroke="#e6a15d" stroke-width="3"/>
+
+  <rect x="854" y="548" width="516" height="112" rx="8" fill="#2b302a" stroke="#555b53"/>
+  <circle cx="916" cy="604" r="28" fill="none" stroke="#e6a15d" stroke-width="3"/>
+  <circle cx="916" cy="604" r="18" fill="none" stroke="#e6a15d" stroke-width="1"/>
+  <text x="916" y="609" text-anchor="middle" fill="#e6a15d" font-family="Menlo, Consolas, monospace" font-size="11">OK</text>
+  <text x="970" y="593" fill="#f2eee5" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700">BOUND APPROVAL</text>
+  <text x="970" y="620" fill="#a4a59c" font-family="Menlo, Consolas, monospace" font-size="14">MODEL  /  SCOPE  /  PROMPT  /  EXPIRY</text>
+
+  <text x="816" y="704" fill="#a4a59c" font-family="Menlo, Consolas, monospace" font-size="14">DIFF CHECK</text>
+  <text x="1386" y="704" text-anchor="end" fill="#c7d5b7" font-family="Menlo, Consolas, monospace" font-size="14">ACCEPTANCE REMAINS WITH THE HOST AGENT</text>
+</svg>

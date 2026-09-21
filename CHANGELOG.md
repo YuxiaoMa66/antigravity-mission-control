@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.2rc2 - 2026-09-22
+
+- Pre-release (npm `0.4.2-rc.2`, published under the `next` tag; `latest` stays on 0.4.1). Second candidate of the module split, with fixes from a review of rc1.
+- Fix: a background worker whose run failed (for example a soft-denied permission, exit 3) was labeled `done_with_warnings` with exit 0 whenever the relayed AGY stderr contained that status text. The label now requires a successful exit.
+- Fix: workspace trust, `approve` and `run` refused only `/` and HOME. Ancestors of HOME such as `/Users`, and the system temp roots, are now refused as broad workspaces.
+- Fix: a job left in `starting` by a launcher that died before the worker started is now marked `crashed` instead of blocking `wait`; jobs record `launcher_pid`. A cancel that lands during launch is no longer overwritten with `running`, and the unrecorded worker is stopped.
+- Change: `agy-mc skill uninstall` refuses a target without the `.agy-mc-install.json` marker unless `--force` is given, matching install and update. The npm bootstrapper checks every target before changing anything, so `uninstall --host all` can no longer remove one Skill and then stop with the runtime left behind; it forwards `--force`.
+- Internal: remove split leftovers (dead `trust_added` branch, `parse_child_payload` alias, duplicate settings writer and usage error envelopes); `common.VERSION` now derives from `__version__`, and atomic JSON writes set the final mode before the rename.
+
 ## 0.4.2rc1 - 2026-09-21
 
 - Pre-release (npm `0.4.2-rc.1`, published under the `next` tag; `latest` stays on 0.4.1). Split the 1938-line `antigravity_mission_control/cli.py` into `common`, `routing`, `workspace`, `jobstore`, `approvals`, `usage`, `skill` and `jobs` modules; `cli.py` keeps `doctor`, the argument parser and `main`. No behavior change: `--help` output is byte-identical and every definition is AST-equal to the original apart from the two places that name `cli.py` for worker launch.
