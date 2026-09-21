@@ -259,16 +259,19 @@ async function installOfficialAgy(p) {
   return installed;
 }
 
+function assertManagedSkill(args, target) {
+  if (existsSync(target) && !existsSync(`${target}/.agy-mc-install.json`) && !args.force) {
+    throw new Error(`Existing Skill is not managed by agy-mc: ${target}; inspect it or rerun with --force`);
+  }
+}
+
 function resolveSkillAction(args, { target }) {
   const targetExists = existsSync(target);
-  const managedMarker = `${target}/.agy-mc-install.json`;
   if (args.command === 'update' && !targetExists) {
     throw new Error(`Skill is not installed: ${target}; use install`);
   }
-  if (targetExists && !existsSync(managedMarker) && !args.force) {
-    throw new Error(`Existing Skill is not managed by agy-mc: ${target}; inspect it or rerun with --force`);
-  }
-  if (args.command === 'install' && targetExists && existsSync(managedMarker)) return 'update';
+  assertManagedSkill(args, target);
+  if (args.command === 'install' && targetExists && existsSync(`${target}/.agy-mc-install.json`)) return 'update';
   return args.command === 'install' ? 'install' : 'update';
 }
 
@@ -330,6 +333,8 @@ function showStatus(p, msg) {
 }
 
 async function uninstall(args, p, msg) {
+  // Check every target before any change so one refusal cannot leave a half-uninstalled setup.
+  for (const t of p.targets) assertManagedSkill(args, t.target);
   showPlan(args, p, msg);
   if (!(await confirmChange(args, msg.confirm))) {
     console.log(msg.canceled);
