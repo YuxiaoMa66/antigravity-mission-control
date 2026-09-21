@@ -15,13 +15,13 @@ Objective: <one sentence>
 Catalog: <agy-mc models check time and model count>
 
 ### A: Lightweight Flash-first
-Intent: smallest adequate team, Gemini Flash at role-appropriate intensity, and GPT as the final fallback
+Intent: smallest adequate team and Gemini Flash at role-appropriate intensity
 | Role | Executor | Exact model | Responsibility | Filesystem scope | Execution profile |
 | ...  | ...      | ...         | ...            | ...              | plan|accept-edits |
 Tradeoff: <specific cost, latency and review-independence effect>
 
 ### B: Quality-first Flash implementer
-Intent: strongest suitable planning and review, Gemini Flash first for implementation, and GPT as the final fallback
+Intent: strongest suitable planning and review, with Gemini Flash first for implementation
 <same table and tradeoff fields>
 
 ### C: Quality-first Gemini Flash High

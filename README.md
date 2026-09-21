@@ -85,8 +85,8 @@ Mission Control discovers the current AGY model catalog before proposing a roste
 
 | Strategy | Team design | Best fit | Tradeoff |
 |---|---|---|---|
-| A: Lightweight Flash-first | Uses the smallest adequate team and prefers Gemini Flash at role-appropriate intensity; GPT stays last. | Routine development, bounded changes and quota-aware work | Lower cost and latency, with fewer independent model passes |
-| B: Quality-first Flash implementer | Keeps the strongest planning and review available, but sends implementation to Gemini Flash first and keeps GPT last. | Ambiguous design, large changes, security-sensitive work and costly mistakes | More quota and time in exchange for deeper planning and independent checking |
+| A: Lightweight Flash-first | Uses the smallest adequate team and prefers Gemini Flash at role-appropriate intensity. | Routine development, bounded changes and quota-aware work | Lower cost and latency, with fewer independent model passes |
+| B: Quality-first Flash implementer | Keeps the strongest planning and review available, but sends implementation to Gemini Flash first. | Ambiguous design, large changes, security-sensitive work and costly mistakes | More quota and time in exchange for deeper planning and independent checking |
 | C: Quality-first Gemini Flash High | Keeps B's quality objective while routing every AGY role to the newest exact `gemini-.*flash-high` slug. | Quality-focused Gemini work with consistent, fast routing | Review diversity comes from separate conversations and host verification because all AGY calls share one model family |
 
 These strategies are routing rules, not permanent model lists or benchmark rankings. Mission Control reads `agy-mc models` at run time and pins the exact slug you approve. A and B may propose Gemini Flash medium or low for lower-intensity work; actual approval still requires the separate non-High Gemini confirmation. C always uses High. A changed model, role, write scope or permission profile requires confirmation again.
