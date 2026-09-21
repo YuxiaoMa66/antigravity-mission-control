@@ -14,7 +14,7 @@ Mission Control 不读取、不复制 AGY OAuth 材料。首次安装 AGY 后仍
 
 ## 推荐方式：npm 包
 
-`@latest` 会跟随稳定版 npm 发布；需要可复现安装时固定使用 `@0.4.0`，npm 安装器随后会解析对应的已验证 Git tag。
+`@latest` 会跟随稳定版 npm 发布；需要可复现安装时固定使用 `@0.4.1`，npm 安装器随后会解析对应的已验证 Git tag。
 
 先查看精确路径，不写入文件：
 
@@ -69,7 +69,7 @@ npx antigravity-mission-control@latest install --yes --install-agy --lang zh
 npx antigravity-mission-control@latest install --host claude
 ```
 
-已有的 Codex 安装保持原路径、标记文件和 `CODEX_HOME` 行为。`agents/openai.yaml` 只属于 Codex，不会复制到 Claude Code。`agy-mc doctor` 会在已安装 Skill 比 CLI 旧时给出警告。
+已有的 Codex 安装保持原路径、标记文件和 `CODEX_HOME` 行为。`agents/openai.yaml` 只属于 Codex，不会复制到 Claude Code。没有任何宿主装有托管 Skill 时，`uninstall` 仍会移除托管运行环境和 CLI 链接。`agy-mc doctor` 会在已安装 Skill 比 CLI 旧时给出警告。
 
 ## 更新与状态
 
@@ -92,7 +92,7 @@ Skill 会移动到对应宿主的备份目录；托管 Python 环境会在原位
 ## 直接使用 Python
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.4.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.4.1"
 agy-mc skill install --lang zh
 ```
 

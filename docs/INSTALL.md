@@ -14,7 +14,7 @@ Mission Control never reads or copies AGY OAuth material. A fresh AGY installati
 
 ## Recommended: npm package
 
-`@latest` follows the stable npm release. Pin `@0.4.0` when reproducibility matters; the npm bootstrapper then resolves the matching verified Git tag internally.
+`@latest` follows the stable npm release. Pin `@0.4.1` when reproducibility matters; the npm bootstrapper then resolves the matching verified Git tag internally.
 
 Preview exact paths without writing:
 
@@ -69,7 +69,7 @@ Add `~/.local/bin` to `PATH` if the installer reports that it is missing.
 npx antigravity-mission-control@latest install --host claude
 ```
 
-Existing Codex installations keep their paths, marker file and `CODEX_HOME` behavior. `agents/openai.yaml` is Codex-only and is not copied for Claude Code. `agy-mc doctor` warns when an installed Skill is older than the CLI.
+Existing Codex installations keep their paths, marker file and `CODEX_HOME` behavior. `agents/openai.yaml` is Codex-only and is not copied for Claude Code. If no host has a managed Skill, `uninstall` still removes the managed runtime and CLI link. `agy-mc doctor` warns when an installed Skill is older than the CLI.
 
 ## Upgrade and status
 
@@ -92,7 +92,7 @@ The Skill is moved to the host's backup directory. The managed Python environmen
 ## Direct Python installation
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.4.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.4.1"
 agy-mc skill install
 ```
 

@@ -8,8 +8,8 @@ import process from 'node:process';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
-const VERSION = '0.4.0';
-const PYTHON_VERSION = '0.4.0';
+const VERSION = '0.4.1';
+const PYTHON_VERSION = '0.4.1';
 const REPOSITORY = 'https://github.com/YuxiaoMa66/antigravity-mission-control.git';
 const DEFAULT_SOURCE = `git+${REPOSITORY}@v${PYTHON_VERSION}`;
 const AGY_INSTALL_URL = 'https://antigravity.google/cli/install.sh';
@@ -111,7 +111,10 @@ function resolveTargets(args, home) {
   else if (args.command === 'status') hosts = all;
   else if (args.command === 'install') hosts = all.filter((h) => existsSync(hostHome(h, home)));
   else hosts = all.filter((h) => existsSync(`${skillTarget(h, home)}/.agy-mc-install.json`));
-  if (!hosts.length) throw new Error('No supported host detected; pass --host codex|claude');
+  if (!hosts.length) {
+    if (args.command === 'uninstall') return []; // still remove the runtime and shim
+    throw new Error('No supported host detected; pass --host codex|claude');
+  }
   if (process.env.AGY_MC_SKILL_TARGET && hosts.length > 1) throw new Error('AGY_MC_SKILL_TARGET names one directory; pass a single --host');
   return hosts.map((host) => ({ host, target: skillTarget(host, home) }));
 }
@@ -363,7 +366,8 @@ async function main() {
   assertSafePath(p.binRoot, p.home);
   if (args.command !== 'doctor') {
     p.targets = resolveTargets(args, p.home);
-    for (const t of p.targets) assertSafePath(t.target, p.home);
+    // status only reads; an unrelated host's symlinked config dir must not block it
+    if (args.command !== 'status') for (const t of p.targets) assertSafePath(t.target, p.home);
   }
   const msg = messages[language(args.lang)];
   if (args.command === 'status') return showStatus(p, msg);

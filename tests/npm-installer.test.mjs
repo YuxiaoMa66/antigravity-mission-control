@@ -136,3 +136,25 @@ test('all shows both host targets in the plan and no host detected is an error',
   assert.notEqual(none.status, 0);
   assert.match(none.stderr, /--host codex\|claude/);
 });
+
+test('uninstall still removes the runtime when no managed Skill is found', () => {
+  const home = mkdtempSync(resolve(tmpdir(), 'agy-mc-npm-uninstall-runtime-'));
+  const data = resolve(home, '.local/share/antigravity-mission-control');
+  mkdirSync(resolve(data, 'venv'), { recursive: true });
+
+  const result = run(['uninstall', '--yes', '--lang', 'en'], { HOME: home });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(data), false);
+});
+
+test('status is not blocked by an unrelated host config symlinked outside HOME', () => {
+  const home = mkdtempSync(resolve(tmpdir(), 'agy-mc-npm-status-link-'));
+  const outside = mkdtempSync(resolve(tmpdir(), 'agy-mc-npm-status-outside-'));
+  symlinkSync(outside, resolve(home, '.claude'));
+
+  const result = run(['status', '--lang', 'en'], { HOME: home });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Skill target \(codex\)/);
+});

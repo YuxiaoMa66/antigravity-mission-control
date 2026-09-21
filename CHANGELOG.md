@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1 - 2026-09-21
+
+- Fix npm `uninstall`: with no managed Skill found it errored out and left the runtime behind (regression in v0.4.0); it now removes the runtime and CLI link again.
+- Fix npm `status`: an unrelated host's config directory that is a symlink outside HOME no longer aborts it.
+- Narrow the Claude Code allowlist advice in `references/host-notes.md` from `Bash(agy-mc *)` to read-only subcommands, because the broad rule would auto-approve `approve`, `run` and `workspace --grant`. Document that allow rules need every part of a `&&`/`;`/`|` chain to match, and that sandboxed state writes belong in `sandbox.filesystem.allowWrite`. Checked against the Claude Code permissions and sandbox documentation.
+- Regression tests for both npm fixes. No routing, approval or worker-execution changes.
+
 ## 0.4.0 - 2026-09-21
 
 - Run the Skill in Claude Code as well as Codex: one host-neutral Skill, deployed to `${CLAUDE_CONFIG_DIR:-~/.claude}/skills` or `${CODEX_HOME:-~/.codex}/skills`.
