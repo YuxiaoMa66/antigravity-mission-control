@@ -127,7 +127,6 @@ def prepare_run(args: argparse.Namespace) -> dict:
         "model": model,
         "prompt_text": prompt_text,
         "schema_path": schema_path,
-        "trust_added": False,
         "approval_path": Path(args.approval_file).expanduser().resolve() if has_manifest else None,
         "approval_id": approval.get("approval_id") if approval else None,
         "policy": approval.get("policy") if approval else None,
@@ -174,8 +173,6 @@ def parse_stream_result(stdout: str) -> dict | None:
 
 def cmd_run(args: argparse.Namespace) -> int:
     prepared = prepare_run(args)
-    if prepared["trust_added"]:
-        print(f"Added exact AGY workspace trust: {prepared['cwd']}", file=sys.stderr)
     if args.background:
         return start_background_job(args, prepared)
 
@@ -283,10 +280,6 @@ def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
     return 0 if proc.returncode == 0 and (provider_status == "SUCCESS" or event_success) else (proc.returncode or 1)
 
 
-def parse_child_payload(stdout: str) -> dict | None:
-    return parse_stream_result(stdout)
-
-
 def cmd_worker(args: argparse.Namespace) -> int:
     job = read_job(args.job_id)
     spec = json.loads(job_spec_path(args.job_id).read_text(encoding="utf-8"))
@@ -300,7 +293,7 @@ def cmd_worker(args: argparse.Namespace) -> int:
             timeout=max(30, int(spec["command"][spec["command"].index("--timeout-seconds") + 1]) + 60),
             check=False,
         )
-        payload = parse_child_payload(proc.stdout)
+        payload = parse_stream_result(proc.stdout)
         status = "done" if proc.returncode == 0 else "error"
         # Only a successful child may carry the warning label; AGY's own stderr is relayed here.
         if proc.returncode == 0 and ('"status": "done_with_warnings"' in proc.stderr or '"status":"done_with_warnings"' in proc.stderr):

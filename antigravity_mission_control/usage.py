@@ -8,12 +8,12 @@ import subprocess
 import sys
 import time
 
-from .common import AGY_BIN, _command_data, run_capture, utc_now
+from .common import AGY_BIN, command_data, run_capture, utc_now
 
 
 def normalize_usage(payload: dict) -> dict:
     """Return a stable, account-free view of AGY's evolving /usage response."""
-    data = _command_data(payload)
+    data = command_data(payload)
     raw_groups = data.get("groups")
     if not isinstance(raw_groups, list):
         raise RuntimeError("agy /usage response does not contain command.data.groups")
@@ -54,41 +54,25 @@ def normalize_usage(payload: dict) -> dict:
     }
 
 
+def usage_error(message: str) -> tuple[dict, int]:
+    return {"schema": "agy-mc-usage.v1", "status": "error", "source": "agy-cli:/usage",
+            "fetched_at": utc_now(), "groups": None, "errors": [message]}, 1
+
+
 def fetch_usage(timeout_seconds: int = 15) -> tuple[dict, int]:
     try:
         proc = run_capture([AGY_BIN, "-p", "/usage", "--output-format", "json"], timeout=timeout_seconds)
     except subprocess.TimeoutExpired:
-        return {
-            "schema": "agy-mc-usage.v1",
-            "status": "error",
-            "source": "agy-cli:/usage",
-            "fetched_at": utc_now(),
-            "groups": None,
-            "errors": [f"agy /usage timed out after {timeout_seconds}s"],
-        }, 1
+        return usage_error(f"agy /usage timed out after {timeout_seconds}s")
     if proc.returncode != 0:
-        return {
-            "schema": "agy-mc-usage.v1",
-            "status": "error",
-            "source": "agy-cli:/usage",
-            "fetched_at": utc_now(),
-            "groups": None,
-            "errors": [f"agy /usage failed with exit code {proc.returncode}"],
-        }, 1
+        return usage_error(f"agy /usage failed with exit code {proc.returncode}")
     try:
         payload = json.loads(proc.stdout)
         if not isinstance(payload, dict):
             raise ValueError("top-level value is not an object")
         return normalize_usage(payload), 0
     except (json.JSONDecodeError, ValueError, RuntimeError) as exc:
-        return {
-            "schema": "agy-mc-usage.v1",
-            "status": "error",
-            "source": "agy-cli:/usage",
-            "fetched_at": utc_now(),
-            "groups": None,
-            "errors": [f"cannot parse agy /usage: {exc}"],
-        }, 1
+        return usage_error(f"cannot parse agy /usage: {exc}")
 
 
 def render_usage_table(snapshot: dict) -> str:

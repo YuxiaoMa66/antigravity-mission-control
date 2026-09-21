@@ -10,8 +10,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from . import __version__
 
-VERSION = "0.4.2rc1"
+VERSION = __version__
 
 
 AGY_BIN = os.environ.get("AGY_MC_BIN", os.environ.get("AGY_ORCHESTRATOR_BIN", "agy"))
@@ -47,7 +48,7 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def atomic_write_json(path: Path, payload: dict) -> None:
+def atomic_write_json(path: Path, payload: dict, mode: int = 0o600) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix=f"{path.name}.", suffix=".tmp", dir=path.parent)
     try:
@@ -56,8 +57,8 @@ def atomic_write_json(path: Path, payload: dict) -> None:
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
+        os.chmod(temp_name, mode)
         os.replace(temp_name, path)
-        os.chmod(path, 0o600)
     finally:
         if os.path.exists(temp_name):
             os.unlink(temp_name)
@@ -85,7 +86,7 @@ def sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-def _command_data(payload: dict) -> dict:
+def command_data(payload: dict) -> dict:
     data = payload.get("command", {}).get("data")
     if not isinstance(data, dict):
         data = payload.get("response", {}).get("command", {}).get("data")

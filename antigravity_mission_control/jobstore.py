@@ -84,8 +84,6 @@ def write_job(job: dict) -> None:
 
 
 def pid_alive(pid: int | None) -> bool:
-    if pid is None:
-        return False
     if not pid:
         return False
     try:

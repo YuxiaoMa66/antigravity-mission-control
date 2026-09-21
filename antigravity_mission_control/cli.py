@@ -15,7 +15,7 @@ if __package__ in (None, ""):
     __package__ = "antigravity_mission_control"
 
 from .approvals import POLICY_NAMES, canonical_policy_name, cmd_approve, cmd_policy
-from .common import AGY_BIN, STATE_ROOT, VERSION, _command_data, run_capture
+from .common import AGY_BIN, STATE_ROOT, VERSION, command_data, run_capture
 from .jobs import cmd_cancel, cmd_continue, cmd_result, cmd_run, cmd_status, cmd_wait, cmd_worker
 from .routing import ROLES, STRATEGY_PATTERNS, cmd_models, cmd_select
 from .skill import HOSTS, cmd_skill, default_skill_target, skill_marker
@@ -38,7 +38,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     if session.returncode == 0:
         try:
             payload = json.loads(session.stdout)
-            models = _command_data(payload).get("models", [])
+            models = command_data(payload).get("models", [])
             session_ok = isinstance(models, list) and bool(models)
             model_count = len(models) if isinstance(models, list) else 0
         except (json.JSONDecodeError, TypeError):

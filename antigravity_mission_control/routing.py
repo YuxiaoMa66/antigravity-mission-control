@@ -6,7 +6,7 @@ import argparse
 import json
 import re
 
-from .common import AGY_BIN, run_capture
+from .common import AGY_BIN, command_data, run_capture
 
 
 FLASH_LOW = r"gemini-.*flash-low$"
@@ -48,7 +48,7 @@ def available_models() -> list[dict[str, str]]:
     if proc.returncode == 0:
         try:
             payload = json.loads(proc.stdout)
-            models = payload.get("command", {}).get("data", {}).get("models", [])
+            models = command_data(payload).get("models", [])
             if models:
                 return [{"id": str(m["id"]), "label": str(m.get("label", m["id"]))} for m in models]
         except (json.JSONDecodeError, KeyError, TypeError):

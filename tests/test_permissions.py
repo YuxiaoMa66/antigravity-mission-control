@@ -6,7 +6,6 @@ import tempfile
 import unittest
 from unittest import mock
 import argparse
-import os
 
 from antigravity_mission_control import approvals, common, jobs, jobstore, workspace
 

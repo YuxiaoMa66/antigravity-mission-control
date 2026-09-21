@@ -12,7 +12,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from .common import utc_now
+from .common import atomic_write_json, utc_now
 
 
 SETTINGS_PATH = Path(
@@ -93,23 +93,6 @@ def workspace_status(workspace: Path, mode: str = "plan") -> dict:
     }
 
 
-def write_settings_atomic(settings: dict) -> None:
-    SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    original_mode = SETTINGS_PATH.stat().st_mode & 0o777 if SETTINGS_PATH.exists() else 0o600
-    fd, temp_name = tempfile.mkstemp(prefix="settings.", suffix=".tmp", dir=SETTINGS_PATH.parent)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(settings, handle, ensure_ascii=False, indent=2)
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.chmod(temp_name, original_mode)
-        os.replace(temp_name, SETTINGS_PATH)
-    finally:
-        if os.path.exists(temp_name):
-            os.unlink(temp_name)
-
-
 def ensure_workspace_trusted(workspace: Path, mode: str, approved: bool) -> bool:
     workspace = workspace.expanduser().resolve()
     status = workspace_status(workspace, mode)
@@ -127,7 +110,8 @@ def ensure_workspace_trusted(workspace: Path, mode: str, approved: bool) -> bool
     trusted = list(settings.get("trustedWorkspaces", []) or [])
     trusted.append(str(workspace) + os.sep)
     settings["trustedWorkspaces"] = trusted
-    write_settings_atomic(settings)
+    original_mode = SETTINGS_PATH.stat().st_mode & 0o777 if SETTINGS_PATH.exists() else 0o600
+    atomic_write_json(SETTINGS_PATH, settings, original_mode)
     return True
 
 
