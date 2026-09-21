@@ -338,7 +338,11 @@ async function uninstall(args, p, msg) {
   if (args.dryRun) return;
   const executable = managedAgyMc(p);
   for (const t of p.targets) {
-    if (existsSync(executable) && existsSync(t.target)) run(executable, ['skill', 'uninstall', '--host', t.host, '--target', t.target, '--lang', args.lang]);
+    if (existsSync(executable) && existsSync(t.target)) {
+      const skillArgs = ['skill', 'uninstall', '--host', t.host, '--target', t.target, '--lang', args.lang];
+      if (args.force) skillArgs.push('--force');
+      run(executable, skillArgs);
+    }
   }
   if (managedShim(p)) unlinkSync(p.shim);
   if (existsSync(p.dataRoot)) {

@@ -104,7 +104,7 @@ def ensure_workspace_trusted(workspace: Path, mode: str, approved: bool) -> bool
         raise RuntimeError(f"Explicit permission ask requires manual resolution: {status['blocking_ask']}")
     if not approved:
         raise RuntimeError(
-            f"Workspace is not trusted: {workspace}; obtain roster approval before granting exact workspace trust"
+            f"Workspace is not trusted: {workspace}; rerun with --trust-approved only after the user approves trust for this exact path"
         )
     settings = load_settings()
     trusted = list(settings.get("trustedWorkspaces", []) or [])

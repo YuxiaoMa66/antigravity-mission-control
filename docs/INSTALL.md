@@ -111,6 +111,6 @@ For automated local testing, add `--yes` and point `HOME`, `CODEX_HOME`, `AGY_MC
 
 ## Existing unmanaged Skill
 
-The installer refuses to overwrite an existing directory without its `.agy-mc-install.json` marker. Inspect it first, then use `--force` only if replacement is intended. The old directory is backed up before replacement.
+The installer refuses to overwrite or uninstall an existing directory without its `.agy-mc-install.json` marker. Inspect it first, then use `--force` only if replacement or removal is intended. The old directory is backed up first.
 
 Restart or refresh Codex, or start a new Claude Code session, after installation or upgrade so skill discovery reloads the new files.

@@ -111,6 +111,6 @@ npx antigravity-mission-control install \
 
 ## 已存在的非托管 Skill
 
-如果现有目录没有 `.agy-mc-install.json`，安装器默认拒绝覆盖。请先检查；确实要替换时才使用 `--force`。替换前仍会备份旧目录。
+如果现有目录没有 `.agy-mc-install.json`，安装器默认拒绝覆盖或卸载。请先检查；确实要替换或移除时才使用 `--force`。操作前仍会备份旧目录。
 
 安装或更新后需要重启或刷新 Codex，或新开一个 Claude Code 会话，让技能发现机制重新加载文件。

@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -94,7 +95,9 @@ def pid_alive(pid: int | None) -> bool:
 
 
 def refresh_job(job: dict) -> dict:
-    if job.get("status") == "running" and not pid_alive(job.get("pid")):
+    status = job.get("status")
+    owner = job.get("pid") if status == "running" else job.get("launcher_pid")
+    if status in {"running", "starting"} and not pid_alive(owner):
         if job_result_path(job["job_id"]).is_file():
             try:
                 result = json.loads(job_result_path(job["job_id"]).read_text(encoding="utf-8"))
@@ -112,7 +115,8 @@ def refresh_job(job: dict) -> dict:
                     "role": job.get("role"),
                     "model": job.get("model"),
                     "cwd": job.get("cwd"),
-                    "error": "Worker exited without writing a result",
+                    "error": "Worker exited without writing a result" if status == "running"
+                    else "Launcher exited before the worker started",
                 },
             )
         job["finished_at"] = job.get("finished_at") or utc_now()
@@ -278,6 +282,7 @@ def launch_background_job(
         "mode": args.mode,
         "conversation_id": args.conversation,
         "pid": None,
+        "launcher_pid": os.getpid(),
         "started_at": utc_now(),
         "result_path": str(job_result_path(job_id)),
         "log_path": str(directory / "worker.log"),
@@ -306,6 +311,12 @@ def launch_background_job(
             pass_fds=(lock_fd,) if lock_fd is not None else (),
         )
     current = read_job(job_id)
+    if current.get("status") != "starting":
+        # Canceled during launch: the job never recorded this worker, so stop it here.
+        os.killpg(child.pid, signal.SIGKILL)
+        child.wait()
+        print(json.dumps(current, ensure_ascii=False, indent=2))
+        return JOB_EXIT_CODES.get(current.get("status"), 1)
     current["pid"] = child.pid
     current["status"] = "running"
     write_job(current)

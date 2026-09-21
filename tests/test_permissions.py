@@ -6,6 +6,9 @@ import tempfile
 import unittest
 from unittest import mock
 import argparse
+import contextlib
+import io
+import subprocess
 
 from antigravity_mission_control import approvals, common, jobs, jobstore, workspace
 
@@ -87,6 +90,41 @@ class PermissionTests(unittest.TestCase):
                 args = argparse.Namespace(job_id=job["job_id"], grace_seconds=0.1)
                 with self.assertRaisesRegex(RuntimeError, "Refusing to signal PID"):
                     jobs.cmd_cancel(args)
+
+    def test_job_left_starting_by_a_dead_launcher_is_marked_crashed(self):
+        dead = subprocess.Popen(["true"])
+        dead.wait()
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(jobstore, "JOB_ROOT", Path(directory)):
+                job = {"job_id": "planner-stuck-job", "status": "starting", "pid": None,
+                       "launcher_pid": dead.pid, "role": "planner", "model": "fake", "cwd": directory}
+                jobstore.write_job(job)
+                self.assertEqual(jobstore.refresh_job(jobstore.read_job(job["job_id"]))["status"], "crashed")
+                self.assertEqual(jobstore.job_result(job["job_id"])["status"], "crashed")
+
+    def test_cancel_during_launch_is_not_overwritten_and_kills_the_worker(self):
+        real_popen = subprocess.Popen
+        spawned = []
+
+        def cancel_then_spawn(*_args, **_kwargs):
+            job_file = next(jobstore.JOB_ROOT.glob("*/job.json"))
+            job = json.loads(job_file.read_text())
+            jobstore.write_job(dict(job, status="canceled"))
+            spawned.append(real_popen(["sleep", "30"], start_new_session=True))
+            return spawned[0]
+
+        with tempfile.TemporaryDirectory() as directory:
+            args = argparse.Namespace(role="planner", strategy="A", mode="plan", conversation=None,
+                                      allow_non_high_gemini=False, unrestricted=False, timeout_seconds=30)
+            prepared = {"cwd": Path(directory), "model": "fake", "prompt_text": "hi", "schema_path": None}
+            with mock.patch.object(jobstore, "JOB_ROOT", Path(directory) / "jobs"), \
+                    mock.patch.object(jobstore.subprocess, "Popen", side_effect=cancel_then_spawn), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                code = jobstore.launch_background_job(args, prepared, "planner-race-job", None, None)
+                status = jobstore.read_job("planner-race-job")["status"]
+        self.assertEqual(code, jobstore.JOB_EXIT_CODES["canceled"])
+        self.assertEqual(status, "canceled")
+        self.assertIsNotNone(spawned[0].poll())
 
 
 if __name__ == "__main__":

@@ -120,6 +120,8 @@ def skill_operation(args: argparse.Namespace, host: str) -> tuple[dict, int]:
     if args.action == "uninstall":
         if not target.is_dir():
             raise RuntimeError(f"Skill is not installed: {target}")
+        if marker is None and not args.force:
+            raise RuntimeError(f"Existing skill is not managed by agy-mc: {target}; use --force only after inspection")
         backup = skill_backup_path(host)
         payload = {"schema": "agy-mc-skill-operation.v1", "host": host, "status": "dry-run" if args.dry_run else "uninstalled", "target": str(target), "backup": str(backup), "version": (marker or {}).get("version")}
         if not args.dry_run:
