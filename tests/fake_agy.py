@@ -38,8 +38,9 @@ elif "stream-json" in sys.argv:
         print(os.environ["FAKE_AGY_STDERR"], file=sys.stderr)
     print(json.dumps({"event": "init", "conversation_id": "fake-conversation"}))
     status = os.environ.get("FAKE_AGY_STATUS", "ERROR" if os.environ.get("FAKE_AGY_WARNING") else "SUCCESS")
-    print(json.dumps({"event": "result", "status": status, "conversation_id": "fake-conversation",
-                      "response": os.environ.get("FAKE_AGY_RESPONSE", request)}))
+    # Same shape as real AGY 1.2: the outcome is nested under "result".
+    print(json.dumps({"event": "result", "result": {"status": status, "conversation_id": "fake-conversation",
+                                                    "response": os.environ.get("FAKE_AGY_RESPONSE", request)}}))
     raise SystemExit(int(os.environ.get("FAKE_AGY_EXIT", "0")))
 else:
     print(json.dumps({"status": "SUCCESS", "response": "fake"}))

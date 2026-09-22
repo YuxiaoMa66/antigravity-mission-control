@@ -28,6 +28,10 @@ PERMISSION_NOTICE_RE = re.compile(
 )
 
 
+# AGY reports its own print timeout on stderr and still emits status SUCCESS with an empty response.
+TIMEOUT_NOTICE_RE = re.compile(r"print timeout after[^\n]*turn in progress", re.IGNORECASE)
+
+
 DIAGNOSTIC_PATTERNS = (
     re.compile(r"PERMISSION_DENIED|permission denied|does not have permission|not logged into antigravity", re.IGNORECASE),
     re.compile(r"operation not permitted|bind(?:ing)?[^\n]*(?:failed|denied)|localhost", re.IGNORECASE),
@@ -167,7 +171,9 @@ def parse_stream_result(stdout: str) -> dict | None:
         if not isinstance(event, dict):
             continue
         if event.get("event") == "result" or event.get("type") == "result" or "status" in event:
-            final = event
+            # AGY 1.2 nests the outcome: {"event": "result", "result": {"status": ..., "conversation_id": ...}}.
+            nested = event.get("result")
+            final = {**event, **nested} if isinstance(nested, dict) else event
     return final
 
 
@@ -261,11 +267,16 @@ def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
             file=sys.stderr,
         )
         return 3
+    if TIMEOUT_NOTICE_RE.search(proc.stderr or ""):
+        print(json.dumps({"status": "ERROR", "error": "agy stopped at its print timeout with the turn in progress"}),
+              file=sys.stderr)
+        return 124
     if proc.returncode != 0:
         # A failing exit code wins over anything the stream claims; stdout above keeps any partial response.
         print(json.dumps({"status": "ERROR", "error": f"agy exited with code {proc.returncode}"}), file=sys.stderr)
         return proc.returncode
-    response = payload.get("response") or payload.get("result")
+    # A string "result" is a response; a dict is AGY 1.2's nested envelope, already flattened.
+    response = payload.get("response") or (payload.get("result") if isinstance(payload.get("result"), str) else None)
     provider_status = str(payload.get("status", "")).upper()
     # The only recognized non-fatal failure: a clean exit whose ERROR result still carries a response.
     if provider_status == "ERROR" and response:
@@ -283,6 +294,9 @@ def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
         return 0
     result_event = "result" in (payload.get("event"), payload.get("type"))
     if provider_status == "SUCCESS" or (not provider_status and result_event and not payload.get("error")):
+        if not response:
+            print(json.dumps({"status": "done_with_warnings", "error": "agy reported success with an empty response",
+                              "diagnostics": diagnostics}, ensure_ascii=False), file=sys.stderr)
         return 0
     print(json.dumps({"status": "ERROR", "error": payload.get("error") or f"agy reported status {provider_status or 'none'}"},
                      ensure_ascii=False), file=sys.stderr)

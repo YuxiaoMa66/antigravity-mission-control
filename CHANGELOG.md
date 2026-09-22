@@ -6,6 +6,8 @@
 - Fix: a nonzero AGY exit code was reported as success when the stream carried an `ERROR` result with a partial response, and an `ERROR` result without a response or `error` field returned 0. A nonzero exit now always fails and keeps the partial response as evidence; only SUCCESS, or a result event with no status and no error, succeeds; `done_with_warnings` requires a clean exit and a response.
 - Fix: launch, cancel, worker completion and `refresh_job` re-read and write `job.json` under a per-job `flock`, so a cancel between the launcher's read and write is no longer overwritten with `running`.
 - Fix: a `canceling` job whose cancel command was interrupted after the worker exited stayed `canceling` forever. `refresh_job` now resolves it to the worker's own result, or to `canceled` with a result file.
+- Fix: AGY 1.2 nests the result envelope (`{"event": "result", "result": {...}}`). `status` and `conversation_id` were read from the top level only, so a nested `ERROR` was judged a success and every real job recorded `conversation_id: null`, which made `agy-mc continue` unusable. The parser now flattens both shapes.
+- Fix: AGY's print timeout cuts the turn but still reports `SUCCESS` with an empty response and exit 0; it is now a failure with exit 124. A `SUCCESS` with no response is reported as `done_with_warnings`.
 - CI: lifecycle tests on macOS; npm tests on Node 18 and 20 with a packed-tarball install.
 
 ## 0.4.2rc2 - 2026-09-22

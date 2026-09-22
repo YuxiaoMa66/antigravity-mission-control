@@ -61,6 +61,17 @@ class ResultJudgementTests(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("done_with_warnings", run.stderr)
 
+    def test_print_timeout_notice_is_a_failure(self):
+        # Real AGY 1.2 exits 0 with SUCCESS and an empty response when its print timeout cuts the turn.
+        run = self.run_plan(FAKE_AGY_RESPONSE="",
+                            FAKE_AGY_STDERR="[agy] print timeout after 5s with turn in progress; returning partial output")
+        self.assertEqual(run.returncode, 124, run.stderr)
+
+    def test_success_without_a_response_is_a_warning(self):
+        run = self.run_plan(FAKE_AGY_RESPONSE="")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("empty response", run.stderr)
+
     def test_background_worker_records_nonzero_exit_as_error(self):
         started = self.run_plan("--background", FAKE_AGY_WARNING="1", FAKE_AGY_EXIT="7")
         self.assertEqual(started.returncode, 0, started.stderr)
