@@ -25,6 +25,16 @@ git status --short
 
 Also run Skill Creator's `quick_validate.py`, inspect the wheel contents, perform npm install/update/uninstall against an isolated `HOME`, and scan the tracked tree for credentials and generated state.
 
+## Real AGY acceptance
+
+The unit tests drive a fake AGY and can only confirm the wrapper matches its own assumptions. Before a stable release, run the acceptance suite against the installed `agy` from the release commit:
+
+```bash
+python3 scripts/real_agy_check.py --report real-agy-report.json
+```
+
+It covers the offline guards (doctor, unavailable model, non-high Gemini, approval binding, broad workspaces, quota snapshot) and, with one AGY turn each on the latest Gemini Flash High, a foreground run, background collection, `continue`, cancel, a killed worker, an interrupted cancel, a wait timeout, parallel read-only jobs, `--json-schema`, AGY's print timeout, read-only `plan` mode, the editor lock and workspace evidence. Every scenario must pass. Job state lives in a temporary directory; the edit scenarios trust a temporary workspace next to the repository and remove that trust entry afterwards. If a run is killed, the next run (or `--cleanup-only`) removes what it left behind. Use `--offline-only` to check the guards without spending quota, and `-k <name>` to rerun one scenario. When AGY changes its output, fix the wrapper and update `tests/fake_agy.py` to the new shape, so the unit tests keep tracking the real CLI.
+
 ## Publication order
 
 1. Push the reviewed `main` commit to GitHub.
