@@ -158,3 +158,32 @@ test('status is not blocked by an unrelated host config symlinked outside HOME',
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Skill target \(codex\)/);
 });
+
+test('uninstall with an unmanaged Skill target changes nothing without --force', () => {
+  const home = mkdtempSync(resolve(tmpdir(), 'agy-mc-npm-uninstall-unmanaged-'));
+  const data = resolve(home, '.local/share/antigravity-mission-control');
+  const runtime = resolve(data, 'venv/bin/agy-mc');
+  mkdirSync(dirname(runtime), { recursive: true });
+  writeFileSync(runtime, `#!/bin/sh\nexec "${python3}" "${root}/antigravity_mission_control/cli.py" "$@"\n`, { mode: 0o755 });
+  const managed = resolve(home, '.codex/skills/antigravity-mission-control');
+  const unmanaged = resolve(home, '.claude/skills/antigravity-mission-control');
+  mkdirSync(managed, { recursive: true });
+  writeFileSync(resolve(managed, '.agy-mc-install.json'), '{"version": "0.0.0"}\n');
+  mkdirSync(unmanaged, { recursive: true });
+  writeFileSync(resolve(unmanaged, 'SKILL.md'), 'someone else\n');
+
+  const result = run(['uninstall', '--yes', '--host', 'all', '--lang', 'en'], { HOME: home });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /not managed by agy-mc/);
+  assert.equal(existsSync(managed), true);
+  assert.equal(existsSync(unmanaged), true);
+  assert.equal(existsSync(runtime), true);
+
+  const forced = run(['uninstall', '--yes', '--host', 'all', '--force', '--lang', 'en'], { HOME: home });
+
+  assert.equal(forced.status, 0, forced.stderr);
+  assert.equal(existsSync(managed), false);
+  assert.equal(existsSync(unmanaged), false);
+  assert.equal(existsSync(data), false);
+});

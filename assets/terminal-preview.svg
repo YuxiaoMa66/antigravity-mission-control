@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="540" viewBox="0 0 1120 540" role="img" aria-labelledby="title desc">
   <title id="title">Mission Control terminal interface</title>
-  <desc id="desc">A static terminal illustration showing installation, model routing and sanitized sample quota for version 0.4.1.</desc>
+  <desc id="desc">A static terminal illustration showing installation, model routing and sanitized sample quota for version 0.5.0.</desc>
   <rect width="1120" height="540" rx="18" fill="#e9e3d7"/>
   <rect x="45" y="35" width="1030" height="470" rx="10" fill="#1b1e1a" stroke="#4a5048" stroke-width="2"/>
   <rect x="45" y="35" width="1030" height="46" rx="10" fill="#242822"/>
@@ -8,7 +8,7 @@
   <text x="560" y="64" text-anchor="middle" fill="#9fa49a" font-family="ui-monospace, SFMono-Regular, Menlo" font-size="14">antigravity-mission-control</text>
   <g font-family="ui-monospace, SFMono-Regular, Menlo" font-size="19">
     <text x="85" y="122" fill="#e6a15d">+------------------------------------------------------------+</text>
-    <text x="85" y="151" fill="#e6a15d">|</text><text x="110" y="151" fill="#f2eee5" font-weight="700">ANTIGRAVITY MISSION CONTROL</text><text x="493" y="151" fill="#c7d5b7">OK</text><text x="555" y="151" fill="#e6a15d">v0.4.1</text><text x="817" y="151" fill="#e6a15d">|</text>
+    <text x="85" y="151" fill="#e6a15d">|</text><text x="110" y="151" fill="#f2eee5" font-weight="700">ANTIGRAVITY MISSION CONTROL</text><text x="493" y="151" fill="#c7d5b7">OK</text><text x="555" y="151" fill="#e6a15d">v0.5.0</text><text x="817" y="151" fill="#e6a15d">|</text>
     <text x="85" y="180" fill="#e6a15d">|</text><text x="110" y="180" fill="#a4a59c">Route / Guard / Verify</text><text x="817" y="180" fill="#e6a15d">|</text>
     <text x="85" y="209" fill="#e6a15d">+------------------------------------------------------------+</text>
     <text x="85" y="254" fill="#c7d5b7">OK</text><text x="125" y="254" fill="#f2eee5" font-weight="700">AGY 1.2.6 / runtime ready</text>

@@ -45,7 +45,7 @@ class SkillInstallTests(unittest.TestCase):
 
         status = self.cli("status")
         self.assertEqual(status.returncode, 0, status.stderr)
-        self.assertEqual(json.loads(status.stdout)["version"], "0.4.1")
+        self.assertEqual(json.loads(status.stdout)["version"], "0.5.0")
 
         updated = self.cli("update")
         self.assertEqual(updated.returncode, 0, updated.stderr)
@@ -57,6 +57,18 @@ class SkillInstallTests(unittest.TestCase):
         remove_payload = json.loads(removed.stdout)
         self.assertFalse(target.exists())
         self.assertTrue(Path(remove_payload["backup"]).is_dir())
+
+    def test_uninstall_refuses_an_unmanaged_target_without_force(self):
+        target = self.codex_home / "skills" / "antigravity-mission-control"
+        target.mkdir(parents=True)
+        (target / "SKILL.md").write_text("someone else's skill", encoding="utf-8")
+        refused = self.cli("uninstall")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("not managed by agy-mc", refused.stderr)
+        self.assertTrue((target / "SKILL.md").is_file())
+        forced = self.cli("uninstall", "--force")
+        self.assertEqual(forced.returncode, 0, forced.stderr)
+        self.assertFalse(target.exists())
 
     def test_dry_run_does_not_write(self):
         target = self.codex_home / "skills" / "antigravity-mission-control"

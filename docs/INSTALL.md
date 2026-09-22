@@ -14,7 +14,7 @@ Mission Control never reads or copies AGY OAuth material. A fresh AGY installati
 
 ## Recommended: npm package
 
-`@latest` follows the stable npm release. Pin `@0.4.1` when reproducibility matters; the npm bootstrapper then resolves the matching verified Git tag internally.
+`@latest` follows the stable npm release. Pin `@0.5.0` when reproducibility matters; the npm bootstrapper then resolves the matching verified Git tag internally. Pre-releases, when there are any, are published under `@next`.
 
 Preview exact paths without writing:
 
@@ -92,7 +92,7 @@ The Skill is moved to the host's backup directory. The managed Python environmen
 ## Direct Python installation
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.4.1"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.5.0"
 agy-mc skill install
 ```
 
@@ -109,6 +109,6 @@ For automated local testing, add `--yes` and point `HOME`, `CODEX_HOME`, `AGY_MC
 
 ## Existing unmanaged Skill
 
-The installer refuses to overwrite an existing directory without its `.agy-mc-install.json` marker. Inspect it first, then use `--force` only if replacement is intended. The old directory is backed up before replacement.
+The installer refuses to overwrite or uninstall an existing directory without its `.agy-mc-install.json` marker. Inspect it first, then use `--force` only if replacement or removal is intended. The old directory is backed up first.
 
 Restart or refresh Codex, or start a new Claude Code session, after installation or upgrade so skill discovery reloads the new files.

@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.5.0 - 2026-09-22
+
+- Stable release (npm `0.5.0` on `latest`) of the module split and every fix from the v0.4.2 release candidates; rc3 was not published on its own. Runtime routing is unchanged.
+- New: `scripts/real_agy_check.py`, an acceptance suite with 19 scenarios that runs the installed AGY CLI through Mission Control. It needs no fake, keeps job state in a temporary directory and removes the trust it grants. `docs/RELEASING.md` requires a clean run before a stable release. 19 of 19 pass against AGY 1.2.8 with `gemini-3.8-flash-high`.
+- Change: `done_with_warnings` now also covers a `SUCCESS` with an empty response. A nonzero exit, an `ERROR` without a response, an unknown status and AGY's print timeout are failures.
+- Fix: the workspace note appended to every worker prompt included the path of Mission Control's private evidence and asked the worker to inspect diffs. Real workers sometimes spent the whole turn reading job files and hit the timeout. The note is now sent only when the workspace has pre-existing changes, lists only those paths, and names no private path.
+- Change: a `--json-schema` run whose response is not a single JSON document is `done_with_warnings`; a print-timeout error carries `stuck_step`, the tool step AGY was still waiting on.
+- Fix: AGY does not enforce `plan` mode; a real plan worker created a file. A `plan` run whose Git snapshots differ now fails with exit 5 and lists the changed paths (previously a clean success, documented as read-only).
+- Behavior note: jobs recorded before 0.5.0 carry `conversation_id: null` when they ran on AGY 1.2, so they cannot be continued. New jobs can.
+
+## 0.4.2rc3 - 2026-09-22
+
+- Release candidate, not published on its own: its changes ship in 0.5.0. Third candidate of the module split, with fixes from a review of rc2.
+- Fix: a nonzero AGY exit code was reported as success when the stream carried an `ERROR` result with a partial response, and an `ERROR` result without a response or `error` field returned 0. A nonzero exit now always fails and keeps the partial response as evidence; only SUCCESS, or a result event with no status and no error, succeeds; `done_with_warnings` requires a clean exit and a response.
+- Fix: launch, cancel, worker completion and `refresh_job` re-read and write `job.json` under a per-job `flock`, so a cancel between the launcher's read and write is no longer overwritten with `running`.
+- Fix: a `canceling` job whose cancel command was interrupted after the worker exited stayed `canceling` forever. `refresh_job` now resolves it to the worker's own result, or to `canceled` with a result file.
+- Fix: AGY 1.2 nests the result envelope (`{"event": "result", "result": {...}}`). `status` and `conversation_id` were read from the top level only, so a nested `ERROR` was judged a success and every real job recorded `conversation_id: null`, which made `agy-mc continue` unusable. The parser now flattens both shapes.
+- Fix: AGY's print timeout cuts the turn but still reports `SUCCESS` with an empty response and exit 0; it is now a failure with exit 124. A `SUCCESS` with no response is reported as `done_with_warnings`.
+- CI: lifecycle tests on macOS; npm tests on Node 18 and 20 with a packed-tarball install.
+
+## 0.4.2rc2 - 2026-09-22
+
+- Pre-release (npm `0.4.2-rc.2`, published under the `next` tag; `latest` stays on 0.4.1). Second candidate of the module split, with fixes from a review of rc1.
+- Fix: a background worker whose run failed (for example a soft-denied permission, exit 3) was labeled `done_with_warnings` with exit 0 whenever the relayed AGY stderr contained that status text. The label now requires a successful exit.
+- Fix: workspace trust, `approve` and `run` refused only `/` and HOME. Ancestors of HOME such as `/Users`, and the system temp roots, are now refused as broad workspaces.
+- Fix: a job left in `starting` by a launcher that died before the worker started is now marked `crashed` instead of blocking `wait`; jobs record `launcher_pid`. A cancel that lands during launch is no longer overwritten with `running`, and the unrecorded worker is stopped.
+- Change: `agy-mc skill uninstall` refuses a target without the `.agy-mc-install.json` marker unless `--force` is given, matching install and update. The npm bootstrapper checks every target before changing anything, so `uninstall --host all` can no longer remove one Skill and then stop with the runtime left behind; it forwards `--force`.
+- Internal: remove split leftovers (dead `trust_added` branch, `parse_child_payload` alias, duplicate settings writer and usage error envelopes); `common.VERSION` now derives from `__version__`, and atomic JSON writes set the final mode before the rename.
+
+## 0.4.2rc1 - 2026-09-21
+
+- Pre-release (npm `0.4.2-rc.1`, published under the `next` tag; `latest` stays on 0.4.1). Split the 1938-line `antigravity_mission_control/cli.py` into `common`, `routing`, `workspace`, `jobstore`, `approvals`, `usage`, `skill` and `jobs` modules; `cli.py` keeps `doctor`, the argument parser and `main`. No behavior change: `--help` output is byte-identical and every definition is AST-equal to the original apart from the two places that name `cli.py` for worker launch.
+- Background workers are still re-run by path, not with `-m`, because their working directory is the user's workspace and `-m` would put it first on `sys.path`. `cli.py` gains a `__package__` shim so its relative imports resolve when it runs as a script.
+- Tests patch module state where it is read: `JOB_ROOT` lives only in `jobstore`, `SETTINGS_PATH` in `workspace` and `APPROVAL_KEY_PATH` in `approvals`.
+
 ## 0.4.1 - 2026-09-21
 
 - Fix npm `uninstall`: with no managed Skill found it errored out and left the runtime behind (regression in v0.4.0); it now removes the runtime and CLI link again.

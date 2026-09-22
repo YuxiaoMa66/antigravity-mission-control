@@ -14,7 +14,7 @@ Mission Control 不读取、不复制 AGY OAuth 材料。首次安装 AGY 后仍
 
 ## 推荐方式：npm 包
 
-`@latest` 会跟随稳定版 npm 发布；需要可复现安装时固定使用 `@0.4.1`，npm 安装器随后会解析对应的已验证 Git tag。
+`@latest` 会跟随稳定版 npm 发布；需要可复现安装时固定使用 `@0.5.0`，npm 安装器随后会解析对应的已验证 Git tag。如有预发布版，会发布在 `@next` 下。
 
 先查看精确路径，不写入文件：
 
@@ -92,7 +92,7 @@ Skill 会移动到对应宿主的备份目录；托管 Python 环境会在原位
 ## 直接使用 Python
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.4.1"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.5.0"
 agy-mc skill install --lang zh
 ```
 
@@ -109,6 +109,6 @@ npx antigravity-mission-control install \
 
 ## 已存在的非托管 Skill
 
-如果现有目录没有 `.agy-mc-install.json`，安装器默认拒绝覆盖。请先检查；确实要替换时才使用 `--force`。替换前仍会备份旧目录。
+如果现有目录没有 `.agy-mc-install.json`，安装器默认拒绝覆盖或卸载。请先检查；确实要替换或移除时才使用 `--force`。操作前仍会备份旧目录。
 
 安装或更新后需要重启或刷新 Codex，或新开一个 Claude Code 会话，让技能发现机制重新加载文件。

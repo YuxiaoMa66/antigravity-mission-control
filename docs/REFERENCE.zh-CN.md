@@ -31,7 +31,7 @@
 
 ## 工作区串行保护
 
-前台和后台 `accept-edits` 使用规范工作区 SHA-256 对应的非阻塞操作系统 `flock`。后台启动器会把锁文件描述符继承给 worker，worker 退出时自动释放。只读 `plan` 任务不获取编辑锁。
+前台和后台 `accept-edits` 使用规范工作区 SHA-256 对应的非阻塞操作系统 `flock`。后台启动器会把锁文件描述符继承给 worker，worker 退出时自动释放。`plan` 任务不获取编辑锁。AGY 并不强制 `plan` 模式只读：真实的 plan worker 曾创建文件。因此 Mission Control 会在每次 `plan` 运行后对比 Git 快照，改动了工作区的运行会以退出码 5 失败，并列出改动的路径。非 Git 工作区没有快照，无法检查。
 
 ## 批准清单
 

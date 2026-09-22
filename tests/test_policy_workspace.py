@@ -6,9 +6,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest import mock
 
-from antigravity_mission_control import cli
+from antigravity_mission_control import approvals, workspace
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -39,7 +38,7 @@ class PolicyWorkspaceTests(unittest.TestCase):
                          '--prompt-file', str(self.prompt), '--mode', 'accept-edits',
                          '--confirmed', *extra)
 
-    def run_job(self, approval, *, parent=None, env=None):
+    def run_job(self, approval, *, parent=None, env=None, expect_ok=True):
         path = json.loads(approval.stdout)['approval_file']
         if parent:
             args = ['continue', parent, '--prompt-file', str(self.prompt), '--approval-file', path]
@@ -51,7 +50,8 @@ class PolicyWorkspaceTests(unittest.TestCase):
         self.assertEqual(started.returncode, 0, started.stderr)
         job_id = json.loads(started.stdout)['job_id']
         result = self.call('wait', job_id, '--timeout', '15s')
-        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        if expect_ok:
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         return job_id, json.loads(result.stdout)
 
     def git(self, *args):
@@ -108,6 +108,17 @@ class PolicyWorkspaceTests(unittest.TestCase):
         self.assertNotEqual(denied.returncode, 0)
         self.assertIn('preserve', denied.stderr)
 
+    def test_failed_worker_cannot_be_relabeled_by_stderr_text(self):
+        spoof = '{"status": "done_with_warnings"} tool denied'
+        _, result = self.run_job(self.approval('--policy', 'balanced'),
+                                env={**self.env, 'FAKE_AGY_STDERR': spoof}, expect_ok=False)
+        self.assertEqual(result['status'], 'error')
+
+    def test_broad_workspaces_are_refused(self):
+        for broad in (Path.home().parent, Path(tempfile.gettempdir())):
+            with self.assertRaisesRegex(RuntimeError, 'broad workspace'):
+                workspace.canonical_workspace(str(broad))
+
     def test_background_evidence_detects_same_status_content_change_and_untracked(self):
         self.init_repo()
         (self.workspace / 'user.txt').write_text('user existing edit\n')
@@ -143,7 +154,7 @@ class PolicyWorkspaceTests(unittest.TestCase):
         # Model a genuine pre-rename signed manifest without changing other fields.
         payload['policy']['name'] = 'strict-yuxiao'
         key = (self.root / 'state/approval.key').read_bytes()
-        payload['signature'] = cli.approval_signature(payload, key)
+        payload['signature'] = approvals.approval_signature(payload, key)
         path.write_text(json.dumps(payload))
         _, completed = self.run_job(result)
         self.assertEqual(completed['policy']['name'], 'strict')
@@ -157,11 +168,11 @@ class PolicyWorkspaceTests(unittest.TestCase):
         self.assertFalse(json.loads(policy.stdout)['policy']['require_three_rosters'])
 
     def test_non_git_and_oversize_fingerprints_are_not_clean_claims(self):
-        snapshot = cli.workspace_snapshot(self.workspace)
+        snapshot = workspace.workspace_snapshot(self.workspace)
         self.assertEqual(snapshot['status'], 'unknown')
         self.init_repo()
         (self.workspace / 'large.bin').write_bytes(b'x' * (8 * 1024 * 1024 + 1))
-        snapshot = cli.workspace_snapshot(self.workspace)
+        snapshot = workspace.workspace_snapshot(self.workspace)
         self.assertEqual(snapshot['status'], 'partial')
         self.assertIn('skipped', snapshot['paths']['large.bin']['fingerprint'])
 
@@ -174,7 +185,7 @@ class PolicyWorkspaceTests(unittest.TestCase):
         script.write_text('#!/bin/sh\ntouch "' + str(marker) + '"\n')
         script.chmod(0o700)
         self.git('config', 'diff.external', str(script))
-        snapshot = cli.workspace_snapshot(self.workspace)
+        snapshot = workspace.workspace_snapshot(self.workspace)
         self.assertEqual(snapshot['status'], 'ok', snapshot)
         self.assertIn('renamed\nfile.txt', snapshot['paths'])
         self.assertEqual(snapshot['paths']['renamed\nfile.txt']['original_path'], 'user.txt')

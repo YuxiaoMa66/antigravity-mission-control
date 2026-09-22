@@ -77,16 +77,16 @@ class UsageTests(unittest.TestCase):
         self.assertIn("Google sign-in", session["detail"])
 
     def test_prompt_transport_is_stdin_stream_json(self):
-        from antigravity_mission_control import cli
+        from antigravity_mission_control import jobs
         import argparse
         import tempfile
 
         args = argparse.Namespace(mode="plan", timeout_seconds=30, conversation=None, unrestricted=False)
         prepared = {"cwd": ROOT, "model": "gemini-3.7-flash-high", "schema_path": None, "prompt_text": "secret prompt"}
-        command = cli.build_agy_command(args, prepared, Path(tempfile.gettempdir()) / "agy.log")
+        command = jobs.build_agy_command(args, prepared, Path(tempfile.gettempdir()) / "agy.log")
         self.assertNotIn("secret prompt", command)
         self.assertIn("stream-json", command)
-        event = json.loads(cli.prompt_event("secret prompt"))
+        event = json.loads(jobs.prompt_event("secret prompt"))
         self.assertEqual(event["message"]["content"], "secret prompt")
 
 

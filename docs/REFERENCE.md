@@ -31,7 +31,7 @@ Job evidence is stored outside target repositories. Results retain provider outp
 
 ## Workspace serialization
 
-Foreground and background `accept-edits` runs acquire a non-blocking OS `flock` keyed by SHA-256 of the canonical workspace. A background launcher transfers the inherited file descriptor to its worker; the lock is released automatically when that worker exits. Read-only `plan` jobs do not take the edit lock.
+Foreground and background `accept-edits` runs acquire a non-blocking OS `flock` keyed by SHA-256 of the canonical workspace. A background launcher transfers the inherited file descriptor to its worker; the lock is released automatically when that worker exits. `plan` jobs do not take the edit lock. AGY does not enforce `plan` mode as read-only: real plan workers have created files. So Mission Control compares the Git snapshots after every `plan` run, and a run that changed the workspace fails with exit 5 and lists the changed paths. Non-Git workspaces have no snapshot and cannot be checked.
 
 ## Approval manifests
 

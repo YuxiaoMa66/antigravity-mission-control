@@ -8,8 +8,8 @@ import process from 'node:process';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
-const VERSION = '0.4.1';
-const PYTHON_VERSION = '0.4.1';
+const VERSION = '0.5.0';
+const PYTHON_VERSION = '0.5.0';
 const REPOSITORY = 'https://github.com/YuxiaoMa66/antigravity-mission-control.git';
 const DEFAULT_SOURCE = `git+${REPOSITORY}@v${PYTHON_VERSION}`;
 const AGY_INSTALL_URL = 'https://antigravity.google/cli/install.sh';
@@ -259,16 +259,19 @@ async function installOfficialAgy(p) {
   return installed;
 }
 
+function assertManagedSkill(args, target) {
+  if (existsSync(target) && !existsSync(`${target}/.agy-mc-install.json`) && !args.force) {
+    throw new Error(`Existing Skill is not managed by agy-mc: ${target}; inspect it or rerun with --force`);
+  }
+}
+
 function resolveSkillAction(args, { target }) {
   const targetExists = existsSync(target);
-  const managedMarker = `${target}/.agy-mc-install.json`;
   if (args.command === 'update' && !targetExists) {
     throw new Error(`Skill is not installed: ${target}; use install`);
   }
-  if (targetExists && !existsSync(managedMarker) && !args.force) {
-    throw new Error(`Existing Skill is not managed by agy-mc: ${target}; inspect it or rerun with --force`);
-  }
-  if (args.command === 'install' && targetExists && existsSync(managedMarker)) return 'update';
+  assertManagedSkill(args, target);
+  if (args.command === 'install' && targetExists && existsSync(`${target}/.agy-mc-install.json`)) return 'update';
   return args.command === 'install' ? 'install' : 'update';
 }
 
@@ -330,6 +333,8 @@ function showStatus(p, msg) {
 }
 
 async function uninstall(args, p, msg) {
+  // Check every target before any change so one refusal cannot leave a half-uninstalled setup.
+  for (const t of p.targets) assertManagedSkill(args, t.target);
   showPlan(args, p, msg);
   if (!(await confirmChange(args, msg.confirm))) {
     console.log(msg.canceled);
@@ -338,7 +343,11 @@ async function uninstall(args, p, msg) {
   if (args.dryRun) return;
   const executable = managedAgyMc(p);
   for (const t of p.targets) {
-    if (existsSync(executable) && existsSync(t.target)) run(executable, ['skill', 'uninstall', '--host', t.host, '--target', t.target, '--lang', args.lang]);
+    if (existsSync(executable) && existsSync(t.target)) {
+      const skillArgs = ['skill', 'uninstall', '--host', t.host, '--target', t.target, '--lang', args.lang];
+      if (args.force) skillArgs.push('--force');
+      run(executable, skillArgs);
+    }
   }
   if (managedShim(p)) unlinkSync(p.shim);
   if (existsSync(p.dataRoot)) {

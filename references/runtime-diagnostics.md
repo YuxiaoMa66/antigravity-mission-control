@@ -8,10 +8,16 @@ Use this reference before a first run in a new environment, after a wrapper erro
 2. Inspect the wrapper's stderr and temporary diagnostics. Do not rely on a generic `Agent execution terminated due to error` message when a log contains a more specific cause.
 3. Distinguish the result shape:
    - `SUCCESS` with a response: worker produced output; inspect the workspace independently.
-   - non-success with an empty response: worker failed; do not claim partial completion.
-   - non-success with a complete response: `done_with_warnings`; deliver the response, surface the warning, and verify it independently.
+   - AGY printed `print timeout after ... with turn in progress`: the turn was cut short. The stream still says `SUCCESS`, so treat the run as failed (exit 124). The error's `stuck_step` names the tool step AGY was still waiting on, with its parameters; `null` means the model itself was still working. Narrow the task, or retry once with a larger `--timeout-seconds`.
+   - exit 5: the workspace changed during a `plan` run. AGY does not enforce plan mode, so treat the listed paths as unapproved edits: inspect them and tell the user before keeping or reverting anything.
+   - a nonzero AGY exit code: worker failed, whatever the stream says; any partial response stays in stdout or the job result as evidence only.
+   - non-success with an empty response, or any status other than `SUCCESS` and `ERROR`: worker failed; do not claim partial completion.
+   - `SUCCESS` with an empty response: `done_with_warnings`; nothing was delivered, so inspect the workspace and the diagnostics before reusing the run.
+   - `ERROR` with a response and a zero exit code: `done_with_warnings`, the only non-fatal failure; deliver the response, surface the warning, and verify it independently.
 
 The wrapper starts in standard permission handling. If the confirmed roster needs unrestricted tool access, obtain the separate explicit confirmation, create an approval with `--permission-profile unrestricted --unrestricted-confirmed`, then run with `--unrestricted --approval-file <manifest>`. Never infer this from workspace trust or silently fall back to unrestricted after a denial.
+
+AGY 1.2 nests the outcome one level down: `{"event": "result", "result": {"status": ..., "conversation_id": ...}}`. The wrapper flattens it before judging, so `status` and `conversation_id` are read from either shape.
 
 ## Common classes
 
