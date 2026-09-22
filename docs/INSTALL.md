@@ -14,7 +14,7 @@ Mission Control never reads or copies AGY OAuth material. A fresh AGY installati
 
 ## Recommended: npm package
 
-`@latest` follows the stable npm release. Pin `@0.4.1` when reproducibility matters; the npm bootstrapper then resolves the matching verified Git tag internally. Pre-releases are published under `@next`; pin `@0.4.2-rc.3` to reproduce the v0.4.2rc3 pre-release.
+`@latest` follows the stable npm release. Pin `@0.5.0` when reproducibility matters; the npm bootstrapper then resolves the matching verified Git tag internally. Pre-releases, when there are any, are published under `@next`.
 
 Preview exact paths without writing:
 
@@ -92,11 +92,9 @@ The Skill is moved to the host's backup directory. The managed Python environmen
 ## Direct Python installation
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.4.1"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.5.0"
 agy-mc skill install
 ```
-
-For the v0.4.2rc3 pre-release, use `@v0.4.2rc3` instead of `@v0.4.1`.
 
 Use `agy-mc skill install --dry-run`, `status`, `update`, or `uninstall`. The Python installer operates only on the Skill; it does not create the npm-managed virtual environment or CLI symlink.
 

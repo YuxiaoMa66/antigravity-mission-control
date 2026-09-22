@@ -4,8 +4,8 @@
 
 Mission Control keeps one coordinated release version across its ecosystems:
 
-- Python and Git tag: `0.4.2rc3` / `v0.4.2rc3`
-- npm SemVer: `0.4.2-rc.3`
+- Python and Git tag: `0.5.0` / `v0.5.0`
+- npm SemVer: `0.5.0`
 
 Both identify the same release. Update `__version__`, `pyproject.toml`, `package.json`, npm bootstrap constants, changelog and bilingual release notes together. Keep historical release notes and assets immutable.
 
@@ -33,12 +33,12 @@ The unit tests drive a fake AGY and can only confirm the wrapper matches its own
 python3 scripts/real_agy_check.py --report real-agy-report.json
 ```
 
-It covers the offline guards (doctor, unavailable model, non-high Gemini, approval binding, broad workspaces, quota snapshot) and, with one AGY turn each on the latest Gemini Flash High, a foreground run, background collection, `continue`, cancel, a killed worker, an interrupted cancel, a wait timeout, parallel read-only jobs, `--json-schema`, AGY's print timeout, read-only `plan` mode, the editor lock and workspace evidence. Every scenario must pass. Job state lives in a temporary directory; the edit scenarios trust a temporary workspace next to the repository and remove that trust entry afterwards. If a run is killed, the next run (or `--cleanup-only`) removes what it left behind. Use `--offline-only` to check the guards without spending quota, and `-k <name>` to rerun one scenario. When AGY changes its output, fix the wrapper and update `tests/fake_agy.py` to the new shape, so the unit tests keep tracking the real CLI.
+It covers the offline guards (doctor, unavailable model, non-high Gemini, approval binding, broad workspaces, quota snapshot) and, with one AGY turn each on the latest Gemini Flash High, a foreground run, background collection, `continue`, cancel, a killed worker, an interrupted cancel, a wait timeout, parallel read-only jobs, `--json-schema`, AGY's print timeout, writes in `plan` mode, the editor lock and workspace evidence. Every scenario must pass. Job state lives in a temporary directory; the edit scenarios trust a temporary workspace next to the repository and remove that trust entry afterwards. If a run is killed, the next run (or `--cleanup-only`) removes what it left behind. Use `--offline-only` to check the guards without spending quota, and `-k <name>` to rerun one scenario. When AGY changes its output, fix the wrapper and update `tests/fake_agy.py` to the new shape, so the unit tests keep tracking the real CLI.
 
 ## Publication order
 
 1. Push the reviewed `main` commit to GitHub.
-2. Create tag `v0.4.2rc3` at that exact commit.
+2. Create tag `v0.5.0` at that exact commit.
 3. Create a GitHub Release from the bilingual notes.
 4. Verify Git installation from the tag in an isolated environment.
 5. Run `npm publish --tag latest --access public`.

@@ -4,7 +4,7 @@
 <rect width="1280" height="800" rx="12" fill="#141615"/>
 <path d="M48 48H1232M48 748H1232" stroke="#30352f"/>
 <rect x="64" y="48" width="7" height="94" fill="#e6a15d"/>
-<text x="92" y="76" font-family="Menlo, Consolas, monospace" font-size="15" letter-spacing="2" fill="#e6a15d">MISSION CONTROL  /  V0.4.2RC3</text>
+<text x="92" y="76" font-family="Menlo, Consolas, monospace" font-size="15" letter-spacing="2" fill="#e6a15d">MISSION CONTROL  /  V0.5.0</text>
 <text x="92" y="122" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" letter-spacing="-1.2" fill="#f2eee5">Install with intent.</text>
 <text x="92" y="162" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#a4a59c">Inspect the exact target before installing the CLI and skill.</text>
 <text x="1232" y="76" text-anchor="end" font-family="Menlo, Consolas, monospace" font-size="14" letter-spacing="1.4" fill="#a4a59c">OPERATIONAL EVIDENCE PLATE</text>
@@ -19,13 +19,13 @@
 <text x="92" y="320" fill="#555b53">02</text>
 <text x="142" y="320" fill="#d8d4ca"></text>
 <text x="92" y="354" fill="#555b53">03</text>
-<text x="142" y="354" fill="#d8d4ca">CLI version       0.4.2rc3</text>
+<text x="142" y="354" fill="#d8d4ca">CLI version       0.5.0</text>
 <text x="92" y="388" fill="#555b53">04</text>
 <text x="142" y="388" fill="#d8d4ca">Skill target      codex / claude (auto-detect)</text>
 <text x="92" y="422" fill="#555b53">05</text>
 <text x="142" y="422" fill="#d8d4ca">Runtime           ~/.local/share/antigravity-mission-control/venv</text>
 <text x="92" y="456" fill="#555b53">06</text>
-<text x="142" y="456" fill="#d8d4ca">Source tag        v0.4.2rc3</text>
+<text x="142" y="456" fill="#d8d4ca">Source tag        v0.5.0</text>
 <text x="92" y="490" fill="#555b53">07</text>
 <text x="142" y="490" fill="#d8d4ca"></text>
 <text x="92" y="524" fill="#555b53">08</text>

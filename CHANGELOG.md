@@ -1,8 +1,18 @@
 # Changelog
 
+## 0.5.0 - 2026-09-22
+
+- Stable release (npm `0.5.0` on `latest`) of the module split and every fix from the v0.4.2 release candidates; rc3 was not published on its own. Runtime routing is unchanged.
+- New: `scripts/real_agy_check.py`, an acceptance suite with 19 scenarios that runs the installed AGY CLI through Mission Control. It needs no fake, keeps job state in a temporary directory and removes the trust it grants. `docs/RELEASING.md` requires a clean run before a stable release. 19 of 19 pass against AGY 1.2.8 with `gemini-3.8-flash-high`.
+- Change: `done_with_warnings` now also covers a `SUCCESS` with an empty response. A nonzero exit, an `ERROR` without a response, an unknown status and AGY's print timeout are failures.
+- Fix: the workspace note appended to every worker prompt included the path of Mission Control's private evidence and asked the worker to inspect diffs. Real workers sometimes spent the whole turn reading job files and hit the timeout. The note is now sent only when the workspace has pre-existing changes, lists only those paths, and names no private path.
+- Change: a `--json-schema` run whose response is not a single JSON document is `done_with_warnings`; a print-timeout error carries `stuck_step`, the tool step AGY was still waiting on.
+- Fix: AGY does not enforce `plan` mode; a real plan worker created a file. A `plan` run whose Git snapshots differ now fails with exit 5 and lists the changed paths (previously a clean success, documented as read-only).
+- Behavior note: jobs recorded before 0.5.0 carry `conversation_id: null` when they ran on AGY 1.2, so they cannot be continued. New jobs can.
+
 ## 0.4.2rc3 - 2026-09-22
 
-- Pre-release (npm `0.4.2-rc.3`, published under the `next` tag; `latest` stays on 0.4.1). Third candidate of the module split, with fixes from a review of rc2.
+- Release candidate, not published on its own: its changes ship in 0.5.0. Third candidate of the module split, with fixes from a review of rc2.
 - Fix: a nonzero AGY exit code was reported as success when the stream carried an `ERROR` result with a partial response, and an `ERROR` result without a response or `error` field returned 0. A nonzero exit now always fails and keeps the partial response as evidence; only SUCCESS, or a result event with no status and no error, succeeds; `done_with_warnings` requires a clean exit and a response.
 - Fix: launch, cancel, worker completion and `refresh_job` re-read and write `job.json` under a per-job `flock`, so a cancel between the launcher's read and write is no longer overwritten with `running`.
 - Fix: a `canceling` job whose cancel command was interrupted after the worker exited stayed `canceling` forever. `refresh_job` now resolves it to the worker's own result, or to `canceled` with a result file.

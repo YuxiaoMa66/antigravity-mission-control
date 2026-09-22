@@ -4,8 +4,8 @@
 
 Mission Control 在各生态中使用同一套协调发布版本：
 
-- Python 与 Git tag：`0.4.2rc3` / `v0.4.2rc3`
-- npm SemVer：`0.4.2-rc.3`
+- Python 与 Git tag：`0.5.0` / `v0.5.0`
+- npm SemVer：`0.5.0`
 
 它们代表同一个版本。每次发布必须同步更新 `__version__`、`pyproject.toml`、`package.json`、npm bootstrap 常量、CHANGELOG 和中英文发布说明。历史发布说明和资产保持不可变。
 
@@ -33,12 +33,12 @@ git status --short
 python3 scripts/real_agy_check.py --report real-agy-report.json
 ```
 
-它覆盖离线守卫（doctor、不可用模型、非 high 的 Gemini、审批绑定、宽泛工作区、额度快照），并在最新的 Gemini Flash High 上各用一轮 AGY 覆盖：前台运行、后台收集、`continue`、取消、worker 被杀、取消中断、wait 超时、并行只读任务、`--json-schema`、AGY 的 print timeout、只读的 `plan` 模式、编辑锁与工作区证据。所有场景都必须通过。任务状态放在临时目录；编辑类场景会信任仓库旁边的一个临时工作区，结束后移除该信任条目。如果运行被强行终止，下一次运行（或 `--cleanup-only`）会清理残留。用 `--offline-only` 可在不消耗额度的情况下检查守卫，用 `-k <name>` 可单独重跑某个场景。AGY 输出格式变化时，先修复包装器，再把 `tests/fake_agy.py` 更新为新格式，让单元测试持续跟随真实 CLI。
+它覆盖离线守卫（doctor、不可用模型、非 high 的 Gemini、审批绑定、宽泛工作区、额度快照），并在最新的 Gemini Flash High 上各用一轮 AGY 覆盖：前台运行、后台收集、`continue`、取消、worker 被杀、取消中断、wait 超时、并行只读任务、`--json-schema`、AGY 的 print timeout、`plan` 模式下的写入、编辑锁与工作区证据。所有场景都必须通过。任务状态放在临时目录；编辑类场景会信任仓库旁边的一个临时工作区，结束后移除该信任条目。如果运行被强行终止，下一次运行（或 `--cleanup-only`）会清理残留。用 `--offline-only` 可在不消耗额度的情况下检查守卫，用 `-k <name>` 可单独重跑某个场景。AGY 输出格式变化时，先修复包装器，再把 `tests/fake_agy.py` 更新为新格式，让单元测试持续跟随真实 CLI。
 
 ## 发布顺序
 
 1. 将审查后的 `main` 提交推送到 GitHub。
-2. 在同一提交创建 `v0.4.2rc3` tag。
+2. 在同一提交创建 `v0.5.0` tag。
 3. 使用双语说明创建 GitHub Release。
 4. 在隔离环境验证从该 tag 安装。
 5. 执行 `npm publish --tag latest --access public`。
