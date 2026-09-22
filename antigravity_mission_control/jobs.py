@@ -28,6 +28,10 @@ PERMISSION_NOTICE_RE = re.compile(
 )
 
 
+# A plan-mode run that changed the workspace. Snapshots see Git workspaces only.
+PLAN_MODE_CHANGED_EXIT = 5
+
+
 # AGY reports its own print timeout on stderr and still emits status SUCCESS with an empty response.
 TIMEOUT_NOTICE_RE = re.compile(r"print timeout after[^\n]*turn in progress", re.IGNORECASE)
 
@@ -246,13 +250,20 @@ def run_foreground(args: argparse.Namespace, prepared: dict) -> int:
         "correction_round": prepared.get("correction_round"),
     })
     try:
-        return execute_foreground(args, dispatched)
+        code = execute_foreground(args, dispatched)
     finally:
         after = workspace_snapshot(prepared["cwd"])
         atomic_write_json(directory / "after.json", after)
         delta = workspace_delta(before, after)
         atomic_write_json(directory / "delta.json", delta)
         print(json.dumps({"amc_evidence": str(directory), "workspace_delta": delta}, ensure_ascii=True), file=sys.stderr)
+    if args.mode == "plan" and (delta["changed_paths"] or delta["head_changed"]):
+        # AGY does not enforce plan mode: a real plan worker has created files. Never let that pass as read-only.
+        print(json.dumps({"status": "ERROR", "error": "the workspace changed during a plan-mode run",
+                          "changed_paths": delta["changed_paths"][:50], "head_changed": delta["head_changed"]},
+                         ensure_ascii=False), file=sys.stderr)
+        return PLAN_MODE_CHANGED_EXIT
+    return code
 
 
 def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:

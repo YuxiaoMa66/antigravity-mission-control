@@ -94,6 +94,20 @@ class ResultJudgementTests(unittest.TestCase):
         valid = self.run_plan("--json-schema", str(schema), FAKE_AGY_RESPONSE='{"answer": "OK"}')
         self.assertNotIn("done_with_warnings", valid.stderr)
 
+    def test_plan_mode_run_that_changes_the_workspace_fails(self):
+        subprocess.run(["git", "init", "-q"], cwd=self.workspace, check=True)
+        run = self.run_plan(FAKE_AGY_EDIT="1")
+        self.assertEqual(run.returncode, jobs.PLAN_MODE_CHANGED_EXIT, run.stderr)
+        self.assertIn("worker-new.txt", run.stderr)
+        for name in ("user.txt", "worker-new.txt"):  # start the background run from a clean tree again
+            (self.workspace / name).unlink()
+        started = self.run_plan("--background", FAKE_AGY_EDIT="1")
+        job_id = json.loads(started.stdout)["job_id"]
+        result = json.loads(self.call("wait", job_id, "--timeout", "20s").stdout)
+        self.assertEqual((result["status"], result["exit_code"]), ("error", jobs.PLAN_MODE_CHANGED_EXIT))
+        clean = self.run_plan()
+        self.assertEqual(clean.returncode, 0, clean.stderr)
+
     def test_worker_prompt_carries_no_private_state_paths(self):
         # The fake AGY echoes the dispatched request back as its response.
         clean = self.run_plan()

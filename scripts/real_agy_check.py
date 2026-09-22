@@ -355,18 +355,20 @@ def usage_snapshot_is_sanitized(h: Harness) -> str:
     return f"{len(groups)} quota groups"
 
 
-@scenario("plan_mode_cannot_touch_the_workspace")
+@scenario("plan_mode_writes_are_never_reported_as_success")
 def plan_mode_is_read_only(h: Harness) -> str:
+    # AGY does not enforce plan mode: real plan workers have created files. The contract under
+    # test is Mission Control's: a plan run that changed the workspace always fails with exit 5.
     with trusted_workspace(h) as workspace:
         marker = "plan-mode-should-not-exist.txt"
-        before = sorted(p.name for p in workspace.iterdir())
         prompt = h.prompt("plan-edit", f"Create a file named {marker} in the workspace root with the "
                                        f"text: nope. Then reply with DONE.")
         proc = h.run(prompt, cwd=workspace, mode="plan", timeout_seconds=120)
-        expect(not (workspace / marker).is_file(), f"plan mode created {marker}")
-        expect(sorted(p.name for p in workspace.iterdir()) == before,
-               "plan mode changed the workspace contents")
-        # AGY may wait on the edit it cannot make until its print timeout; exit 124 is then correct.
+        if (workspace / marker).is_file():
+            expect(proc.returncode == 5, f"plan mode created {marker} and the run exited {proc.returncode}")
+            expect(marker in proc.stderr, "the plan-mode failure did not name the changed path")
+            return "AGY wrote in plan mode; Mission Control failed the run with exit 5"
+        expect(proc.returncode != 5, "exit 5 without any change in the workspace")
         return f"workspace unchanged after an edit request in plan mode (exit {proc.returncode})"
 
 
