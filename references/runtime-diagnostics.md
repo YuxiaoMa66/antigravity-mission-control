@@ -8,7 +8,7 @@ Use this reference before a first run in a new environment, after a wrapper erro
 2. Inspect the wrapper's stderr and temporary diagnostics. Do not rely on a generic `Agent execution terminated due to error` message when a log contains a more specific cause.
 3. Distinguish the result shape:
    - `SUCCESS` with a response: worker produced output; inspect the workspace independently.
-   - AGY printed `print timeout after ... with turn in progress`: the turn was cut short. The stream still says `SUCCESS`, so treat the run as failed (exit 124) and retry with a larger `--timeout-seconds`.
+   - AGY printed `print timeout after ... with turn in progress`: the turn was cut short. The stream still says `SUCCESS`, so treat the run as failed (exit 124). The error's `stuck_step` names the tool step AGY was still waiting on, with its parameters; `null` means the model itself was still working. Narrow the task, or retry once with a larger `--timeout-seconds`.
    - a nonzero AGY exit code: worker failed, whatever the stream says; any partial response stays in stdout or the job result as evidence only.
    - non-success with an empty response, or any status other than `SUCCESS` and `ERROR`: worker failed; do not claim partial completion.
    - `SUCCESS` with an empty response: `done_with_warnings`; nothing was delivered, so inspect the workspace and the diagnostics before reusing the run.

@@ -30,7 +30,7 @@ Unknown or failed quota values stay `unknown`, never zero. Quota telemetry does 
 
 ## Workspace evidence and correction
 
-The CLI records private before/after Git snapshots, changed-path fingerprints and diff hashes outside the project. It injects a bounded summary of pre-existing changes as context. Inspect the reported evidence path plus real diffs: snapshots are not a sandbox, proof of ownership, or an automatic acceptance test. Missing, oversized or concurrent evidence is a limitation, not a clean result.
+The CLI records private before/after Git snapshots, changed-path fingerprints and diff hashes outside the project. When the workspace already has changes, it injects a bounded list of those paths as context and never the evidence location. Inspect the reported evidence path plus real diffs: snapshots are not a sandbox, proof of ownership, or an automatic acceptance test. Missing, oversized or concurrent evidence is a limitation, not a clean result.
 
 Use `approve --correction-of <job-id>` for a correction and `--follow-up-of <job-id>` for an ordinary in-scope follow-up. Both retain the recorded policy and assignment. Two corrections are allowed along a recorded chain; ordinary follow-ups retain its count. At the limit, diagnose the failure and obtain a new scoped decision rather than starting an unrecorded retry. See [approvals](references/approvals.md) for legacy and enforcement limits.
 

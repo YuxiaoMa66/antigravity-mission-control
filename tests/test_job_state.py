@@ -67,10 +67,50 @@ class ResultJudgementTests(unittest.TestCase):
                             FAKE_AGY_STDERR="[agy] print timeout after 5s with turn in progress; returning partial output")
         self.assertEqual(run.returncode, 124, run.stderr)
 
+    def test_last_open_step_names_what_the_turn_was_stuck_on(self):
+        stream = "\n".join(json.dumps(e) for e in (
+            {"event": "step_update", "step_update": {"step_index": 1, "state": "DONE", "step_type": "tool",
+                                                     "tool_name": "view_file"}},
+            {"event": "step_update", "step_update": {"step_index": 2, "state": "ACTIVE", "step_type": "tool",
+                                                     "tool_name": "run_command",
+                                                     "tool_info": {"parameters": {"CommandLine": "git diff"}}}},
+            {"event": "result", "result": {"status": "SUCCESS", "response": ""}},
+        ))
+        self.assertEqual(jobs.last_open_step(stream),
+                         {"step": "run_command", "state": "ACTIVE", "parameters": {"CommandLine": "git diff"}})
+        self.assertIsNone(jobs.last_open_step(stream.split("\n")[0]))
+
     def test_success_without_a_response_is_a_warning(self):
         run = self.run_plan(FAKE_AGY_RESPONSE="")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("empty response", run.stderr)
+
+    def test_schema_run_with_a_non_json_response_is_a_warning(self):
+        schema = self.root / "schema.json"
+        schema.write_text('{"type": "object"}')
+        run = self.run_plan("--json-schema", str(schema), FAKE_AGY_RESPONSE="I wrote a plan instead.")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("not a single JSON document", run.stderr)
+        valid = self.run_plan("--json-schema", str(schema), FAKE_AGY_RESPONSE='{"answer": "OK"}')
+        self.assertNotIn("done_with_warnings", valid.stderr)
+
+    def test_worker_prompt_carries_no_private_state_paths(self):
+        # The fake AGY echoes the dispatched request back as its response.
+        clean = self.run_plan()
+        request = self.response(clean)
+        self.assertNotIn("AMC workspace context", request)
+        self.assertNotIn(str(self.root / "state"), request)
+
+        subprocess.run(["git", "init", "-q"], cwd=self.workspace, check=True)
+        (self.workspace / "user.txt").write_text("user work\n")
+        dirty = self.response(self.run_plan())
+        self.assertIn("user.txt", dirty)
+        self.assertNotIn(str(self.root / "state"), dirty)
+        self.assertNotIn("before.json", dirty)
+
+    def response(self, run):
+        self.assertEqual(run.returncode, 0, run.stderr)
+        return jobs.parse_stream_result(run.stdout)["response"]
 
     def test_background_worker_records_nonzero_exit_as_error(self):
         started = self.run_plan("--background", FAKE_AGY_WARNING="1", FAKE_AGY_EXIT="7")

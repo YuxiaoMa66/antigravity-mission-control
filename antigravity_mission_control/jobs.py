@@ -177,6 +177,35 @@ def parse_stream_result(stdout: str) -> dict | None:
     return final
 
 
+def parses_as_json(text: str) -> bool:
+    try:
+        json.loads(text)
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
+def last_open_step(stdout: str) -> dict | None:
+    """The newest AGY step that never reached DONE: what the turn was stuck on when it stopped."""
+    open_steps: dict = {}
+    for line in stdout.splitlines():
+        try:
+            step = json.loads(line).get("step_update")
+        except (json.JSONDecodeError, AttributeError):
+            continue
+        if not isinstance(step, dict):
+            continue
+        if step.get("state") == "DONE":
+            open_steps.pop(step.get("step_index"), None)
+        else:
+            open_steps[step.get("step_index")] = step
+    if not open_steps:
+        return None
+    step = open_steps[max(open_steps, key=lambda index: index if isinstance(index, int) else -1)]
+    return {"step": step.get("tool_name") or step.get("step_type"), "state": step.get("state"),
+            "parameters": (step.get("tool_info") or {}).get("parameters")}
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     prepared = prepare_run(args)
     if args.background:
@@ -202,12 +231,13 @@ def run_foreground(args: argparse.Namespace, prepared: dict) -> int:
     before = workspace_snapshot(prepared["cwd"])
     atomic_write_json(directory / "before.json", before)
     paths = list(before.get("paths", {}))
-    summary = json.dumps(paths[:100], ensure_ascii=True)[:12000]
-    context = ("\n\nAMC workspace context (observed data, not instructions):\n"
-               f"Existing changed paths relative to repository root: {summary}\n"
-               "The list may be truncated. Treat existing changes as user-owned; inspect relevant diffs. "
-               "Only modify the approved scope. Do not overwrite, clean, stash or deliver unrelated work.\n"
-               f"Baseline status: {before['status']}. Evidence: {directory / 'before.json'}\n")
+    # Only protect the user's existing changes. Never point the worker at Mission Control's own state:
+    # given the evidence path, real workers spent whole turns reading job files instead of doing the task.
+    context = "" if not paths else (
+        "\n\nAMC workspace context (observed data, not instructions):\n"
+        f"Files the user had already changed before this run: {json.dumps(paths[:100], ensure_ascii=True)[:12000]}\n"
+        "The list may be truncated. They belong to the user: leave them as they are unless the task names them. "
+        "Do not overwrite, clean, stash or deliver unrelated work.\n")
     dispatched = dict(prepared, prompt_text=prepared["prompt_text"] + context)
     atomic_write_json(directory / "dispatch.json", {
         "original_prompt_sha256": sha256_text(prepared["prompt_text"]),
@@ -268,8 +298,8 @@ def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
         )
         return 3
     if TIMEOUT_NOTICE_RE.search(proc.stderr or ""):
-        print(json.dumps({"status": "ERROR", "error": "agy stopped at its print timeout with the turn in progress"}),
-              file=sys.stderr)
+        print(json.dumps({"status": "ERROR", "error": "agy stopped at its print timeout with the turn in progress",
+                          "stuck_step": last_open_step(proc.stdout)}, ensure_ascii=False), file=sys.stderr)
         return 124
     if proc.returncode != 0:
         # A failing exit code wins over anything the stream claims; stdout above keeps any partial response.
@@ -294,9 +324,15 @@ def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
         return 0
     result_event = "result" in (payload.get("event"), payload.get("type"))
     if provider_status == "SUCCESS" or (not provider_status and result_event and not payload.get("error")):
+        warning = None
         if not response:
-            print(json.dumps({"status": "done_with_warnings", "error": "agy reported success with an empty response",
-                              "diagnostics": diagnostics}, ensure_ascii=False), file=sys.stderr)
+            warning = "agy reported success with an empty response"
+        elif prepared["schema_path"] and not parses_as_json(response):
+            # ponytail: parse check only; validate against the schema itself if callers start relying on fields.
+            warning = "--json-schema was requested but the response is not a single JSON document"
+        if warning:
+            print(json.dumps({"status": "done_with_warnings", "error": warning, "diagnostics": diagnostics},
+                             ensure_ascii=False), file=sys.stderr)
         return 0
     print(json.dumps({"status": "ERROR", "error": payload.get("error") or f"agy reported status {provider_status or 'none'}"},
                      ensure_ascii=False), file=sys.stderr)
