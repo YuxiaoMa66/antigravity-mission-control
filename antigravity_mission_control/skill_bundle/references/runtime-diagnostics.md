@@ -8,8 +8,9 @@ Use this reference before a first run in a new environment, after a wrapper erro
 2. Inspect the wrapper's stderr and temporary diagnostics. Do not rely on a generic `Agent execution terminated due to error` message when a log contains a more specific cause.
 3. Distinguish the result shape:
    - `SUCCESS` with a response: worker produced output; inspect the workspace independently.
-   - non-success with an empty response: worker failed; do not claim partial completion.
-   - non-success with a complete response: `done_with_warnings`; deliver the response, surface the warning, and verify it independently.
+   - a nonzero AGY exit code: worker failed, whatever the stream says; any partial response stays in stdout or the job result as evidence only.
+   - non-success with an empty response, or any status other than `SUCCESS` and `ERROR`: worker failed; do not claim partial completion.
+   - `ERROR` with a response and a zero exit code: `done_with_warnings`, the only non-fatal failure; deliver the response, surface the warning, and verify it independently.
 
 The wrapper starts in standard permission handling. If the confirmed roster needs unrestricted tool access, obtain the separate explicit confirmation, create an approval with `--permission-profile unrestricted --unrestricted-confirmed`, then run with `--unrestricted --approval-file <manifest>`. Never infer this from workspace trust or silently fall back to unrestricted after a denial.
 

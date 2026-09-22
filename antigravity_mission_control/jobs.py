@@ -16,7 +16,7 @@ from pathlib import Path
 
 from .approvals import load_approval, validate_approval_binding
 from .common import AGY_BIN, STATE_ROOT, atomic_write_json, run_capture, sha256_text, utc_now
-from .jobstore import JOB_EXIT_CODES, acquire_workspace_lock, job_result, job_result_path, job_spec_path, list_jobs, pid_alive, read_job, refresh_job, release_workspace_lock, start_background_job, write_job
+from .jobstore import JOB_EXIT_CODES, acquire_workspace_lock, job_lock, job_result, job_result_path, job_spec_path, list_jobs, pid_alive, read_job, refresh_job, release_workspace_lock, start_background_job, write_job, write_terminal_result
 from .routing import available_models, is_non_high_gemini, select_model
 from .workspace import canonical_workspace, workspace_delta, workspace_snapshot, workspace_status
 
@@ -261,8 +261,14 @@ def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
             file=sys.stderr,
         )
         return 3
+    if proc.returncode != 0:
+        # A failing exit code wins over anything the stream claims; stdout above keeps any partial response.
+        print(json.dumps({"status": "ERROR", "error": f"agy exited with code {proc.returncode}"}), file=sys.stderr)
+        return proc.returncode
     response = payload.get("response") or payload.get("result")
-    if payload.get("status") == "ERROR" and response:
+    provider_status = str(payload.get("status", "")).upper()
+    # The only recognized non-fatal failure: a clean exit whose ERROR result still carries a response.
+    if provider_status == "ERROR" and response:
         print(
             json.dumps(
                 {
@@ -275,9 +281,12 @@ def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
             file=sys.stderr,
         )
         return 0
-    provider_status = str(payload.get("status", "")).upper()
-    event_success = payload.get("event") == "result" and not payload.get("error")
-    return 0 if proc.returncode == 0 and (provider_status == "SUCCESS" or event_success) else (proc.returncode or 1)
+    result_event = "result" in (payload.get("event"), payload.get("type"))
+    if provider_status == "SUCCESS" or (not provider_status and result_event and not payload.get("error")):
+        return 0
+    print(json.dumps({"status": "ERROR", "error": payload.get("error") or f"agy reported status {provider_status or 'none'}"},
+                     ensure_ascii=False), file=sys.stderr)
+    return 1
 
 
 def cmd_worker(args: argparse.Namespace) -> int:
@@ -315,12 +324,13 @@ def cmd_worker(args: argparse.Namespace) -> int:
             "acceptance": "not_evaluated",
         }
         atomic_write_json(job_result_path(args.job_id), result)
-        current = read_job(args.job_id)
-        if current.get("status") not in {"canceled", "canceling"}:
-            current["status"] = status
-            current["conversation_id"] = result["conversation_id"] or current.get("conversation_id")
-            current["finished_at"] = utc_now()
-            write_job(current)
+        with job_lock(args.job_id):
+            current = read_job(args.job_id)
+            if current.get("status") not in {"canceled", "canceling"}:
+                current["status"] = status
+                current["conversation_id"] = result["conversation_id"] or current.get("conversation_id")
+                current["finished_at"] = utc_now()
+                write_job(current)
         return 0 if status in {"done", "done_with_warnings"} else 1
     except Exception as exc:
         result = {
@@ -333,11 +343,12 @@ def cmd_worker(args: argparse.Namespace) -> int:
             "error": str(exc),
         }
         atomic_write_json(job_result_path(args.job_id), result)
-        current = read_job(args.job_id)
-        if current.get("status") not in {"canceled", "canceling"}:
-            current["status"] = "error"
-            current["finished_at"] = utc_now()
-            write_job(current)
+        with job_lock(args.job_id):
+            current = read_job(args.job_id)
+            if current.get("status") not in {"canceled", "canceling"}:
+                current["status"] = "error"
+                current["finished_at"] = utc_now()
+                write_job(current)
         return 1
 
 
@@ -431,36 +442,32 @@ def process_matches_job(pid: int, job_id: str) -> bool:
 
 def cmd_cancel(args: argparse.Namespace) -> int:
     job = refresh_job(read_job(args.job_id))
-    if job.get("status") not in {"starting", "running", "canceling"}:
-        print(json.dumps(job, ensure_ascii=False, indent=2))
-        return JOB_EXIT_CODES.get(job.get("status"), 1)
-    pid = job.get("pid")
-    if pid and not process_matches_job(pid, args.job_id):
-        raise RuntimeError(
-            f"Refusing to signal PID {pid}: it is not the recorded Mission Control worker for {args.job_id}"
-        )
-    job["status"] = "canceling"
-    job["cancel_requested_at"] = utc_now()
-    write_job(job)
+    with job_lock(args.job_id):
+        job = read_job(args.job_id)
+        if job.get("status") not in {"starting", "running", "canceling"}:
+            print(json.dumps(job, ensure_ascii=False, indent=2))
+            return JOB_EXIT_CODES.get(job.get("status"), 1)
+        pid = job.get("pid")
+        if pid and not process_matches_job(pid, args.job_id):
+            raise RuntimeError(
+                f"Refusing to signal PID {pid}: it is not the recorded Mission Control worker for {args.job_id}"
+            )
+        job["status"] = "canceling"
+        job["cancel_requested_at"] = utc_now()
+        write_job(job)
+    # Signal and wait outside the lock so the worker can still record its own finish.
     terminated = terminate_process_group(pid, args.grace_seconds)
     final_status = "canceled" if terminated else "cancel_failed"
-    job["status"] = final_status
-    job["finished_at"] = utc_now()
-    write_job(job)
-    atomic_write_json(
-        job_result_path(args.job_id),
-        {
-            "job_id": args.job_id,
-            "status": final_status,
-            "exit_code": JOB_EXIT_CODES[final_status],
-            "role": job.get("role"),
-            "model": job.get("model"),
-            "cwd": job.get("cwd"),
-            "error": "Job canceled and process exit confirmed" if terminated else "Process did not exit after TERM and KILL",
-        },
-    )
+    with job_lock(args.job_id):
+        job = read_job(args.job_id)
+        if job.get("status") == "canceling":
+            job["status"] = final_status
+            job["finished_at"] = utc_now()
+            write_job(job)
+            write_terminal_result(job, final_status, "Job canceled and process exit confirmed" if terminated
+                                  else "Process did not exit after TERM and KILL")
     print(json.dumps(job, ensure_ascii=False, indent=2))
-    return JOB_EXIT_CODES[final_status]
+    return JOB_EXIT_CODES.get(job.get("status"), 1)
 
 
 def cmd_continue(args: argparse.Namespace) -> int:

@@ -25,12 +25,31 @@ jobs:
       - run: agy-mc --version
       - run: AGY_MC_BIN="$PWD/tests/fake_agy.py" AGY_MC_STATE_ROOT="$RUNNER_TEMP/agy-mc-state" agy-mc doctor
 
+  macos-lifecycle:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest tests.test_lifecycle tests.test_job_state tests.test_permissions -v
+
   node:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 18 is the declared engines minimum in package.json.
+        node: ["18", "20"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ matrix.node }}
       - run: npm test
       - run: npm pack --dry-run
+      - name: Install the packed tarball and run the bootstrapper
+        run: |
+          npm pack --pack-destination "$RUNNER_TEMP"
+          npm install -g "$RUNNER_TEMP"/antigravity-mission-control-*.tgz
+          antigravity-mission-control --version
+          HOME="$RUNNER_TEMP/home" antigravity-mission-control --help

@@ -50,7 +50,7 @@ agy-mc continue <job-id> \
 
 `continue` reuses only the exact role, model, workspace, mode, and AGY conversation recorded by the selected completed job. A new prompt requires a new bound approval; alternatively call `run --conversation <exact-id> --approval-file <new-manifest>`. Job specs, logs, prompts, and result envelopes live under `${XDG_STATE_HOME:-~/.local/state}/antigravity-mission-control/jobs` by default, not in the target repository. Treat the result envelope as evidence to inspect, not as proof that acceptance criteria passed; the host agent still reads changed files and runs the relevant checks.
 
-Editing runs use an OS-level non-blocking lock keyed by canonical workspace. Background workers inherit the lock descriptor, so simultaneous launchers cannot pass a scan race. `cancel` transitions through `canceling`, waits for TERM, escalates to KILL, and reports `canceled` only after confirmed exit; otherwise it records `cancel_failed`.
+Editing runs use an OS-level non-blocking lock keyed by canonical workspace. Background workers inherit the lock descriptor, so simultaneous launchers cannot pass a scan race. `cancel` transitions through `canceling`, waits for TERM, escalates to KILL, and reports `canceled` only after confirmed exit; otherwise it records `cancel_failed`. Launch, cancel, worker completion and status refresh update a job under a short per-job lock, so a cancel cannot be overwritten by a late launcher. If the cancel command itself is interrupted, the next `status` or `wait` resolves `canceling` from the worker's exit: its own result if it wrote one, otherwise `canceled`.
 
 ## Workspace evidence
 

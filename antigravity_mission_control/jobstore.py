@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import fcntl
 import hashlib
 import json
@@ -94,31 +95,57 @@ def pid_alive(pid: int | None) -> bool:
         return False
 
 
+@contextlib.contextmanager
+def job_lock(job_id: str):
+    """Serialize one job's read-check-write updates across launcher, worker, cancel and refresh.
+
+    Not reentrant: never call refresh_job or take this lock again while holding it.
+    """
+    fd = os.open(job_dir(job_id) / "job.lock", os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
+
+
+def write_terminal_result(job: dict, status: str, error: str) -> None:
+    atomic_write_json(
+        job_result_path(job["job_id"]),
+        {
+            "job_id": job["job_id"],
+            "status": status,
+            "exit_code": JOB_EXIT_CODES[status],
+            "role": job.get("role"),
+            "model": job.get("model"),
+            "cwd": job.get("cwd"),
+            "error": error,
+        },
+    )
+
+
 def refresh_job(job: dict) -> dict:
-    status = job.get("status")
-    owner = job.get("pid") if status == "running" else job.get("launcher_pid")
-    if status in {"running", "starting"} and not pid_alive(owner):
+    if job.get("status") not in {"starting", "running", "canceling"}:
+        return job
+    with job_lock(job["job_id"]):
+        job = read_job(job["job_id"])
+        status = job.get("status")
+        if status not in {"starting", "running", "canceling"} or pid_alive(job.get("pid") or job.get("launcher_pid")):
+            return job
         if job_result_path(job["job_id"]).is_file():
             try:
                 result = json.loads(job_result_path(job["job_id"]).read_text(encoding="utf-8"))
                 job["status"] = result.get("status", "error")
             except (OSError, json.JSONDecodeError):
                 job["status"] = "crashed"
+        elif status == "canceling":
+            # The cancel command was interrupted, but the worker is gone: the cancel took effect.
+            job["status"] = "canceled"
+            write_terminal_result(job, "canceled", "Cancel requested and process exit confirmed on recovery")
         else:
             job["status"] = "crashed"
-            atomic_write_json(
-                job_result_path(job["job_id"]),
-                {
-                    "job_id": job["job_id"],
-                    "status": "crashed",
-                    "exit_code": JOB_EXIT_CODES["crashed"],
-                    "role": job.get("role"),
-                    "model": job.get("model"),
-                    "cwd": job.get("cwd"),
-                    "error": "Worker exited without writing a result" if status == "running"
-                    else "Launcher exited before the worker started",
-                },
-            )
+            write_terminal_result(job, "crashed", "Worker exited without writing a result" if status == "running"
+                                  else "Launcher exited before the worker started")
         job["finished_at"] = job.get("finished_at") or utc_now()
         write_job(job)
     return job
@@ -310,16 +337,19 @@ def launch_background_job(
             close_fds=True,
             pass_fds=(lock_fd,) if lock_fd is not None else (),
         )
-    current = read_job(job_id)
-    if current.get("status") != "starting":
+    with job_lock(job_id):
+        current = read_job(job_id)
+        launched = current.get("status") == "starting"
+        if launched:
+            current["pid"] = child.pid
+            current["status"] = "running"
+            write_job(current)
+    if not launched:
         # Canceled during launch: the job never recorded this worker, so stop it here.
         os.killpg(child.pid, signal.SIGKILL)
         child.wait()
         print(json.dumps(current, ensure_ascii=False, indent=2))
         return JOB_EXIT_CODES.get(current.get("status"), 1)
-    current["pid"] = child.pid
-    current["status"] = "running"
-    write_job(current)
 
     print(
         json.dumps(
