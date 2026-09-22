@@ -1,3 +1,3 @@
 """Antigravity Mission Control."""
 
-__version__ = "0.4.2rc2"
+__version__ = "0.4.2rc3"

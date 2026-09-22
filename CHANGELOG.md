@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2rc3 - 2026-09-22
+
+- Pre-release (npm `0.4.2-rc.3`, published under the `next` tag; `latest` stays on 0.4.1). Third candidate of the module split, with fixes from a review of rc2.
+- Fix: a nonzero AGY exit code was reported as success when the stream carried an `ERROR` result with a partial response, and an `ERROR` result without a response or `error` field returned 0. A nonzero exit now always fails and keeps the partial response as evidence; only SUCCESS, or a result event with no status and no error, succeeds; `done_with_warnings` requires a clean exit and a response.
+- Fix: launch, cancel, worker completion and `refresh_job` re-read and write `job.json` under a per-job `flock`, so a cancel between the launcher's read and write is no longer overwritten with `running`.
+- Fix: a `canceling` job whose cancel command was interrupted after the worker exited stayed `canceling` forever. `refresh_job` now resolves it to the worker's own result, or to `canceled` with a result file.
+- CI: lifecycle tests on macOS; npm tests on Node 18 and 20 with a packed-tarball install.
+
 ## 0.4.2rc2 - 2026-09-22
 
 - Pre-release (npm `0.4.2-rc.2`, published under the `next` tag; `latest` stays on 0.4.1). Second candidate of the module split, with fixes from a review of rc1.

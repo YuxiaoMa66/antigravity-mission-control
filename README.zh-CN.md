@@ -11,9 +11,9 @@
 
 面向 Antigravity CLI（`agy`）的策略化任务控制层：将工作路由到精确模型，把批准绑定到具体任务，串行保护编辑 worker，确认取消结果并实时查看额度；最终验收始终由你的 coding agent（Codex 或 Claude Code）负责。
 
-<p align="center"><img src="assets/release-v0.4.2rc2.svg" width="920" alt="Antigravity Mission Control v0.4.2rc2 操作控制板"></p>
+<p align="center"><img src="assets/release-v0.4.2rc3.svg" width="920" alt="Antigravity Mission Control v0.4.2rc3 操作控制板"></p>
 
-> **v0.4.2rc2（预发布，npm 为 `0.4.2-rc.2`）：** Python CLI 模块拆分的第二个候选版本，修复了审核中发现的守卫漏洞：失败的后台 worker 可能被报告为成功，`/Users` 这类宽泛目录可以被信任为工作区，卸载可能移走不受管理的 Skill 或中途停下。在提升为正式版之前稳定版仍是 v0.4.1。可用 `npx antigravity-mission-control@next install` 试用。运行时路由行为保持 v0.3.0 的 Flash 优先设计。
+> **v0.4.2rc3（预发布，npm 为 `0.4.2-rc.3`）：** Python CLI 模块拆分的第三个候选版本，让任务状态可信：AGY 非零退出一律判为失败，取消不会再被迟到的启动进程覆盖，中断的取消也不会让任务一直停在 `canceling`。在提升为正式版之前稳定版仍是 v0.4.1。可用 `npx antigravity-mission-control@next install` 试用。运行时路由行为保持 v0.3.0 的 Flash 优先设计。
 >
 > 本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
 
@@ -26,7 +26,7 @@
 
 1. 检查 `agy` 是否已经安装并完成登录。
 2. 向我展示将执行的精确命令和目标路径，等我确认后再继续。
-3. 如果 AGY 已经可用，使用 `npx antigravity-mission-control@latest install` 安装稳定版；需要固定版本时使用 `@0.4.1`，想试用 v0.4.2rc2 预发布版则使用 `@next`。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
+3. 如果 AGY 已经可用，使用 `npx antigravity-mission-control@latest install` 安装稳定版；需要固定版本时使用 `@0.4.1`，想试用 v0.4.2rc3 预发布版则使用 `@next`。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
 4. 运行 `agy-mc doctor`，然后报告安装版本和路径。
 5. 开始委派项目任务前，使用当前可用的精确模型 slug 向我展示 A/B/C 三套阵容，等我选择后再执行。
 
@@ -39,7 +39,7 @@ Agent 会阅读本页的安装步骤和安全边界，完成检查后回报结�
 
 ## 看看实际操作界面
 
-以下为 v0.4.2rc2 命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
+以下为 v0.4.2rc3 命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
 
 <table>
   <tr>
@@ -127,7 +127,7 @@ agy-mc skill install --lang zh
 agy-mc doctor
 ```
 
-安装 v0.4.2rc2 预发布版时，把 `@v0.4.1` 换成 `@v0.4.2rc2`。
+安装 v0.4.2rc3 预发布版时，把 `@v0.4.1` 换成 `@v0.4.2rc3`。
 
 完整安装、更新、卸载、本地来源和 PATH 说明见[安装指南](docs/INSTALL.zh-CN.md)。
 
