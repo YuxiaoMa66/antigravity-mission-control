@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 - 2026-09-23
 
+- Stable release. Job listings and cleanup are easier to operate, and malformed status data no longer crashes commands. `scripts/real_agy_check.py` against AGY 1.2.9: full runs 18/19, 17/19, 17/19; all failures AGY-side (one print timeout, two 503 `UNAVAILABLE` responses), and each failing scenario passed on rerun.
 - New: `agy-mc status --limit N` and repeatable `--state` filter the job list by recency and state.
 - New: `agy-mc prune --older-than DURATION [--yes]` deletes finished jobs (`done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, `canceled`) whose `finished_at` is older than the cutoff; it keeps unfinished jobs, jobs with a live pid, and jobs with an unknown or unparseable status or `finished_at`, never follows symlinks, and is a dry run unless `--yes` is given.
 - New: `agy-mc wait --timeout` also accepts `d` (days), alongside `ms`, `s`, `m`, and `h`.
+- Fix: model discovery waits up to 90 seconds, and usage snapshots default to 45 seconds, because AGY 1.2.9 can take about a minute to list models.
 - Fix: a job whose `job.json` or `result.json` holds a malformed `status` (not a known status string, or a `result.json` that is not an object) crashed `agy-mc status`, `status <id>`, `wait`, `cancel` and `prune`. A stale job with such a result, or a `result.json` with no `status`, now resolves to `crashed`, a malformed status is never written into `job.json`, and every command that reads malformed job metadata reports it as an error.
 
 ## 0.5.0 - 2026-09-22
