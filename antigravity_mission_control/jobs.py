@@ -22,7 +22,7 @@ from pathlib import Path
 from . import jobstore
 from .approvals import load_approval, validate_approval_binding
 from .common import AGY_BIN, STATE_ROOT, atomic_write_json, parse_duration, run_capture, sha256_text, utc_now
-from .jobstore import JOB_EXIT_CODES, acquire_workspace_lock, job_lock, job_result, job_result_path, job_spec_path, list_jobs, pid_alive, read_job, refresh_job, release_workspace_lock, start_background_job, write_job, write_terminal_result
+from .jobstore import JOB_EXIT_CODES, UNFINISHED, acquire_workspace_lock, is_unfinished, job_lock, job_result, job_result_path, job_spec_path, list_jobs, pid_alive, read_job, refresh_job, release_workspace_lock, start_background_job, write_job, write_terminal_result
 from .routing import available_models, is_non_high_gemini, select_model
 from .workspace import canonical_workspace, workspace_delta, workspace_snapshot, workspace_status
 
@@ -423,7 +423,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     if args.job_id:
         job = refresh_job(read_job(args.job_id))
         print(json.dumps(job, ensure_ascii=False, indent=2))
-        return JOB_EXIT_CODES.get(job.get("status"), 1)
+        return _exit_code(job.get("status"))
     jobs = list_jobs()
     states = getattr(args, "state", None)
     if states:
@@ -435,7 +435,9 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
-UNFINISHED_STATUSES = {"starting", "running", "canceling"}
+def _exit_code(status) -> int:
+    return JOB_EXIT_CODES.get(status, 1) if isinstance(status, str) else 1
+
 
 # Only these statuses are eligible for deletion. Any other status - unknown, missing, or a
 # future addition to JOB_EXIT_CODES that isn't listed here - is kept rather than assumed finished.
@@ -455,8 +457,10 @@ def _finished_at(job: dict) -> datetime | None:
 
 def _prune_reason(job: dict, cutoff: datetime) -> str | None:
     """Why a job must be kept, or None when it is a finished job older than the cutoff."""
+    if not isinstance(job.get("status"), str):
+        return "unknown status"
     # A live pid means the worker may still be running whatever the status says (e.g. cancel_failed).
-    if job.get("status") in UNFINISHED_STATUSES or pid_alive(job.get("pid")) or pid_alive(job.get("launcher_pid")):
+    if job.get("status") in UNFINISHED or pid_alive(job.get("pid")) or pid_alive(job.get("launcher_pid")):
         return "unfinished"
     if job.get("status") not in PRUNABLE_STATUSES:
         return "unknown status"
@@ -612,9 +616,9 @@ def cmd_wait(args: argparse.Namespace) -> int:
     while True:
         job = refresh_job(read_job(args.job_id))
         status = job.get("status")
-        if status not in {"starting", "running", "canceling"}:
+        if not is_unfinished(status):
             print(json.dumps(job_result(args.job_id), ensure_ascii=False, indent=2))
-            return JOB_EXIT_CODES.get(status, 1)
+            return _exit_code(status)
         if time.monotonic() >= deadline:
             print(
                 json.dumps(
@@ -675,9 +679,9 @@ def cmd_cancel(args: argparse.Namespace) -> int:
     job = refresh_job(read_job(args.job_id))
     with job_lock(args.job_id):
         job = read_job(args.job_id)
-        if job.get("status") not in {"starting", "running", "canceling"}:
+        if not is_unfinished(job.get("status")):
             print(json.dumps(job, ensure_ascii=False, indent=2))
-            return JOB_EXIT_CODES.get(job.get("status"), 1)
+            return _exit_code(job.get("status"))
         pid = job.get("pid")
         if pid and not process_matches_job(pid, args.job_id):
             raise RuntimeError(
@@ -698,7 +702,7 @@ def cmd_cancel(args: argparse.Namespace) -> int:
             write_terminal_result(job, final_status, "Job canceled and process exit confirmed" if terminated
                                   else "Process did not exit after TERM and KILL")
     print(json.dumps(job, ensure_ascii=False, indent=2))
-    return JOB_EXIT_CODES.get(job.get("status"), 1)
+    return _exit_code(job.get("status"))
 
 
 def cmd_continue(args: argparse.Namespace) -> int:
