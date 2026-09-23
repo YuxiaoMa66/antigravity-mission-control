@@ -41,10 +41,11 @@ STRATEGY_PATTERNS = {
 
 
 ROLES = tuple(STRATEGY_PATTERNS["A"])
+MODELS_TIMEOUT_SECONDS = 90  # AGY 1.2.9 model listing took about 62 seconds in measurements.
 
 
 def available_models() -> list[dict[str, str]]:
-    proc = run_capture([AGY_BIN, "--output-format", "json", "models"])
+    proc = run_capture([AGY_BIN, "--output-format", "json", "models"], timeout=MODELS_TIMEOUT_SECONDS)
     if proc.returncode == 0:
         try:
             payload = json.loads(proc.stdout)
@@ -54,7 +55,7 @@ def available_models() -> list[dict[str, str]]:
         except (json.JSONDecodeError, KeyError, TypeError):
             pass
 
-    fallback = run_capture([AGY_BIN, "models"])
+    fallback = run_capture([AGY_BIN, "models"], timeout=MODELS_TIMEOUT_SECONDS)
     models = []
     for line in fallback.stdout.splitlines():
         parts = line.split("\t", 1)

@@ -59,7 +59,7 @@ def usage_error(message: str) -> tuple[dict, int]:
             "fetched_at": utc_now(), "groups": None, "errors": [message]}, 1
 
 
-def fetch_usage(timeout_seconds: int = 15) -> tuple[dict, int]:
+def fetch_usage(timeout_seconds: int = 45) -> tuple[dict, int]:
     try:
         proc = run_capture([AGY_BIN, "-p", "/usage", "--output-format", "json"], timeout=timeout_seconds)
     except subprocess.TimeoutExpired:

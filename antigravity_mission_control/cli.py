@@ -18,7 +18,7 @@ from .approvals import POLICY_NAMES, canonical_policy_name, cmd_approve, cmd_pol
 from .common import AGY_BIN, STATE_ROOT, VERSION, command_data, parse_duration, run_capture
 from .jobs import cmd_cancel, cmd_continue, cmd_prune, cmd_result, cmd_run, cmd_status, cmd_wait, cmd_worker
 from .jobstore import JOB_EXIT_CODES
-from .routing import ROLES, STRATEGY_PATTERNS, cmd_models, cmd_select
+from .routing import MODELS_TIMEOUT_SECONDS, ROLES, STRATEGY_PATTERNS, cmd_models, cmd_select
 from .skill import HOSTS, cmd_skill, default_skill_target, skill_marker
 from .usage import cmd_usage
 from .workspace import cmd_workspace
@@ -33,7 +33,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     help_text = help_result.stdout + "\n" + help_result.stderr
     missing = [flag for flag in required if flag not in help_text]
     checks.append({"name": "headless-capabilities", "ok": help_result.returncode == 0 and not missing, "missing": missing})
-    session = run_capture([AGY_BIN, "--output-format", "json", "models"], timeout=30)
+    session = run_capture([AGY_BIN, "--output-format", "json", "models"], timeout=MODELS_TIMEOUT_SECONDS)
     session_ok = False
     model_count = 0
     if session.returncode == 0:
@@ -114,7 +114,7 @@ def build_parser() -> argparse.ArgumentParser:
     usage_parser.add_argument("--interval", type=float, default=60.0, help="Watch refresh interval in seconds")
     usage_parser.add_argument("--count", type=int, help="Stop after N refreshes (useful for automation)")
     usage_parser.add_argument("--format", choices=["table", "json"], default="table")
-    usage_parser.add_argument("--timeout-seconds", type=int, default=15)
+    usage_parser.add_argument("--timeout-seconds", type=int, default=45)
     usage_parser.set_defaults(func=cmd_usage)
     workspace_parser = subparsers.add_parser("workspace", help="Check or grant exact AGY workspace trust")
     workspace_parser.add_argument("--cwd", required=True)
