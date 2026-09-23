@@ -78,6 +78,8 @@ def read_job(job_id: str) -> dict:
         raise RuntimeError(f"Job metadata is corrupt: {path}: {exc}") from exc
     if not isinstance(payload, dict):
         raise RuntimeError(f"Job metadata must be an object: {path}")
+    if "status" in payload and not isinstance(payload["status"], str):
+        raise RuntimeError(f"Job metadata has an invalid status: {path}")
     return payload
 
 
@@ -124,20 +126,31 @@ def write_terminal_result(job: dict, status: str, error: str) -> None:
     )
 
 
+UNFINISHED = {"starting", "running", "canceling"}
+
+
+def is_unfinished(status) -> bool:
+    # A non-string status (corrupt or hand-edited job.json) is left alone; callers decide how to show it.
+    return isinstance(status, str) and status in UNFINISHED
+
+
 def refresh_job(job: dict) -> dict:
-    if job.get("status") not in {"starting", "running", "canceling"}:
+    if not is_unfinished(job.get("status")):
         return job
     with job_lock(job["job_id"]):
         job = read_job(job["job_id"])
         status = job.get("status")
-        if status not in {"starting", "running", "canceling"} or pid_alive(job.get("pid") or job.get("launcher_pid")):
+        if not is_unfinished(status) or pid_alive(job.get("pid") or job.get("launcher_pid")):
             return job
         if job_result_path(job["job_id"]).is_file():
             try:
                 result = json.loads(job_result_path(job["job_id"]).read_text(encoding="utf-8"))
-                job["status"] = result.get("status", "error")
             except (OSError, json.JSONDecodeError):
-                job["status"] = "crashed"
+                result = None
+            final = result.get("status") if isinstance(result, dict) else None
+            # Only a known terminal status is copied into job.json; anything else is treated as a crash.
+            valid = isinstance(final, str) and final in JOB_EXIT_CODES and final not in UNFINISHED
+            job["status"] = final if valid else "crashed"
         elif status == "canceling":
             # The cancel command was interrupted, but the worker is gone: the cancel took effect.
             job["status"] = "canceled"
@@ -157,8 +170,8 @@ def list_jobs() -> list[dict]:
     jobs = []
     for path in JOB_ROOT.glob("*/job.json"):
         try:
-            jobs.append(refresh_job(json.loads(path.read_text(encoding="utf-8"))))
-        except (OSError, json.JSONDecodeError, KeyError, RuntimeError):
+            jobs.append(refresh_job(read_job(path.parent.name)))
+        except (OSError, json.JSONDecodeError, KeyError, RuntimeError, TypeError, AttributeError):
             continue
     return sorted(jobs, key=lambda job: job.get("started_at", ""))
 

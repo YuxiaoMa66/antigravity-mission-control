@@ -180,13 +180,20 @@ Add `--background`, then use:
 
 ```bash
 agy-mc status [job-id]
+agy-mc status --limit 20 --state running --state canceling
 agy-mc wait <job-id> --timeout 10m
 agy-mc result <job-id>
 agy-mc cancel <job-id>
 agy-mc continue <job-id> --prompt-file /private/follow-up.txt
+agy-mc prune --older-than 7d
+agy-mc prune --older-than 7d --yes
 ```
 
 Editing jobs use an OS-level non-blocking lock per canonical workspace. `cancel` records `canceling`, waits after TERM, escalates to KILL if required, and reports `canceled` only after process exit is confirmed.
+
+Listing all jobs with no `job-id` supports `--limit N` (most recently started N jobs) and `--state` (repeatable, keep only these states).
+
+`prune --older-than DURATION` (`ms`/`s`/`m`/`h`/`d`, e.g. `12h` or `7d`) deletes finished jobs (`done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, `canceled`) whose `finished_at` is older than the cutoff. It keeps unfinished jobs, jobs with a live pid, and jobs with an unknown or missing status or `finished_at`. Without `--yes` it is a dry run that reports what it would remove.
 
 ## Design principles
 

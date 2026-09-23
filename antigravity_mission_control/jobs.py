@@ -3,20 +3,26 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import json
 import os
 import re
+import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
 import time
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from . import jobstore
 from .approvals import load_approval, validate_approval_binding
-from .common import AGY_BIN, STATE_ROOT, atomic_write_json, run_capture, sha256_text, utc_now
-from .jobstore import JOB_EXIT_CODES, acquire_workspace_lock, job_lock, job_result, job_result_path, job_spec_path, list_jobs, pid_alive, read_job, refresh_job, release_workspace_lock, start_background_job, write_job, write_terminal_result
+from .common import AGY_BIN, STATE_ROOT, atomic_write_json, parse_duration, run_capture, sha256_text, utc_now
+from .jobstore import JOB_EXIT_CODES, UNFINISHED, acquire_workspace_lock, is_unfinished, job_lock, job_result, job_result_path, job_spec_path, list_jobs, pid_alive, read_job, refresh_job, release_workspace_lock, start_background_job, write_job, write_terminal_result
 from .routing import available_models, is_non_high_gemini, select_model
 from .workspace import canonical_workspace, workspace_delta, workspace_snapshot, workspace_status
 
@@ -417,8 +423,177 @@ def cmd_status(args: argparse.Namespace) -> int:
     if args.job_id:
         job = refresh_job(read_job(args.job_id))
         print(json.dumps(job, ensure_ascii=False, indent=2))
-        return JOB_EXIT_CODES.get(job.get("status"), 1)
-    print(json.dumps({"jobs": list_jobs()}, ensure_ascii=False, indent=2))
+        return _exit_code(job.get("status"))
+    jobs = list_jobs()
+    states = getattr(args, "state", None)
+    if states:
+        jobs = [job for job in jobs if job.get("status") in states]
+    limit = getattr(args, "limit", None)
+    if limit is not None:
+        jobs = jobs[-limit:]
+    print(json.dumps({"jobs": jobs}, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _exit_code(status) -> int:
+    return JOB_EXIT_CODES.get(status, 1) if isinstance(status, str) else 1
+
+
+# Only these statuses are eligible for deletion. Any other status - unknown, missing, or a
+# future addition to JOB_EXIT_CODES that isn't listed here - is kept rather than assumed finished.
+PRUNABLE_STATUSES = {"done", "done_with_warnings", "error", "crashed", "cancel_failed", "canceled"}
+
+
+def _finished_at(job: dict) -> datetime | None:
+    text = job.get("finished_at")
+    if not isinstance(text, str):
+        return None
+    try:
+        moment = datetime.fromisoformat(text[:-1] + "+00:00" if text.endswith("Z") else text)
+    except ValueError:
+        return None
+    return moment if moment.tzinfo is not None else None
+
+
+def _prune_reason(job: dict, cutoff: datetime) -> str | None:
+    """Why a job must be kept, or None when it is a finished job older than the cutoff."""
+    if not isinstance(job.get("status"), str):
+        return "unknown status"
+    # A live pid means the worker may still be running whatever the status says (e.g. cancel_failed).
+    if job.get("status") in UNFINISHED or pid_alive(job.get("pid")) or pid_alive(job.get("launcher_pid")):
+        return "unfinished"
+    if job.get("status") not in PRUNABLE_STATUSES:
+        return "unknown status"
+    finished = _finished_at(job)
+    if finished is None:
+        return "missing or unparseable finished_at"
+    if finished >= cutoff:
+        return "too recent"
+    return None
+
+
+def _real_job_dir(root: Path, name: str) -> bool:
+    try:
+        return stat.S_ISDIR(os.lstat(root / name).st_mode)
+    except OSError:
+        return False
+
+
+def _read_job_at(dir_fd: int) -> dict:
+    fd = os.open("job.json", os.O_RDONLY | os.O_NOFOLLOW, dir_fd=dir_fd)
+    with os.fdopen(fd, encoding="utf-8") as handle:
+        try:
+            job = json.load(handle)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"Job metadata is corrupt: {exc}") from exc
+    if not isinstance(job, dict):
+        raise RuntimeError("Job metadata must be an object")
+    return job
+
+
+@contextlib.contextmanager
+def _locked_job_dir(root_fd: int, name: str):
+    """Open JOB_ROOT/name without following symlinks and hold the same flock as jobstore.job_lock.
+
+    Everything is opened relative to directory fds, so a directory swapped for a symlink after
+    selection makes the open fail instead of creating or reading files outside JOB_ROOT.
+    """
+    dir_fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root_fd)
+    try:
+        lock_fd = os.open("job.lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600, dir_fd=dir_fd)
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            yield dir_fd
+        finally:
+            os.close(lock_fd)
+    finally:
+        os.close(dir_fd)
+
+
+def _prune_one(root: Path, root_fd: int, name: str, cutoff: datetime) -> str | None:
+    """Delete one candidate under its lock; return why it was kept, or None once removed."""
+    with _locked_job_dir(root_fd, name) as dir_fd:
+        # Re-check under the lock: a job may have been continued or replaced since selection.
+        job = _read_job_at(dir_fd)
+        if job.get("job_id") != name:
+            return "job_id does not match directory name"
+        reason = _prune_reason(job, cutoff)
+        if reason:
+            return reason
+        # Rename-then-verify: rename never follows a symlink, and the renamed entry must be the
+        # very directory we locked before anything is deleted.
+        hidden = f".prune-{name}-{uuid.uuid4().hex}"
+        os.rename(name, hidden, src_dir_fd=root_fd, dst_dir_fd=root_fd)
+        locked = os.fstat(dir_fd)
+        try:
+            moved = os.stat(hidden, dir_fd=root_fd, follow_symlinks=False)
+            same = (stat.S_ISDIR(moved.st_mode) and (moved.st_dev, moved.st_ino) == (locked.st_dev, locked.st_ino)
+                    and _read_job_at(dir_fd).get("job_id") == name)
+        except (OSError, RuntimeError):
+            same = False
+        if not same:
+            try:
+                os.rename(hidden, name, src_dir_fd=root_fd, dst_dir_fd=root_fd)
+            except OSError as exc:
+                return f"directory changed during prune; left as {hidden}: {exc}"
+            return "directory changed during prune"
+    # rmtree refuses a symlinked top directory and never follows links inside it.
+    shutil.rmtree(root / hidden)
+    return None
+
+
+def cmd_prune(args: argparse.Namespace) -> int:
+    root = jobstore.JOB_ROOT
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=args.older_than)
+    candidates, removed, skipped = [], [], []
+    names = sorted(os.listdir(root)) if root.is_dir() else []
+    for name in names:
+        if not _real_job_dir(root, name):
+            skipped.append({"entry": name, "reason": "not a real directory"})
+            continue
+        try:
+            jobstore.validate_job_id(name)
+            job = read_job(name)
+        except (OSError, RuntimeError) as exc:
+            skipped.append({"entry": name, "reason": str(exc)})
+            continue
+        if job.get("job_id") != name:
+            skipped.append({"entry": name, "reason": "job_id does not match directory name"})
+            continue
+        if not isinstance(job.get("status"), str):
+            skipped.append({"job_id": name, "reason": "unknown status"})
+            continue
+        try:
+            job = refresh_job(job)
+        except (OSError, RuntimeError) as exc:
+            skipped.append({"job_id": name, "reason": str(exc)})
+            continue
+        reason = _prune_reason(job, cutoff)
+        if reason:
+            skipped.append({"job_id": name, "reason": reason})
+        else:
+            candidates.append(name)
+    if args.yes and candidates:
+        root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            for name in candidates:
+                try:
+                    reason = _prune_one(root, root_fd, name, cutoff)
+                except (OSError, RuntimeError) as exc:
+                    reason = str(exc)
+                if reason:
+                    skipped.append({"job_id": name, "reason": reason})
+                else:
+                    removed.append(name)
+        finally:
+            os.close(root_fd)
+    print(json.dumps({
+        "dry_run": not args.yes,
+        "older_than_seconds": float(args.older_than),
+        "removed": removed,
+        "would_remove": [] if args.yes else candidates,
+        "skipped": skipped,
+    }, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -431,20 +606,19 @@ def cmd_wait(args: argparse.Namespace) -> int:
     if args.timeout_seconds_override is not None:
         budget_seconds = args.timeout_seconds_override
     else:
-        match = re.fullmatch(r"(\d+(?:\.\d+)?)(ms|s|m|h)", args.timeout)
-        if not match:
+        try:
+            budget_seconds = parse_duration(args.timeout)
+        except ValueError:
             raise RuntimeError('Invalid --timeout; use values such as 100s, 5m, or 1h')
-        multiplier = {"ms": 0.001, "s": 1, "m": 60, "h": 3600}[match.group(2)]
-        budget_seconds = float(match.group(1)) * multiplier
     if budget_seconds <= 0:
         raise RuntimeError("--timeout must be positive")
     deadline = time.monotonic() + budget_seconds
     while True:
         job = refresh_job(read_job(args.job_id))
         status = job.get("status")
-        if status not in {"starting", "running", "canceling"}:
+        if not is_unfinished(status):
             print(json.dumps(job_result(args.job_id), ensure_ascii=False, indent=2))
-            return JOB_EXIT_CODES.get(status, 1)
+            return _exit_code(status)
         if time.monotonic() >= deadline:
             print(
                 json.dumps(
@@ -505,9 +679,9 @@ def cmd_cancel(args: argparse.Namespace) -> int:
     job = refresh_job(read_job(args.job_id))
     with job_lock(args.job_id):
         job = read_job(args.job_id)
-        if job.get("status") not in {"starting", "running", "canceling"}:
+        if not is_unfinished(job.get("status")):
             print(json.dumps(job, ensure_ascii=False, indent=2))
-            return JOB_EXIT_CODES.get(job.get("status"), 1)
+            return _exit_code(job.get("status"))
         pid = job.get("pid")
         if pid and not process_matches_job(pid, args.job_id):
             raise RuntimeError(
@@ -528,7 +702,7 @@ def cmd_cancel(args: argparse.Namespace) -> int:
             write_terminal_result(job, final_status, "Job canceled and process exit confirmed" if terminated
                                   else "Process did not exit after TERM and KILL")
     print(json.dumps(job, ensure_ascii=False, indent=2))
-    return JOB_EXIT_CODES.get(job.get("status"), 1)
+    return _exit_code(job.get("status"))
 
 
 def cmd_continue(args: argparse.Namespace) -> int:

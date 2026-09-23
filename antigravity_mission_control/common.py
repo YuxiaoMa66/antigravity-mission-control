@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -13,6 +14,14 @@ from pathlib import Path
 from . import __version__
 
 VERSION = __version__
+
+
+def parse_duration(text: str) -> float:
+    match = re.fullmatch(r"(\d+(?:\.\d+)?)(ms|s|m|h|d)", text)
+    if not match:
+        raise ValueError(f"Invalid duration: {text!r}")
+    multiplier = {"ms": 0.001, "s": 1, "m": 60, "h": 3600, "d": 86400}[match.group(2)]
+    return float(match.group(1)) * multiplier
 
 
 AGY_BIN = os.environ.get("AGY_MC_BIN", os.environ.get("AGY_ORCHESTRATOR_BIN", "agy"))
