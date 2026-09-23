@@ -4,8 +4,8 @@
 
 Mission Control 在各生态中使用同一套协调发布版本：
 
-- Python 与 Git tag：`0.5.0` / `v0.5.0`
-- npm SemVer：`0.5.0`
+- Python 与 Git tag：`0.6.0` / `v0.6.0`
+- npm SemVer：`0.6.0`
 
 它们代表同一个版本。每次发布必须同步更新 `__version__`、`pyproject.toml`、`package.json`、npm bootstrap 常量、CHANGELOG 和中英文发布说明。历史发布说明和资产保持不可变。
 
@@ -38,7 +38,7 @@ python3 scripts/real_agy_check.py --report real-agy-report.json
 ## 发布顺序
 
 1. 将审查后的 `main` 提交推送到 GitHub。
-2. 在同一提交创建 `v0.5.0` tag。
+2. 在同一提交创建 `v0.6.0` tag。
 3. 使用双语说明创建 GitHub Release。
 4. 在隔离环境验证从该 tag 安装。
 5. 执行 `npm publish --tag latest --access public`。
