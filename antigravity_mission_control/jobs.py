@@ -15,7 +15,7 @@ import uuid
 from pathlib import Path
 
 from .approvals import load_approval, validate_approval_binding
-from .common import AGY_BIN, STATE_ROOT, atomic_write_json, run_capture, sha256_text, utc_now
+from .common import AGY_BIN, STATE_ROOT, atomic_write_json, parse_duration, run_capture, sha256_text, utc_now
 from .jobstore import JOB_EXIT_CODES, acquire_workspace_lock, job_lock, job_result, job_result_path, job_spec_path, list_jobs, pid_alive, read_job, refresh_job, release_workspace_lock, start_background_job, write_job, write_terminal_result
 from .routing import available_models, is_non_high_gemini, select_model
 from .workspace import canonical_workspace, workspace_delta, workspace_snapshot, workspace_status
@@ -431,11 +431,10 @@ def cmd_wait(args: argparse.Namespace) -> int:
     if args.timeout_seconds_override is not None:
         budget_seconds = args.timeout_seconds_override
     else:
-        match = re.fullmatch(r"(\d+(?:\.\d+)?)(ms|s|m|h)", args.timeout)
-        if not match:
+        try:
+            budget_seconds = parse_duration(args.timeout)
+        except ValueError:
             raise RuntimeError('Invalid --timeout; use values such as 100s, 5m, or 1h')
-        multiplier = {"ms": 0.001, "s": 1, "m": 60, "h": 3600}[match.group(2)]
-        budget_seconds = float(match.group(1)) * multiplier
     if budget_seconds <= 0:
         raise RuntimeError("--timeout must be positive")
     deadline = time.monotonic() + budget_seconds
