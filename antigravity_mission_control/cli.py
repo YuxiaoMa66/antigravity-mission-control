@@ -15,8 +15,8 @@ if __package__ in (None, ""):
     __package__ = "antigravity_mission_control"
 
 from .approvals import POLICY_NAMES, canonical_policy_name, cmd_approve, cmd_policy
-from .common import AGY_BIN, STATE_ROOT, VERSION, command_data, run_capture
-from .jobs import cmd_cancel, cmd_continue, cmd_result, cmd_run, cmd_status, cmd_wait, cmd_worker
+from .common import AGY_BIN, STATE_ROOT, VERSION, command_data, parse_duration, run_capture
+from .jobs import cmd_cancel, cmd_continue, cmd_prune, cmd_result, cmd_run, cmd_status, cmd_wait, cmd_worker
 from .jobstore import JOB_EXIT_CODES
 from .routing import ROLES, STRATEGY_PATTERNS, cmd_models, cmd_select
 from .skill import HOSTS, cmd_skill, default_skill_target, skill_marker
@@ -210,6 +210,12 @@ def build_parser() -> argparse.ArgumentParser:
     continue_parser.add_argument("--timeout-seconds", type=int, default=600)
     continue_parser.set_defaults(func=cmd_continue)
 
+    prune_parser = subparsers.add_parser("prune", help="Report, and with --yes delete, old finished job directories")
+    prune_parser.add_argument("--older-than", dest="older_than", type=positive_duration, required=True,
+                              help="Minimum age since finished_at, such as 12h or 7d")
+    prune_parser.add_argument("--yes", action="store_true", help="Delete the candidates; default is a dry run")
+    prune_parser.set_defaults(func=cmd_prune)
+
     worker_parser = subparsers.add_parser("_worker", help=argparse.SUPPRESS)
     worker_parser.add_argument("job_id")
     worker_parser.set_defaults(func=cmd_worker)
@@ -224,6 +230,16 @@ def positive_int(value: str) -> int:
     if number <= 0:
         raise argparse.ArgumentTypeError("must be a positive integer")
     return number
+
+
+def positive_duration(value: str) -> float:
+    try:
+        seconds = parse_duration(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a positive duration such as 30m, 12h or 7d") from exc
+    if seconds <= 0:
+        raise argparse.ArgumentTypeError("must be a positive duration such as 30m, 12h or 7d")
+    return seconds
 
 
 def main() -> int:
