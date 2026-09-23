@@ -418,7 +418,14 @@ def cmd_status(args: argparse.Namespace) -> int:
         job = refresh_job(read_job(args.job_id))
         print(json.dumps(job, ensure_ascii=False, indent=2))
         return JOB_EXIT_CODES.get(job.get("status"), 1)
-    print(json.dumps({"jobs": list_jobs()}, ensure_ascii=False, indent=2))
+    jobs = list_jobs()
+    states = getattr(args, "state", None)
+    if states:
+        jobs = [job for job in jobs if job.get("status") in states]
+    limit = getattr(args, "limit", None)
+    if limit is not None:
+        jobs = jobs[-limit:]
+    print(json.dumps({"jobs": jobs}, ensure_ascii=False, indent=2))
     return 0
 
 
