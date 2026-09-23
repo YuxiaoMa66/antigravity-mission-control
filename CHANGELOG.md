@@ -2,7 +2,7 @@
 
 ## 0.6.0 - 2026-09-23
 
-- Stable release. Job listings and cleanup are easier to operate, and malformed status data no longer crashes commands. `scripts/real_agy_check.py`: ACCEPTANCE_RESULT_PENDING.
+- Stable release. Job listings and cleanup are easier to operate, and malformed status data no longer crashes commands. `scripts/real_agy_check.py` against AGY 1.2.9: full runs 18/19, 17/19, 17/19; all failures AGY-side (one print timeout, two 503 `UNAVAILABLE` responses), and each failing scenario passed on rerun.
 - New: `agy-mc status --limit N` and repeatable `--state` filter the job list by recency and state.
 - New: `agy-mc prune --older-than DURATION [--yes]` deletes finished jobs (`done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, `canceled`) whose `finished_at` is older than the cutoff; it keeps unfinished jobs, jobs with a live pid, and jobs with an unknown or unparseable status or `finished_at`, never follows symlinks, and is a dry run unless `--yes` is given.
 - New: `agy-mc wait --timeout` also accepts `d` (days), alongside `ms`, `s`, `m`, and `h`.
