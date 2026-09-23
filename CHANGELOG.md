@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- New: `agy-mc status --limit N` and repeatable `--state` filter the job list by recency and state.
+- New: `agy-mc prune --older-than DURATION [--yes]` deletes finished jobs (`done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, `canceled`) whose `finished_at` is older than the cutoff; it keeps unfinished jobs, jobs with a live pid, and jobs with an unknown or unparseable status or `finished_at`, never follows symlinks, and is a dry run unless `--yes` is given.
+- New: `agy-mc wait --timeout` also accepts `d` (days), alongside `ms`, `s`, `m`, and `h`.
+
 ## 0.5.0 - 2026-09-22
 
 - Stable release (npm `0.5.0` on `latest`) of the module split and every fix from the v0.4.2 release candidates; rc3 was not published on its own. Runtime routing is unchanged.

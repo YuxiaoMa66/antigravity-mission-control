@@ -437,6 +437,10 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 UNFINISHED_STATUSES = {"starting", "running", "canceling"}
 
+# Only these statuses are eligible for deletion. Any other status - unknown, missing, or a
+# future addition to JOB_EXIT_CODES that isn't listed here - is kept rather than assumed finished.
+PRUNABLE_STATUSES = {"done", "done_with_warnings", "error", "crashed", "cancel_failed", "canceled"}
+
 
 def _finished_at(job: dict) -> datetime | None:
     text = job.get("finished_at")
@@ -454,6 +458,8 @@ def _prune_reason(job: dict, cutoff: datetime) -> str | None:
     # A live pid means the worker may still be running whatever the status says (e.g. cancel_failed).
     if job.get("status") in UNFINISHED_STATUSES or pid_alive(job.get("pid")) or pid_alive(job.get("launcher_pid")):
         return "unfinished"
+    if job.get("status") not in PRUNABLE_STATUSES:
+        return "unknown status"
     finished = _finished_at(job)
     if finished is None:
         return "missing or unparseable finished_at"
@@ -549,6 +555,9 @@ def cmd_prune(args: argparse.Namespace) -> int:
             continue
         if job.get("job_id") != name:
             skipped.append({"entry": name, "reason": "job_id does not match directory name"})
+            continue
+        if not isinstance(job.get("status"), str):
+            skipped.append({"job_id": name, "reason": "unknown status"})
             continue
         try:
             job = refresh_job(job)

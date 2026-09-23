@@ -36,6 +36,8 @@ class PruneTests(unittest.TestCase):
         self.add("recent-done", status="done", finished_at=ago(hours=1))
         self.add("no-finish", status="canceled")
         self.add("bad-finish", status="done", finished_at="yesterday")
+        self.add("old-queued", status="queued", finished_at=ago(days=10))
+        self.add("old-no-status", finished_at=ago(days=10))
         # A live pid keeps refresh_job from resolving these as crashed.
         for status in ("starting", "running", "canceling"):
             self.add(f"live-{status}", status=status, pid=os.getpid(), finished_at=ago(days=100))
@@ -82,8 +84,17 @@ class PruneTests(unittest.TestCase):
         self.assertEqual(sorted(payload["removed"]), ["old-done", "old-error"])
         self.assertEqual(payload["would_remove"], [])
         self.assertEqual(self.entries(), sorted([
-            "recent-done", "no-finish", "bad-finish", "live-starting", "live-running", "live-canceling",
+            "recent-done", "no-finish", "bad-finish", "old-queued", "old-no-status",
+            "live-starting", "live-running", "live-canceling",
             "mismatch", "no-json", "corrupt", "stray-file", "linked-job"]))
+
+    def test_unknown_status_kept(self):
+        payload = self.prune(yes=True)
+        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
+        self.assertEqual(reasons["old-queued"], "unknown status")
+        self.assertEqual(reasons["old-no-status"], "unknown status")
+        for name in ("old-queued", "old-no-status"):
+            self.assertTrue((self.root / name).is_dir())
 
     def test_unfinished_jobs_never_deleted_however_old(self):
         payload = self.prune(older_than="1ms", yes=True)
@@ -139,6 +150,14 @@ class PruneTests(unittest.TestCase):
         for name in ("stuck", "stuck-launcher"):
             self.assertEqual(reasons[name], "unfinished")
             self.assertTrue((self.root / name).is_dir())
+
+    def test_non_string_status_skipped_without_crashing(self):
+        self.add("list-status", status=["done"], finished_at=ago(days=10))
+        payload = self.prune(yes=True)
+        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
+        self.assertEqual(reasons["list-status"], "unknown status")
+        self.assertTrue((self.root / "list-status").is_dir())
+        self.assertIn("old-done", payload["removed"])
 
     def outside_decoy(self, name):
         decoy = self.base / f"decoy-{name}"

@@ -13,9 +13,10 @@
 | `approve` | Create a signed, expiring run approval |
 | `select` | Produce proposal candidates for A/B/C rosters |
 | `run` | Execute one foreground or background worker |
-| `status`, `wait`, `result` | Observe and collect jobs |
+| `status [job-id] [--limit N] [--state S ...]`, `wait`, `result` | Observe and collect jobs |
 | `cancel` | Confirmed TERM/KILL cancellation |
 | `continue` | Continue one exact recorded conversation |
+| `prune --older-than DURATION [--yes]` | Delete finished jobs older than a duration |
 | `skill` | Install, update, inspect or recoverably uninstall the Skill (`--host auto\|codex\|claude\|all`) |
 
 ## Job states and exit codes
@@ -28,6 +29,10 @@
 | `canceled` | 4 | Process exit confirmed after caller cancellation |
 
 Job evidence is stored outside target repositories. Results retain provider output and diagnostics and may contain sensitive project content.
+
+`status` with no `job-id` lists all jobs, filtered by `--limit N` (the N most recently started) and `--state` (repeatable; keep only these states).
+
+`prune --older-than DURATION` (a duration like `12h` or `7d`, in `ms`/`s`/`m`/`h`/`d`) deletes only jobs whose status is `done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, or `canceled`, and whose `finished_at` is older than the cutoff. It keeps unfinished jobs, jobs with a live `pid` or `launcher_pid`, and jobs with an unknown, missing, or unparseable status or `finished_at`. Without `--yes` it is a dry run: it reports what it would remove without deleting anything.
 
 ## Workspace serialization
 

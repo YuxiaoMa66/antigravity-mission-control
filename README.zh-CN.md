@@ -180,13 +180,20 @@ agy-mc run \
 
 ```bash
 agy-mc status [job-id]
+agy-mc status --limit 20 --state running --state canceling
 agy-mc wait <job-id> --timeout 10m
 agy-mc result <job-id>
 agy-mc cancel <job-id>
 agy-mc continue <job-id> --prompt-file /private/follow-up.txt
+agy-mc prune --older-than 7d
+agy-mc prune --older-than 7d --yes
 ```
 
 编辑任务按规范工作区使用操作系统级非阻塞锁。`cancel` 会先写入 `canceling`，发送 TERM 并等待，必要时升级到 KILL；只有确认进程退出后才报告 `canceled`。
+
+不带 `job-id` 列出全部任务时支持 `--limit N`（最近启动的 N 个任务）和 `--state`（可重复，只保留指定状态）。
+
+`prune --older-than DURATION`（单位 `ms`/`s`/`m`/`h`/`d`，例如 `12h` 或 `7d`）会删除已结束（`done`、`done_with_warnings`、`error`、`crashed`、`cancel_failed`、`canceled`）且 `finished_at` 早于截止时间的任务。未结束的任务、有存活 pid 的任务，以及状态或 `finished_at` 未知或缺失的任务都会被保留。不加 `--yes` 时是 dry run，只报告会删除什么。
 
 ## 核心原则
 

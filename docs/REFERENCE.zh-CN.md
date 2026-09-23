@@ -13,9 +13,10 @@
 | `approve` | 创建带签名、会过期的运行批准 |
 | `select` | 为 A/B/C 阵容生成候选模型 |
 | `run` | 执行前台或后台 worker |
-| `status`、`wait`、`result` | 观察并收集任务 |
+| `status [job-id] [--limit N] [--state S ...]`、`wait`、`result` | 观察并收集任务 |
 | `cancel` | 经确认的 TERM/KILL 取消流程 |
 | `continue` | 续接一个精确记录的会话 |
+| `prune --older-than DURATION [--yes]` | 删除早于指定时长且已结束的任务 |
 | `skill` | 安装、更新、检查或可恢复卸载 Skill（`--host auto\|codex\|claude\|all`） |
 
 ## 任务状态与退出码
@@ -28,6 +29,10 @@
 | `canceled` | 4 | 调用方取消后已经确认进程退出 |
 
 任务证据存放在目标仓库之外。结果会保留 provider 输出和诊断，可能包含敏感项目内容。
+
+不带 `job-id` 的 `status` 会列出所有任务，可用 `--limit N`（保留最近启动的 N 个）和 `--state`（可重复，只保留指定状态）过滤。
+
+`prune --older-than DURATION`（时长如 `12h` 或 `7d`，单位 `ms`/`s`/`m`/`h`/`d`）只删除状态为 `done`、`done_with_warnings`、`error`、`crashed`、`cancel_failed` 或 `canceled`，且 `finished_at` 早于截止时间的任务。未结束的任务、有存活 `pid` 或 `launcher_pid` 的任务，以及状态或 `finished_at` 未知、缺失或无法解析的任务都会被保留。不加 `--yes` 时是 dry run：只报告会删除什么，不会真正删除。
 
 ## 工作区串行保护
 
