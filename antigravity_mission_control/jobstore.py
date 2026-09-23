@@ -78,6 +78,8 @@ def read_job(job_id: str) -> dict:
         raise RuntimeError(f"Job metadata is corrupt: {path}: {exc}") from exc
     if not isinstance(payload, dict):
         raise RuntimeError(f"Job metadata must be an object: {path}")
+    if "status" in payload and not isinstance(payload["status"], str):
+        raise RuntimeError(f"Job metadata has an invalid status: {path}")
     return payload
 
 
@@ -168,7 +170,7 @@ def list_jobs() -> list[dict]:
     jobs = []
     for path in JOB_ROOT.glob("*/job.json"):
         try:
-            jobs.append(refresh_job(json.loads(path.read_text(encoding="utf-8"))))
+            jobs.append(refresh_job(read_job(path.parent.name)))
         except (OSError, json.JSONDecodeError, KeyError, RuntimeError, TypeError, AttributeError):
             continue
     return sorted(jobs, key=lambda job: job.get("started_at", ""))

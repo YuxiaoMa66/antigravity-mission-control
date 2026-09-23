@@ -58,6 +58,19 @@ class MalformedStatusTests(unittest.TestCase):
             status = json.loads(path.read_text()).get("status")
             self.assertTrue(isinstance(status, str) and status in jobstore.JOB_EXIT_CODES, (path, status))
 
+    def cli(self, *argv):
+        env = {**os.environ, "AGY_MC_JOB_ROOT": str(self.root)}
+        return subprocess.run([sys.executable, "-m", "antigravity_mission_control.cli", *argv],
+                              cwd=ROOT, env=env, capture_output=True, text=True)
+
+    def assert_cli_error(self, *argv):
+        proc = self.cli(*argv)
+        self.assertEqual(proc.returncode, 1)
+        self.assertNotIn("Traceback", proc.stderr)
+        payload = json.loads(proc.stderr)
+        self.assertEqual(payload["status"], "ERROR")
+        self.assertIn("Job metadata has an invalid status:", payload["error"])
+
     # Reproduction 1: stale running job whose result.json carries a list status.
     def test_status_list_with_bad_result(self):
         self.stale_bad_result()
@@ -101,14 +114,10 @@ class MalformedStatusTests(unittest.TestCase):
         self.assertEqual(payload["status"], "crashed")
         self.assertEqual(self.job_json("no-status")["status"], "crashed")
 
-    def test_cancel_with_list_status_does_not_crash(self):
+    def test_cancel_with_list_status_reports_error(self):
         self.add("bad-job", status=["done"], pid=DEAD_PID)
         before = (self.root / "bad-job" / "job.json").read_text()
-        with mock.patch.object(jobs, "terminate_process_group") as term:
-            code, payload = self.run_cmd(jobs.cmd_cancel, job_id="bad-job", grace_seconds=1)
-        term.assert_not_called()
-        self.assertEqual(code, 1)
-        self.assertEqual(payload["status"], ["done"])
+        self.assert_cli_error("cancel", "bad-job")
         self.assertEqual((self.root / "bad-job" / "job.json").read_text(), before)
 
     # Reproduction 2: job.json itself holds a list status.
@@ -118,23 +127,26 @@ class MalformedStatusTests(unittest.TestCase):
         before = (self.root / "bad-job" / "job.json").read_text()
         code, payload = self.status()
         self.assertEqual(code, 0)
-        self.assertEqual({j["job_id"] for j in payload["jobs"]}, {"bad-job", "old-done"})
-        code, payload = self.status("bad-job")
-        self.assertEqual(code, 1)
-        self.assertEqual(payload["status"], ["done"])
+        self.assertEqual({j["job_id"] for j in payload["jobs"]}, {"old-done"})
+        self.assert_cli_error("status", "bad-job")
         _, payload = self.prune(yes=False)
         self.assertEqual(payload["would_remove"], ["old-done"])
         _, payload = self.prune(yes=True)
         self.assertEqual(payload["removed"], ["old-done"])
-        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
-        self.assertEqual(reasons["bad-job"], "unknown status")
+        reasons = {s.get("job_id", s.get("entry")): s["reason"] for s in payload["skipped"]}
+        self.assertEqual(reasons["bad-job"], f"Job metadata has an invalid status: {self.root / 'bad-job' / 'job.json'}")
         self.assertEqual((self.root / "bad-job" / "job.json").read_text(), before)
 
-    def test_wait_with_list_status_does_not_crash(self):
+    def test_wait_with_list_status_reports_error(self):
         self.add("bad-job", result={"status": "done"}, status=["done"])
-        code, payload = self.run_cmd(jobs.cmd_wait, job_id="bad-job", timeout="1s", timeout_seconds_override=None)
-        self.assertEqual(code, 1)
-        self.assertEqual(payload["status"], "done")
+        self.assert_cli_error("wait", "bad-job")
+
+    def test_continue_with_list_status_reports_error(self):
+        self.add("bad-job", status=["done"])
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as prompt:
+            prompt.write("continue")
+            prompt.flush()
+            self.assert_cli_error("continue", "bad-job", "--prompt-file", prompt.name)
 
     def test_prune_reason_rejects_non_string_status(self):
         cutoff = datetime.now(timezone.utc) - timedelta(days=1)
@@ -149,13 +161,19 @@ class MalformedStatusTests(unittest.TestCase):
     def test_cli_reproductions(self):
         self.stale_bad_result()
         self.add("bad-job", status=["done"], finished_at=OLD)
-        env = {**os.environ, "AGY_MC_JOB_ROOT": str(self.root)}
         for argv in (["status"], ["status", "stale-job"], ["status", "bad-job"],
+                     ["wait", "bad-job"], ["cancel", "bad-job"],
+                     ["continue", "bad-job", "--prompt-file", str(self.root / "prompt")],
                      ["prune", "--older-than", "1d"], ["prune", "--older-than", "1d", "--yes"]):
-            proc = subprocess.run([sys.executable, "-m", "antigravity_mission_control.cli", *argv],
-                                  cwd=ROOT, env=env, capture_output=True, text=True)
+            proc = self.cli(*argv)
             self.assertNotIn("Traceback", proc.stderr, argv)
-            json.loads(proc.stdout)
+            if argv[0] in {"wait", "cancel", "continue"} or argv == ["status", "bad-job"]:
+                self.assertEqual(proc.returncode, 1, argv)
+                payload = json.loads(proc.stderr)
+                self.assertEqual(payload["status"], "ERROR")
+                self.assertIn("Job metadata has an invalid status:", payload["error"])
+            else:
+                json.loads(proc.stdout)
         self.assertFalse((self.root / "stale-job").exists())
         self.assertTrue((self.root / "bad-job").is_dir())
 

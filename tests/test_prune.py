@@ -90,7 +90,7 @@ class PruneTests(unittest.TestCase):
 
     def test_unknown_status_kept(self):
         payload = self.prune(yes=True)
-        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
+        reasons = {s.get("job_id", s.get("entry")): s["reason"] for s in payload["skipped"]}
         self.assertEqual(reasons["old-queued"], "unknown status")
         self.assertEqual(reasons["old-no-status"], "unknown status")
         for name in ("old-queued", "old-no-status"):
@@ -151,11 +151,11 @@ class PruneTests(unittest.TestCase):
             self.assertEqual(reasons[name], "unfinished")
             self.assertTrue((self.root / name).is_dir())
 
-    def test_non_string_status_skipped_without_crashing(self):
+    def test_non_string_status_skipped_with_metadata_error(self):
         self.add("list-status", status=["done"], finished_at=ago(days=10))
         payload = self.prune(yes=True)
-        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
-        self.assertEqual(reasons["list-status"], "unknown status")
+        reasons = {s.get("job_id", s.get("entry")): s["reason"] for s in payload["skipped"]}
+        self.assertEqual(reasons["list-status"], f"Job metadata has an invalid status: {self.root / 'list-status' / 'job.json'}")
         self.assertTrue((self.root / "list-status").is_dir())
         self.assertIn("old-done", payload["removed"])
 

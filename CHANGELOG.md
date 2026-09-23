@@ -5,7 +5,7 @@
 - New: `agy-mc status --limit N` and repeatable `--state` filter the job list by recency and state.
 - New: `agy-mc prune --older-than DURATION [--yes]` deletes finished jobs (`done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, `canceled`) whose `finished_at` is older than the cutoff; it keeps unfinished jobs, jobs with a live pid, and jobs with an unknown or unparseable status or `finished_at`, never follows symlinks, and is a dry run unless `--yes` is given.
 - New: `agy-mc wait --timeout` also accepts `d` (days), alongside `ms`, `s`, `m`, and `h`.
-- Fix: a job whose `job.json` or `result.json` holds a malformed `status` (not a known status string, or a `result.json` that is not an object) crashed `agy-mc status`, `status <id>`, `wait`, `cancel` and `prune`. A stale job with such a result, or a `result.json` with no `status`, now resolves to `crashed`, a malformed status is never written into `job.json`, and prune keeps a job whose own status is malformed as `unknown status`.
+- Fix: a job whose `job.json` or `result.json` holds a malformed `status` (not a known status string, or a `result.json` that is not an object) crashed `agy-mc status`, `status <id>`, `wait`, `cancel` and `prune`. A stale job with such a result, or a `result.json` with no `status`, now resolves to `crashed`, a malformed status is never written into `job.json`, and every command that reads malformed job metadata reports it as an error.
 
 ## 0.5.0 - 2026-09-22
 
