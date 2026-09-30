@@ -6,7 +6,7 @@
 
 | Command | Purpose |
 |---|---|
-| `doctor` | Verify AGY version, headless flags, authenticated model access and private state |
+| `doctor [--probe-latency]` | Verify AGY access and private state, list enabled MCP servers, and optionally measure a minimal headless turn |
 | `models` | Discover exact current model IDs |
 | `usage [--watch]` | Sanitized quota snapshot or live terminal view |
 | `workspace` | Inspect or separately grant exact workspace trust |

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- New: `agy-mc doctor` lists enabled AGY MCP servers and `--probe-latency` measures one minimal Gemini Flash High turn. On AGY 1.2.14, a hung MCP server delayed a trivial headless call to 67 s from 5 s; `agy -p` waits for configured MCP servers to connect or time out.
+
 ## 0.6.0 - 2026-09-23
 
 - Stable release. Job listings and cleanup are easier to operate, and malformed status data no longer crashes commands. `scripts/real_agy_check.py` against AGY 1.2.9: full runs 18/19, 17/19, 17/19; all failures AGY-side (one print timeout, two 503 `UNAVAILABLE` responses), and each failing scenario passed on rerun.
