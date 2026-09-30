@@ -3,6 +3,7 @@
 ## Unreleased
 
 - New: `agy-mc doctor` lists enabled AGY MCP servers and `--probe-latency` measures one minimal Gemini Flash High turn. On AGY 1.2.14, a hung MCP server delayed a trivial headless call to 67 s from 5 s; `agy -p` waits for configured MCP servers to connect or time out.
+- Verified on AGY 1.2.14: one full `scripts/real_agy_check.py` run passed 19/19 after the stuck MCP daemon was restarted (a foreground run took 6.1 s instead of 65-69 s). An earlier full run with the daemon stuck failed 5 scenarios; 4 were AGY exit 3 errors while the account was being switched and one was a 60 s test timeout, now 120 s. The release bar of two consecutive clean runs is not met yet. No other AGY change between 1.2.9 and 1.2.14 affected Mission Control; `--json-schema` now rejects a schema whose root is not an object, and Mission Control passes the schema file through unchecked.
 
 ## 0.6.0 - 2026-09-23
 
