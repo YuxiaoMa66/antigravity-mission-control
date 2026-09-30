@@ -78,6 +78,22 @@ class DoctorColdStartTests(unittest.TestCase):
                     self.assertEqual(mcp["servers"], [])
                     self.assertNotIn("warning", mcp)
 
+    def test_probe_keeps_bare_command_name_even_if_cwd_has_a_same_named_file(self):
+        success = subprocess.CompletedProcess([], 0, "", "")
+        help_result = subprocess.CompletedProcess([], 0, "--add-dir --input-format --output-format --model", "")
+        models = subprocess.CompletedProcess([], 0, json.dumps({"command": {"data": {"models": [{"id": "gemini-3.7-flash-high"}]}}}), "")
+        mcp = subprocess.CompletedProcess([], 0, "NAME TYPE STATUS COMMAND/URL\n", "")
+        with tempfile.TemporaryDirectory() as state, tempfile.TemporaryDirectory() as cwd:
+            (Path(cwd) / "agy").write_text("#!/bin/sh\n")
+            previous = os.getcwd()
+            os.chdir(cwd)
+            try:
+                with patch.object(cli, "AGY_BIN", "agy"), patch.object(cli, "run_capture", side_effect=[success, help_result, models, mcp, success, success]) as run:
+                    with patch.object(cli, "STATE_ROOT", Path(state)), patch.object(cli.os, "chmod"), patch("sys.stdout", new_callable=__import__("io").StringIO):
+                        cli.cmd_doctor(argparse.Namespace(probe_latency=True))
+            finally:
+                os.chdir(previous)
+        self.assertEqual(run.call_args_list[-1].args[0][0], "agy")
 
 if __name__ == "__main__":
     unittest.main()

@@ -87,7 +87,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
             model_id = max(flash_models, key=version_key)
             try:
                 start = time.monotonic()
-                probe_bin = str(Path(AGY_BIN).resolve()) if not Path(AGY_BIN).is_absolute() and Path(AGY_BIN).is_file() else AGY_BIN
+                probe_bin = str(Path(AGY_BIN).resolve()) if os.sep in AGY_BIN and not Path(AGY_BIN).is_absolute() and Path(AGY_BIN).is_file() else AGY_BIN
                 probe = run_capture(
                     [probe_bin, "-p", "Reply with exactly the word OK.", "--model", model_id,
                      "--print-timeout", "120s", "--output-format", "text"],
