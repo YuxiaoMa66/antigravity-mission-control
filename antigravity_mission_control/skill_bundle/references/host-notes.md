@@ -1,6 +1,6 @@
 # Host notes
 
-- When jobs take about 60 s before the first token, run `agy-mc doctor --probe-latency`; AGY waits on hung MCP servers and ignores `agy mcp disable` in headless mode.
+- When jobs take about 60 s before the first token, run `agy-mc doctor --probe-latency`; AGY waits on hung MCP servers and ignores `agy mcp disable` in headless mode. A healthy probe takes under 10 s; above 20 s doctor names the enabled MCP servers. Do not restart anything on a healthy probe. If the slow server is `codebase-memory-mcp`, ask the user before running `pkill -f cbm-daemon-internal`: its daemon restarts on the next client, but the restart disconnects that user's other running sessions. Then run the probe again to confirm.
 
 Codex and Claude Code follow the same workflow in `SKILL.md`; only these mechanics differ. In this file "Claude" is the host, not an AGY worker model.
 
