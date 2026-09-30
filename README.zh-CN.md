@@ -11,9 +11,9 @@
 
 面向 Antigravity CLI（`agy`）的策略化任务控制层：将工作路由到精确模型，把批准绑定到具体任务，串行保护编辑 worker，确认取消结果并实时查看额度；最终验收始终由你的 coding agent（Codex 或 Claude Code）负责。
 
-<p align="center"><img src="assets/release-v0.6.0.svg" width="920" alt="Antigravity Mission Control v0.6.0 操作控制板"></p>
+<p align="center"><img src="assets/release-v0.6.1.svg" width="920" alt="Antigravity Mission Control v0.6.1 操作控制板"></p>
 
-> **v0.6.0：** 稳定版带来更易用的任务管理：`agy-mc status` 支持 `--limit` 与可重复的 `--state`，`agy-mc prune --older-than` 可清理已完成的旧任务。`agy-mc wait --timeout` 现在也支持 `d`（天）。任务状态字段异常时不会再让 `status`、`wait`、`cancel` 或 `prune` 崩溃。运行时路由行为保持 v0.3.0 的 Flash 优先设计。
+> **v0.6.1：** 稳定版让 AGY 启动变慢的原因可以被诊断。`agy-mc doctor` 会列出已启用的 AGY MCP 服务器，`agy-mc doctor --probe-latency` 会实测一次最小的 AGY 调用并在过慢时警告；原因是 AGY 1.2.14 会等所有已配置的 MCP 服务器连接完成后，才发出第一个模型请求。任务行为与路由保持不变。
 >
 > 本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
 
@@ -26,7 +26,7 @@
 
 1. 检查 `agy` 是否已经安装并完成登录。
 2. 向我展示将执行的精确命令和目标路径，等我确认后再继续。
-3. 如果 AGY 已经可用，使用 `npx antigravity-mission-control@latest install` 安装稳定版；需要固定版本时使用 `@0.6.0`。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
+3. 如果 AGY 已经可用，使用 `npx antigravity-mission-control@latest install` 安装稳定版；需要固定版本时使用 `@0.6.1`。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
 4. 运行 `agy-mc doctor`，然后报告安装版本和路径。
 5. 开始委派项目任务前，使用当前可用的精确模型 slug 向我展示 A/B/C 三套阵容，等我选择后再执行。
 
@@ -39,7 +39,7 @@ Agent 会阅读本页的安装步骤和安全边界，完成检查后回报结�
 
 ## 看看实际操作界面
 
-以下为 v0.6.0 命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
+以下为 v0.6.1 命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
 
 <table>
   <tr>
@@ -122,7 +122,7 @@ npx antigravity-mission-control@latest status --lang zh
 也支持直接使用 Python：
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.6.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.6.1"
 agy-mc skill install --lang zh
 agy-mc doctor
 ```
