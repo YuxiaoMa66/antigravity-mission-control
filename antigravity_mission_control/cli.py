@@ -5,8 +5,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 if __package__ in (None, ""):
@@ -18,7 +20,7 @@ from .approvals import POLICY_NAMES, canonical_policy_name, cmd_approve, cmd_pol
 from .common import AGY_BIN, STATE_ROOT, VERSION, command_data, parse_duration, run_capture
 from .jobs import cmd_cancel, cmd_continue, cmd_prune, cmd_result, cmd_run, cmd_status, cmd_wait, cmd_worker
 from .jobstore import JOB_EXIT_CODES
-from .routing import MODELS_TIMEOUT_SECONDS, ROLES, STRATEGY_PATTERNS, cmd_models, cmd_select
+from .routing import FLASH_HIGH, MODELS_TIMEOUT_SECONDS, ROLES, STRATEGY_PATTERNS, cmd_models, cmd_select, version_key
 from .skill import HOSTS, cmd_skill, default_skill_target, skill_marker
 from .usage import cmd_usage
 from .workspace import cmd_workspace
@@ -36,6 +38,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     session = run_capture([AGY_BIN, "--output-format", "json", "models"], timeout=MODELS_TIMEOUT_SECONDS)
     session_ok = False
     model_count = 0
+    models = []
     if session.returncode == 0:
         try:
             payload = json.loads(session.stdout)
@@ -51,6 +54,23 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
             "detail": f"authenticated model catalog: {model_count} models" if session_ok else "run `agy` and complete Google sign-in",
         }
     )
+    mcp_servers = []
+    try:
+        mcp_result = run_capture([AGY_BIN, "mcp", "list"], timeout=30)
+        if mcp_result.returncode == 0:
+            for line in mcp_result.stdout.splitlines()[1:]:
+                fields = line.split()
+                if len(fields) >= 3 and fields[2] == "enabled":
+                    mcp_servers.append(fields[0])
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    mcp_check = {"name": "agy-mcp", "ok": True, "servers": mcp_servers}
+    if mcp_servers:
+        mcp_check["warning"] = (
+            "AGY waits up to 30 s per MCP server before every headless turn; if jobs start slowly run "
+            "`agy-mc doctor --probe-latency` and disable or fix: " + ", ".join(mcp_servers)
+        )
+    checks.append(mcp_check)
     state_ok = True
     detail = str(STATE_ROOT)
     try:
@@ -59,6 +79,35 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     except OSError as exc:
         state_ok, detail = False, str(exc)
     checks.append({"name": "private-state", "ok": state_ok, "detail": detail})
+    if getattr(_args, "probe_latency", False):
+        flash_models = [m["id"] for m in models if isinstance(m, dict) and "id" in m and re.search(FLASH_HIGH, str(m["id"]), re.IGNORECASE)] if isinstance(models, list) else []
+        if not flash_models:
+            checks.append({"name": "agy-cold-start", "ok": True, "warning": "No Gemini Flash High model was found, so the latency probe was skipped."})
+        else:
+            model_id = max(flash_models, key=version_key)
+            try:
+                start = time.monotonic()
+                probe_bin = str(Path(AGY_BIN).resolve()) if os.sep in AGY_BIN and not Path(AGY_BIN).is_absolute() and Path(AGY_BIN).is_file() else AGY_BIN
+                probe = run_capture(
+                    [probe_bin, "-p", "Reply with exactly the word OK.", "--model", model_id,
+                     "--print-timeout", "120s", "--output-format", "text"],
+                    cwd=STATE_ROOT, timeout=150,
+                )
+                seconds = round(time.monotonic() - start, 1)
+                if probe.returncode == 0:
+                    cold_check = {"name": "agy-cold-start", "ok": True, "seconds": seconds, "model": model_id}
+                    if seconds > 20:
+                        cold_check["warning"] = (
+                            f"Probe took {seconds:.1f} s; a hung MCP server is the usual cause. Enabled MCP servers: "
+                            f"{', '.join(mcp_servers) if mcp_servers else 'none'}"
+                        )
+                else:
+                    cold_check = {"name": "agy-cold-start", "ok": False, "detail": f"AGY exited with status {probe.returncode}"}
+            except subprocess.TimeoutExpired:
+                cold_check = {"name": "agy-cold-start", "ok": False, "detail": "AGY latency probe timed out"}
+            except OSError as exc:
+                cold_check = {"name": "agy-cold-start", "ok": False, "detail": str(exc)}
+            checks.append(cold_check)
     for host in HOSTS:
         marker = skill_marker(default_skill_target(host))
         if marker and marker.get("version") != VERSION:
@@ -76,6 +125,7 @@ def build_parser() -> argparse.ArgumentParser:
     policy_parser.add_argument("name", type=canonical_policy_name, choices=POLICY_NAMES, nargs="?", default="strict")
     policy_parser.set_defaults(func=cmd_policy)
     doctor_parser = subparsers.add_parser("doctor", help="Check AGY, authenticated model access, and Mission Control runtime capabilities")
+    doctor_parser.add_argument("--probe-latency", action="store_true", help="Runs one minimal AGY turn, uses a little quota")
     doctor_parser.set_defaults(func=cmd_doctor)
     skill_parser = subparsers.add_parser("skill", help="Install, update, inspect, or uninstall the bundled skill for Codex and/or Claude Code")
     skill_parser.add_argument("action", choices=["install", "update", "status", "uninstall"])

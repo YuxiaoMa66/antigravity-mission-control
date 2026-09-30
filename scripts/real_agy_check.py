@@ -414,7 +414,7 @@ def edits_are_serialized(h: Harness) -> str:
         expect(result["acceptance"] == "not_evaluated", "acceptance was pre-judged")
 
         after_lock = h.run(h.prompt("ok", "Reply with exactly the word OK."), cwd=workspace,
-                           mode="accept-edits", timeout_seconds=60)
+                           mode="accept-edits", timeout_seconds=120)
         expect(after_lock.returncode == 0, f"the lock was not released: {after_lock.stderr[-200:]}")
         return f"lock held during the edit, {marker} in the evidence delta"
 

@@ -27,6 +27,10 @@ elif "models" in sys.argv:
         print(json.dumps({"status": "ERROR", "error": "not authenticated"}), file=sys.stderr)
         raise SystemExit(1)
     print(json.dumps({"command": {"data": {"models": [{"id": "gemini-3.7-flash-high"}]}}}))
+elif "mcp" in sys.argv:
+    print("NAME                 TYPE   STATUS   COMMAND/URL")
+    if not os.environ.get("FAKE_AGY_MCP_NONE"):
+        print("fake-mcp             stdio  enabled  /bin/fake-mcp")
 elif "stream-json" in sys.argv:
     request = sys.stdin.readline()
     time.sleep(float(os.environ.get("FAKE_AGY_SLEEP", "0")))

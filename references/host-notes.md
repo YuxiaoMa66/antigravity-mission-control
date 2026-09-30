@@ -1,5 +1,7 @@
 # Host notes
 
+- When jobs take about 60 s before the first token, run `agy-mc doctor --probe-latency`; AGY waits on hung MCP servers and ignores `agy mcp disable` in headless mode.
+
 Codex and Claude Code follow the same workflow in `SKILL.md`; only these mechanics differ. In this file "Claude" is the host, not an AGY worker model.
 
 ## Claude Code
