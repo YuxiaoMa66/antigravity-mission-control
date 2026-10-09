@@ -11,9 +11,9 @@
 
 Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota. Your coding agent (Codex or Claude Code) remains responsible for acceptance.
 
-<p align="center"><img src="assets/release-v0.6.1.svg" width="920" alt="Antigravity Mission Control v0.6.1 operational control board"></p>
+<p align="center"><img src="assets/release-v0.7.0rc1.svg" width="920" alt="Antigravity Mission Control v0.7.0rc1 operational control board"></p>
 
-> **v0.6.1:** Stable release that makes slow AGY starts diagnosable. `agy-mc doctor` lists the enabled AGY MCP servers, and `agy-mc doctor --probe-latency` times one minimal AGY turn and warns when it is slow, because AGY 1.2.14 waits for every configured MCP server before its first model request. Job behavior and routing are unchanged.
+> **v0.7.0rc1 (pre-release, npm `0.7.0-rc.1`):** Release candidate that keeps long AGY turns from ending with no output. Default turn limits are 1800 s for an implementer and 1200 s for other roles instead of 600 s; a turn cut short by AGY's print timeout gets one no-tools wrap-up turn that returns the worker's report; a dropped model stream resumes the conversation once; and failed results name a `failure_kind`. Stable stays v0.6.1 until this is promoted. Try it with `npx antigravity-mission-control@next install`.
 >
 > Independent community project; not affiliated with Google or Antigravity.
 
@@ -26,7 +26,7 @@ Open and read https://github.com/YuxiaoMa66/antigravity-mission-control before m
 
 1. Check whether `agy` is installed and signed in.
 2. Show me the exact commands and target paths, then wait for my confirmation.
-3. If AGY is ready, install the stable npm package with `npx antigravity-mission-control@latest install`; use `@0.6.1` when you need a pinned release. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
+3. If AGY is ready, install the stable npm package with `npx antigravity-mission-control@latest install`; use `@0.6.1` when you need a pinned release, or `@next` to try the v0.7.0rc1 pre-release. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
 4. Run `agy-mc doctor` and report the installed versions and paths.
 5. Before delegating project work, show me the A/B/C roster choices with exact available model slugs and wait for my selection.
 
@@ -39,7 +39,7 @@ The agent reads the same installation and security boundaries you see on this pa
 
 ## See the flight deck
 
-These v0.6.1 illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
+These v0.7.0rc1 illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
 
 <table>
   <tr>
@@ -126,6 +126,8 @@ python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-co
 agy-mc skill install --host auto
 agy-mc doctor
 ```
+
+For the v0.7.0rc1 pre-release, use `@v0.7.0rc1` instead of `@v0.6.1`.
 
 Full setup, upgrade, uninstall, local-source and PATH notes: [Installation guide](docs/INSTALL.md).
 
