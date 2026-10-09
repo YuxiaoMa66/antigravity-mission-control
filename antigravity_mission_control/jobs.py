@@ -40,6 +40,35 @@ PLAN_MODE_CHANGED_EXIT = 5
 
 # AGY reports its own print timeout on stderr and still emits status SUCCESS with an empty response.
 TIMEOUT_NOTICE_RE = re.compile(r"print timeout after[^\n]*turn in progress", re.IGNORECASE)
+# AGY marks dropped model streams (read timeouts, broken pipes) as retryable in its AGY_ERROR line.
+RETRYABLE_ERROR_RE = re.compile(r'"retryable"\s*:\s*true')
+FAILURE_KIND_RE = re.compile(r'"failure_kind": "(\w+)"')
+
+# quant_course (113 real jobs): first-run implementers took 900-1700s and reviewers often 500-900s,
+# so the old flat 600s cut productive turns short.
+ROLE_TIMEOUT_SECONDS = {"implementer": 1800}
+DEFAULT_TIMEOUT_SECONDS = 1200
+WRAPUP_TIMEOUT_SECONDS = 300
+# Timed-out workers had usually finished the work; a no-tools wrap-up turn returned it in 40-220s.
+WRAPUP_PROMPT = (
+    "Mission Control: this turn reached its time limit. Stop working now: do not call any tools, read files or "
+    "make edits. Using only what you have already done and observed in this conversation, write your final report "
+    "in the format the original assignment asked for. State plainly which parts are complete, which are unfinished, "
+    "and which files you changed."
+)
+RESUME_PROMPT = (
+    "Mission Control: the previous request failed with a transient network error. Continue the original assignment "
+    "from where you stopped, within the same scope, and finish with the requested report."
+)
+
+
+def default_timeout(role: str) -> int:
+    return ROLE_TIMEOUT_SECONDS.get(role, DEFAULT_TIMEOUT_SECONDS)
+
+
+def worker_timeout(timeout_seconds: int) -> int:
+    """Wall limit for a background worker: the turn, one recovery turn of the same length, and slack."""
+    return 2 * timeout_seconds + WRAPUP_TIMEOUT_SECONDS + 90
 
 
 DIAGNOSTIC_PATTERNS = (
@@ -150,16 +179,18 @@ def prepare_run(args: argparse.Namespace) -> dict:
     }
 
 
-def build_agy_command(args: argparse.Namespace, prepared: dict, log_path: Path) -> list[str]:
+def build_agy_command(args: argparse.Namespace, prepared: dict, log_path: Path,
+                      conversation: str | None = None, timeout_seconds: int | None = None) -> list[str]:
     command = [
         AGY_BIN,
         "--add-dir", str(prepared["cwd"]),
         "--input-format", "stream-json", "--output-format", "stream-json", "--model", prepared["model"],
-        "--mode", args.mode, "--print-timeout", f"{args.timeout_seconds}s",
+        "--mode", args.mode, "--print-timeout", f"{timeout_seconds or args.timeout_seconds}s",
         "--log-file", str(log_path),
     ]
-    if args.conversation:
-        command.extend(["--conversation", args.conversation])
+    conversation = conversation or args.conversation
+    if conversation:
+        command.extend(["--conversation", conversation])
     if prepared["schema_path"]:
         command.extend(["--json-schema", str(prepared["schema_path"])])
     if args.unrestricted:
@@ -216,7 +247,35 @@ def last_open_step(stdout: str) -> dict | None:
             "parameters": (step.get("tool_info") or {}).get("parameters")}
 
 
+def turn_progress(stdout: str) -> dict:
+    """How far a cut-short turn got, so a timeout reads as slow-but-working or stuck."""
+    steps = 0
+    for line in stdout.splitlines():
+        try:
+            step = json.loads(line).get("step_update")
+        except (json.JSONDecodeError, AttributeError):
+            continue
+        if isinstance(step, dict) and step.get("state") == "DONE":
+            steps += 1
+    usage = ((parse_stream_result(stdout) or {}).get("usage") or {})
+    return {"completed_steps": steps, "output_tokens": usage.get("output_tokens")}
+
+
+def failure_kind(proc: subprocess.CompletedProcess) -> str | None:
+    """The recoverable failures seen in real runs; None for anything else."""
+    stderr = proc.stderr or ""
+    if PERMISSION_NOTICE_RE.search(stderr):
+        return None
+    if TIMEOUT_NOTICE_RE.search(stderr):
+        return "stuck_tool" if last_open_step(proc.stdout or "") else "timeout_while_working"
+    if proc.returncode != 0 and RETRYABLE_ERROR_RE.search(stderr):
+        return "network_retryable"
+    return None
+
+
 def cmd_run(args: argparse.Namespace) -> int:
+    if args.timeout_seconds is None:
+        args.timeout_seconds = default_timeout(args.role)
     prepared = prepare_run(args)
     if args.background:
         return start_background_job(args, prepared)
@@ -272,24 +331,47 @@ def run_foreground(args: argparse.Namespace, prepared: dict) -> int:
     return code
 
 
-def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
-
+def invoke_agy(args: argparse.Namespace, prepared: dict, prompt_text: str,
+               conversation: str | None = None, timeout_seconds: int | None = None):
+    """One AGY turn: (process, diagnostics), or (None, diagnostics) when the wrapper had to kill it."""
+    timeout_seconds = timeout_seconds or args.timeout_seconds
     with tempfile.TemporaryDirectory(prefix="agy-delegate-") as diagnostic_dir:
         diagnostic_log = Path(diagnostic_dir) / "agy.log"
-        command = build_agy_command(args, prepared, diagnostic_log)
+        command = build_agy_command(args, prepared, diagnostic_log, conversation, timeout_seconds)
         try:
-            proc = run_capture(
-                command,
-                cwd=prepared["cwd"],
-                timeout=args.timeout_seconds + 15,
-                input_text=prompt_event(prepared["prompt_text"]),
-            )
+            proc = run_capture(command, cwd=prepared["cwd"], timeout=timeout_seconds + 15,
+                               input_text=prompt_event(prompt_text))
         except subprocess.TimeoutExpired as exc:
-            diagnostics = diagnostic_excerpt("", diagnostic_log)
             print(json.dumps({"status": "ERROR", "error": f"agy exceeded wrapper timeout: {exc}"}), file=sys.stderr)
+            return None, diagnostic_excerpt("", diagnostic_log)
+        return proc, diagnostic_excerpt(proc.stderr, diagnostic_log)
+
+
+def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
+    proc, diagnostics = invoke_agy(args, prepared, prepared["prompt_text"])
+    if proc is None:
+        emit_diagnostics(diagnostics)
+        return 124
+
+    recovered_from = None
+    kind = failure_kind(proc)
+    conversation = (parse_stream_result(proc.stdout or "") or {}).get("conversation_id")
+    if kind and conversation:
+        # Keep the cut-short turn as evidence, then recover it once in the same conversation and scope.
+        if proc.stderr:
+            print(proc.stderr, file=sys.stderr, end="" if proc.stderr.endswith("\n") else "\n")
+        emit_diagnostics(diagnostics)
+        if proc.stdout.strip():
+            print(proc.stdout, end="" if proc.stdout.endswith("\n") else "\n")
+        wrap_up = kind != "network_retryable"
+        print(json.dumps({"status": "recovering", "failure_kind": kind, "progress": turn_progress(proc.stdout or ""),
+                          "action": "no-tools wrap-up turn" if wrap_up else "resume turn"}), file=sys.stderr)
+        proc, diagnostics = invoke_agy(args, prepared, WRAPUP_PROMPT if wrap_up else RESUME_PROMPT, conversation,
+                                       WRAPUP_TIMEOUT_SECONDS if wrap_up else None)
+        if proc is None:
             emit_diagnostics(diagnostics)
             return 124
-        diagnostics = diagnostic_excerpt(proc.stderr, diagnostic_log)
+        recovered_from = kind
 
     if proc.stderr:
         print(proc.stderr, file=sys.stderr, end="" if proc.stderr.endswith("\n") else "\n")
@@ -316,11 +398,14 @@ def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
         return 3
     if TIMEOUT_NOTICE_RE.search(proc.stderr or ""):
         print(json.dumps({"status": "ERROR", "error": "agy stopped at its print timeout with the turn in progress",
-                          "stuck_step": last_open_step(proc.stdout)}, ensure_ascii=False), file=sys.stderr)
+                          "failure_kind": failure_kind(proc), "recovered_from": recovered_from,
+                          "progress": turn_progress(proc.stdout), "stuck_step": last_open_step(proc.stdout)},
+                         ensure_ascii=False), file=sys.stderr)
         return 124
     if proc.returncode != 0:
         # A failing exit code wins over anything the stream claims; stdout above keeps any partial response.
-        print(json.dumps({"status": "ERROR", "error": f"agy exited with code {proc.returncode}"}), file=sys.stderr)
+        print(json.dumps({"status": "ERROR", "error": f"agy exited with code {proc.returncode}",
+                          "failure_kind": failure_kind(proc), "recovered_from": recovered_from}), file=sys.stderr)
         return proc.returncode
     # A string "result" is a response; a dict is AGY 1.2's nested envelope, already flattened.
     response = payload.get("response") or (payload.get("result") if isinstance(payload.get("result"), str) else None)
@@ -342,7 +427,10 @@ def execute_foreground(args: argparse.Namespace, prepared: dict) -> int:
     result_event = "result" in (payload.get("event"), payload.get("type"))
     if provider_status == "SUCCESS" or (not provider_status and result_event and not payload.get("error")):
         warning = None
-        if not response:
+        if recovered_from and response:
+            warning = (f"recovered after {recovered_from}: the response comes from a recovery turn; "
+                       "check the report for unfinished parts")
+        elif not response:
             warning = "agy reported success with an empty response"
         elif prepared["schema_path"] and not parses_as_json(response):
             # ponytail: parse check only; validate against the schema itself if callers start relying on fields.
@@ -366,7 +454,7 @@ def cmd_worker(args: argparse.Namespace) -> int:
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            timeout=max(30, int(spec["command"][spec["command"].index("--timeout-seconds") + 1]) + 60),
+            timeout=worker_timeout(int(spec["command"][spec["command"].index("--timeout-seconds") + 1])),
             check=False,
         )
         payload = parse_stream_result(proc.stdout)
@@ -382,6 +470,7 @@ def cmd_worker(args: argparse.Namespace) -> int:
             "model": job["model"],
             "cwd": job["cwd"],
             "conversation_id": (payload or {}).get("conversation_id"),
+            "failure_kind": next(iter(FAILURE_KIND_RE.findall(proc.stderr)[-1:]), None) if status == "error" else None,
             "payload": payload,
             "stdout": proc.stdout,
             "stderr": proc.stderr,
@@ -738,7 +827,7 @@ def cmd_continue(args: argparse.Namespace) -> int:
         mode=job["mode"],
         conversation=conversation_id,
         json_schema=None,
-        timeout_seconds=args.timeout_seconds,
+        timeout_seconds=args.timeout_seconds or default_timeout(job["role"]),
         background=args.background,
         approval_file=args.approval_file,
         workspace_lock_held=False,

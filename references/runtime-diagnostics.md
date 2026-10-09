@@ -8,7 +8,8 @@ Use this reference before a first run in a new environment, after a wrapper erro
 2. Inspect the wrapper's stderr and temporary diagnostics. Do not rely on a generic `Agent execution terminated due to error` message when a log contains a more specific cause.
 3. Distinguish the result shape:
    - `SUCCESS` with a response: worker produced output; inspect the workspace independently.
-   - AGY printed `print timeout after ... with turn in progress`: the turn was cut short. The stream still says `SUCCESS`, so treat the run as failed (exit 124). The error's `stuck_step` names the tool step AGY was still waiting on, with its parameters; `null` means the model itself was still working. Narrow the task, or retry once with a larger `--timeout-seconds`.
+   - AGY printed `print timeout after ... with turn in progress`: the turn was cut short. The wrapper then runs one no-tools wrap-up turn in the same conversation (300 s) that asks the worker to report what it already did. A recovered run is `done_with_warnings` with `recovered after timeout_while_working` (or `stuck_tool`): the report may list unfinished parts, so check them. If the wrap-up also fails, the run fails with exit 124; the error's `failure_kind` is `timeout_while_working` (model still working; `progress` shows completed steps and output tokens) or `stuck_tool` (`stuck_step` names the tool step AGY was waiting on). Narrow the task, or retry once with a larger `--timeout-seconds`.
+   - An AGY error marked `"retryable":true` (dropped model stream, broken pipe): the wrapper resumes the same conversation once. A recovered run is `done_with_warnings` with `recovered after network_retryable`; a second failure keeps AGY's exit code with `failure_kind: network_retryable`.
    - exit 5: the workspace changed during a `plan` run. AGY does not enforce plan mode, so treat the listed paths as unapproved edits: inspect them and tell the user before keeping or reverting anything.
    - a nonzero AGY exit code: worker failed, whatever the stream says; any partial response stays in stdout or the job result as evidence only.
    - non-success with an empty response, or any status other than `SUCCESS` and `ERROR`: worker failed; do not claim partial completion.
@@ -26,7 +27,8 @@ AGY 1.2 nests the outcome one level down: `{"event": "result", "result": {"statu
 - Expired authentication: ask the user to complete the interactive AGY login flow. Do not expose tokens or copy credential files.
 - Unknown or unavailable model: rerun `agy models`, stop, and reconfirm the affected roster entry before changing the model.
 - Soft-denied tool permission after trust: treat the run as failed. The host agent may perform the safe in-scope check directly; do not infer that workspace trust authorizes unrelated commands.
-- Timeout: inspect whether useful output or edits exist, then retry at most once with a larger timeout or a narrower task. Use the exact prior conversation id when a continuation is appropriate.
+- Timeout: the default turn limit is 1800 s for an implementer and 1200 s for other roles. When even the automatic wrap-up failed, inspect whether useful output or edits exist, then retry at most once with a larger timeout or a narrower task. Use the exact prior conversation id when a continuation is appropriate.
+- Do not guess a cause the diagnostics do not name: AGY refreshes its short-lived login token by itself, so a token expiry time in the log is not by itself an authentication failure.
 
 ## Retry rule
 

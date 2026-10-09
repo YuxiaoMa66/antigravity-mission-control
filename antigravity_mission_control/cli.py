@@ -218,7 +218,8 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--mode", choices=["plan", "accept-edits"], default="plan")
     run_parser.add_argument("--conversation")
     run_parser.add_argument("--json-schema")
-    run_parser.add_argument("--timeout-seconds", type=int, default=600)
+    run_parser.add_argument("--timeout-seconds", type=int,
+                            help="AGY turn limit; default 1800 for implementer, 1200 for other roles")
     run_parser.add_argument(
         "--background",
         action="store_true",
@@ -257,7 +258,8 @@ def build_parser() -> argparse.ArgumentParser:
     continue_parser.add_argument("--unrestricted", action="store_true")
     continue_parser.add_argument("--unrestricted-approved", action="store_true")
     continue_parser.add_argument("--background", action="store_true")
-    continue_parser.add_argument("--timeout-seconds", type=int, default=600)
+    continue_parser.add_argument("--timeout-seconds", type=int,
+                                 help="AGY turn limit; default follows the job's role")
     continue_parser.set_defaults(func=cmd_continue)
 
     prune_parser = subparsers.add_parser("prune", help="Report, and with --yes delete, old finished job directories")
@@ -301,7 +303,7 @@ def main() -> int:
         parser.error("--interval must be positive")
     if getattr(args, "count", 1) is not None and getattr(args, "count", 1) <= 0:
         parser.error("--count must be positive")
-    if getattr(args, "timeout_seconds", 1) < 1:
+    if getattr(args, "timeout_seconds", None) is not None and args.timeout_seconds < 1:
         parser.error("--timeout-seconds must be positive")
     if getattr(args, "grace_seconds", 1) <= 0:
         parser.error("--grace-seconds must be positive")

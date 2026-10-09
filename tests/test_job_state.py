@@ -11,7 +11,7 @@ import threading
 import unittest
 from unittest import mock
 
-from antigravity_mission_control import jobs, jobstore
+from antigravity_mission_control import cli, jobs, jobstore
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -66,6 +66,38 @@ class ResultJudgementTests(unittest.TestCase):
         run = self.run_plan(FAKE_AGY_RESPONSE="",
                             FAKE_AGY_STDERR="[agy] print timeout after 5s with turn in progress; returning partial output")
         self.assertEqual(run.returncode, 124, run.stderr)
+        self.assertIn('"failure_kind": "timeout_while_working"', run.stderr)
+        self.assertIn('"status": "recovering"', run.stderr)
+
+    def test_print_timeout_is_recovered_by_a_no_tools_wrap_up_turn(self):
+        run = self.run_plan(FAKE_AGY_RESPONSE="", FAKE_AGY_RESUME_RESPONSE="",
+                            FAKE_AGY_STDERR="[agy] print timeout after 5s with turn in progress")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("recovered after timeout_while_working", run.stderr)
+        self.assertIn("do not call any tools", jobs.parse_stream_result(run.stdout)["response"])
+
+    def test_retryable_network_error_resumes_the_conversation_once(self):
+        network = 'AGY_ERROR: {"short_error":"stream reading error: read: operation timed out","retryable":true}'
+        run = self.run_plan(FAKE_AGY_EXIT="3", FAKE_AGY_STDERR=network, FAKE_AGY_RESUME_RESPONSE="")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("recovered after network_retryable", run.stderr)
+        self.assertIn("transient network error", jobs.parse_stream_result(run.stdout)["response"])
+        failed = self.run_plan(FAKE_AGY_EXIT="3", FAKE_AGY_STDERR=network)
+        self.assertEqual(failed.returncode, 3, failed.stderr)
+        self.assertIn('"failure_kind": "network_retryable"', failed.stderr)
+
+    def test_background_result_records_the_failure_kind(self):
+        started = self.run_plan("--background", FAKE_AGY_RESPONSE="",
+                                FAKE_AGY_STDERR="[agy] print timeout after 5s with turn in progress")
+        job_id = json.loads(started.stdout)["job_id"]
+        waited = self.call("wait", job_id, "--timeout", "30s")
+        result = json.loads(waited.stdout)
+        self.assertEqual((result["status"], result["failure_kind"]), ("error", "timeout_while_working"))
+
+    def test_turn_limit_defaults_follow_the_role(self):
+        self.assertIsNone(cli.build_parser().parse_args(
+            ["run", "--strategy", "A", "--role", "planner", "--cwd", ".", "--prompt-file", "p"]).timeout_seconds)
+        self.assertEqual((jobs.default_timeout("implementer"), jobs.default_timeout("reviewer")), (1800, 1200))
 
     def test_last_open_step_names_what_the_turn_was_stuck_on(self):
         stream = "\n".join(json.dumps(e) for e in (

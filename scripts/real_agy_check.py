@@ -37,6 +37,8 @@ LONG_PROMPT = ("Write a detailed 1500-word explanation of how a job scheduler wo
 
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "scripts" / "agy_delegate.py"
+sys.path.insert(0, str(ROOT))
+from antigravity_mission_control.jobs import parse_stream_result  # noqa: E402
 SETTINGS = Path(os.environ.get("AGY_MC_SETTINGS_PATH",
                                str(Path.home() / ".gemini" / "antigravity-cli" / "settings.json")))
 
@@ -227,18 +229,19 @@ def cancel_is_consistent(h: Harness) -> str:
     return "canceled; status, result and wait agree"
 
 
-@scenario("print_timeout_is_reported_as_a_failure")
-def print_timeout_is_a_failure(h: Harness) -> str:
+@scenario("print_timeout_is_recovered_by_a_wrap_up_turn")
+def print_timeout_is_recovered(h: Harness) -> str:
     prompt = h.prompt("long", LONG_PROMPT)
     foreground = h.run(prompt, timeout_seconds=5)
-    expect(foreground.returncode != 0, "a print timeout was reported as success")
-    expect(foreground.returncode == 124, f"expected exit 124, got {foreground.returncode}")
+    expect(foreground.returncode == 0, f"expected a recovered run, got exit {foreground.returncode}")
+    expect("recovered after timeout_while_working" in foreground.stderr
+           or "recovered after stuck_tool" in foreground.stderr, "no recovery warning")
+    expect((parse_stream_result(foreground.stdout) or {}).get("response"), "the wrap-up returned no report")
     job_id = h.start_background(prompt, timeout_seconds=5)
-    waited = h.amc("wait", job_id, "--timeout", "120s")
+    waited = h.amc("wait", job_id, "--timeout", "420s")
     result = h.json_out(waited)
-    expect(result["status"] == "error", f"background job status {result['status']}")
-    expect(waited.returncode == 3, f"wait exit {waited.returncode}")
-    return f"foreground 124, background error (exit_code {result['exit_code']})"
+    expect(result["status"] == "done_with_warnings", f"background job status {result['status']}")
+    return "foreground and background cut at 5 s, both recovered as done_with_warnings"
 
 
 @scenario("killed_worker_becomes_a_terminal_state")
