@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 - 2026-10-13
+
+- Stable release of 0.7.0rc1. On rc1, one project ran 47 real jobs with no failures and no timeouts. `scripts/real_agy_check.py` against AGY 1.3.4 with `gemini-3.8-flash-high`: two consecutive full runs, 19/19 each (an earlier run on a bad network was 18/19; see the release notes).
+- New: every dispatch ends with a one-line working note asking the worker to read large files by line range and re-read only the changed range after an edit; rc1 implementers still re-read the same 30-80 KB file whole 16-17 times in one turn.
+- Docs: role contracts ask for jobs that fit the turn limit; host notes say macOS pauses the turn timers while the Mac sleeps; the collaboration protocol says parallel jobs need their own budget.
+
 ## 0.7.0rc1 - 2026-10-09
 
 - Pre-release (npm `0.7.0-rc.1` under `next`); stable stays 0.6.1. `scripts/real_agy_check.py` against AGY 1.3.2 with `gemini-3.8-flash-high`: 19/19.
