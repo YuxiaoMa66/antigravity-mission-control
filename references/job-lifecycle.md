@@ -15,11 +15,10 @@ agy-mc run \
   --cwd /absolute/path/to/project \
   --prompt-file /tmp/agy-prompt.txt \
   --mode plan \
-  --background \
-  --timeout-seconds 900
+  --background
 ```
 
-The command returns JSON with `job_id`, role, model, workspace, result path, log path, approval identity, and a collect hint. It still performs all normal preflight checks before queuing the worker. `--background` does not bypass signed approval validation, exact model validation, pre-existing exact workspace trust, or the separate unrestricted profile.
+The command returns JSON with `job_id`, role, model, workspace, result path, log path, approval identity, and a collect hint. Without `--timeout-seconds`, the turn limit is 1800 s for an implementer and 1200 s for other roles. It still performs all normal preflight checks before queuing the worker. `--background` does not bypass signed approval validation, exact model validation, pre-existing exact workspace trust, or the separate unrestricted profile.
 
 ## Collect
 

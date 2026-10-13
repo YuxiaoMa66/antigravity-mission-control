@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0 - 2026-10-13
+
+- Stable release of 0.7.0rc1. On rc1, one project ran 47 real jobs with no failures and no timeouts. `scripts/real_agy_check.py` against AGY 1.3.4 with `gemini-3.8-flash-high`: two consecutive full runs, 19/19 each (an earlier run on a bad network was 18/19; see the release notes).
+- New: every dispatch ends with a one-line working note asking the worker to read large files by line range and re-read only the changed range after an edit; rc1 implementers still re-read the same 30-80 KB file whole 16-17 times in one turn.
+- Docs: role contracts ask for jobs that fit the turn limit; host notes say macOS pauses the turn timers while the Mac sleeps; the collaboration protocol says parallel jobs need their own budget.
+
+## 0.7.0rc1 - 2026-10-09
+
+- Pre-release (npm `0.7.0-rc.1` under `next`); stable stays 0.6.1. `scripts/real_agy_check.py` against AGY 1.3.2 with `gemini-3.8-flash-high`: 19/19.
+- Change: the default turn limit is 1800 s for an implementer and 1200 s for other roles, instead of 600 s. In 113 real jobs on one project, all 17 AGY print timeouts used the 600 s default while the worker was still producing output; successful first-run implementers took 900-1700 s.
+- New: when AGY's print timeout cuts a turn short, the wrapper runs one no-tools wrap-up turn in the same conversation and returns that report as `done_with_warnings`. In the same project, hosts did this by hand about 15 times and each wrap-up returned in 40-220 s.
+- New: an AGY error marked `"retryable":true` (dropped stream, broken pipe) resumes the same conversation once.
+- New: failed results carry `failure_kind` (`timeout_while_working`, `stuck_tool`, `network_retryable`), and timeout errors report `progress` (completed steps, output tokens).
+
 ## 0.6.1 - 2026-09-30
 
 - Stable release. `agy-mc doctor` now tells you why AGY starts slowly. Job behavior, routing and the Skill workflow are unchanged. `scripts/real_agy_check.py` against AGY 1.2.14 with `gemini-3.8-flash-high`: two consecutive full runs, 19/19 each.

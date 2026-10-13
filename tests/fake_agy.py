@@ -33,6 +33,11 @@ elif "mcp" in sys.argv:
         print("fake-mcp             stdio  enabled  /bin/fake-mcp")
 elif "stream-json" in sys.argv:
     request = sys.stdin.readline()
+    if "--conversation" in sys.argv and "FAKE_AGY_RESUME_RESPONSE" in os.environ:
+        # A recovery turn: answer cleanly whatever the first turn did.
+        for key in ("FAKE_AGY_STDERR", "FAKE_AGY_EXIT", "FAKE_AGY_STATUS", "FAKE_AGY_WARNING"):
+            os.environ.pop(key, None)
+        os.environ["FAKE_AGY_RESPONSE"] = os.environ["FAKE_AGY_RESUME_RESPONSE"] or request
     time.sleep(float(os.environ.get("FAKE_AGY_SLEEP", "0")))
     if os.environ.get("FAKE_AGY_EDIT"):
         from pathlib import Path
