@@ -56,6 +56,11 @@ WRAPUP_PROMPT = (
     "in the format the original assignment asked for. State plainly which parts are complete, which are unfinished, "
     "and which files you changed."
 )
+# quant_course implementers re-read the same 30-80 KB file whole 16-17 times in one turn, once after every edit.
+WORKING_NOTE = (
+    "\n\nAMC working note: read large files by line range or search for what you need instead of re-reading them "
+    "whole, and after an edit re-read only the changed range.\n"
+)
 RESUME_PROMPT = (
     "Mission Control: the previous request failed with a transient network error. Continue the original assignment "
     "from where you stopped, within the same scope, and finish with the requested report."
@@ -307,7 +312,7 @@ def run_foreground(args: argparse.Namespace, prepared: dict) -> int:
         f"Files the user had already changed before this run: {json.dumps(paths[:100], ensure_ascii=True)[:12000]}\n"
         "The list may be truncated. They belong to the user: leave them as they are unless the task names them. "
         "Do not overwrite, clean, stash or deliver unrelated work.\n")
-    dispatched = dict(prepared, prompt_text=prepared["prompt_text"] + context)
+    dispatched = dict(prepared, prompt_text=prepared["prompt_text"] + context + WORKING_NOTE)
     atomic_write_json(directory / "dispatch.json", {
         "original_prompt_sha256": sha256_text(prepared["prompt_text"]),
         "dispatched_prompt_sha256": sha256_text(dispatched["prompt_text"]),

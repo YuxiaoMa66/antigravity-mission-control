@@ -2,6 +2,8 @@
 
 - When jobs take about 60 s before the first token, run `agy-mc doctor --probe-latency`; AGY waits on hung MCP servers and ignores `agy mcp disable` in headless mode. A healthy probe takes under 10 s; above 20 s doctor names the enabled MCP servers. Do not restart anything on a healthy probe. If the slow server is `codebase-memory-mcp`, ask the user before running `pkill -f cbm-daemon-internal`: its daemon restarts on the next client, but the restart disconnects that user's other running sessions. Then run the probe again to confirm.
 
+- Keep the Mac awake while jobs run. macOS pauses AGY's and Mission Control's timers during sleep, so a job started before the lid closes can run for hours past its turn limit, and the model stream breaks on wake ("The stream was interrupted"). Do not launch new jobs from a scheduled or overnight run on a laptop that may sleep.
+
 Codex and Claude Code follow the same workflow in `SKILL.md`; only these mechanics differ. In this file "Claude" is the host, not an AGY worker model.
 
 ## Claude Code

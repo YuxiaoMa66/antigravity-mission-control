@@ -80,6 +80,8 @@ For a long-running worker or independent read-only work, pass `--background` to 
 
 Do not run multiple editing models in the same working tree. If parallel editing is valuable, create separate worktrees or isolated copies, give each one explicit ownership, and integrate deliberately. Parallel read-only runs may share a workspace.
 
+Parallel jobs do not share a turn limit, but jobs launched together with the same limit also time out together. Give each parallel job the budget it would need on its own, and split work rather than squeezing a batch into the default.
+
 The wrapper enforces this boundary for queued `accept-edits` jobs by rejecting a second active editor for the same canonical workspace. Do not work around that guard by broadening paths or launching a second wrapper process manually.
 
 ## Failure handling

@@ -94,6 +94,11 @@ class ResultJudgementTests(unittest.TestCase):
         result = json.loads(waited.stdout)
         self.assertEqual((result["status"], result["failure_kind"]), ("error", "timeout_while_working"))
 
+    def test_dispatch_carries_the_working_note(self):
+        run = self.run_plan()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("read large files by line range", jobs.parse_stream_result(run.stdout)["response"])
+
     def test_turn_limit_defaults_follow_the_role(self):
         self.assertIsNone(cli.build_parser().parse_args(
             ["run", "--strategy", "A", "--role", "planner", "--cwd", ".", "--prompt-file", "p"]).timeout_seconds)

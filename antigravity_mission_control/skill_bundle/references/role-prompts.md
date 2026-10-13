@@ -19,6 +19,8 @@ Checks: <safe commands or inspections to attempt>
 Final response: changed paths, checks/results, limitations, and remaining risks.
 ```
 
+Keep each job to an outcome the worker can finish inside its turn limit (1800 s for an implementer, 1200 s otherwise). Split a larger objective into separate jobs rather than raising the limit to fit everything. Ask for large files to be read by line range or search, not whole; Mission Control appends a one-line working note with the same request to every dispatch.
+
 Keep prompts and captured output in a temporary directory, not in the repository. Do not include secrets, credentials, or tokens in a prompt.
 
 ## Scout
