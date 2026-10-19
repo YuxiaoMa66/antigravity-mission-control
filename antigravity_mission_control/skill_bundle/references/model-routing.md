@@ -13,7 +13,7 @@ The wrapper uses strategy- and role-oriented preferences rather than assuming a 
 | Strategy | Objective | Routing behavior |
 | --- | --- | --- |
 | A — Lightweight Flash-first | Control cost with the smallest adequate team | Prefer Gemini Flash at role-appropriate intensity; let the host agent own roles where another AGY pass adds little value. |
-| B — Quality-first Flash implementer | Maximize correctness, depth, and independent checking | Prefer Gemini Flash for implementation and use stronger planning/review when needed. |
+| B — Quality-first Flash implementer | Maximize correctness, depth, and independent checking | Prefer Gemini Flash for scouting and implementation and use stronger planning/review when needed. |
 | C — Quality-first Gemini Flash High | Keep B's quality objective while using one Gemini tier | Use the newest exact `gemini-.*flash-high` slug for every AGY role and follow-up; review separation comes from process and host verification. |
 
 Example proposal lookups:
@@ -24,7 +24,7 @@ agy-mc select --strategy B --role reviewer --avoid-family claude
 agy-mc select --strategy C --role planner
 ```
 
-These are routing heuristics, not benchmark claims. Increase capability only when task ambiguity, blast radius, or failed attempts justify it. The default A route uses lower Flash intensity for low-risk roles and a stronger Flash fallback for implementation; B puts Flash first for implementation and uses the strongest suitable roles elsewhere. The host agent may pin another available Flash intensity in the approved roster when the task warrants it. B implementation proposals try Flash High, then Medium, then Low as preceding tiers become unavailable, before non-Flash Gemini High (such as `gemini-4-argon-high`) or Claude; this is catalog-based fallback, not automatic task-risk assessment. B scout, planner, and reviewer proposals try non-Flash Gemini High, then Claude Opus, then Claude Sonnet.
+These are routing heuristics, not benchmark claims. Increase capability only when task ambiguity, blast radius, or failed attempts justify it. The default A route uses lower Flash intensity for low-risk roles and a stronger Flash fallback for implementation; B puts Flash first for scouting and implementation and uses the strongest suitable models for planning and review. The host agent may pin another available Flash intensity in the approved roster when the task warrants it. B scout and implementer proposals try Flash High, then Medium, then Low as preceding tiers become unavailable, before non-Flash Gemini High (such as `gemini-4-argon-high`) or Claude; this is catalog-based fallback, not automatic task-risk assessment. B planner and reviewer proposals try non-Flash Gemini High, then Claude Opus, then Claude Sonnet.
 
 The A and B proposals may surface Gemini Flash medium or low. Other non-High Gemini variants, such as Argon low/medium, remain excluded from automatic proposals, and so are Claude `-low`/`-medium` variants; pin one explicitly if the task warrants it. A proposal is not execution authority: approving a medium/low model still requires explicit confirmation and `--non-high-gemini-confirmed`; the exception is bound to that manifest and does not apply to later calls. C always requires High.
 

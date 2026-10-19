@@ -38,11 +38,15 @@ class RoutingTests(unittest.TestCase):
             "claude-sonnet-5-5-low", "claude-sonnet-5-5-medium", "claude-sonnet-5-5-high",
             "gpt-oss-120b-medium",
         )]
-        for role in ("scout", "planner", "reviewer"):
+        for role in ("planner", "reviewer"):
             with self.subTest(role=role):
                 self.assertEqual(routing.select_model(role, models, strategy="B"), "gemini-4-argon-high")
+        for role in routing.ROLES:
+            with self.subTest(role=role):
                 self.assertEqual(routing.select_model(role, models, avoid_family="gemini", strategy="B"), "claude-opus-5-5-high")
-        self.assertEqual(routing.select_model("implementer", models, strategy="B"), "gemini-3.8-flash-high")
+        for role in ("scout", "implementer"):
+            with self.subTest(role=role):
+                self.assertEqual(routing.select_model(role, models, strategy="B"), "gemini-3.8-flash-high")
         self.assertEqual(routing.select_model("scout", models, avoid_family="gemini", strategy="A"), "claude-sonnet-5-5-high")
         flashless = [m for m in models if "flash" not in m["id"]]
         self.assertEqual(routing.select_model("implementer", flashless, strategy="A"), "gemini-4-argon-high")
