@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0rc1 - 2026-10-19
+
+- Pre-release (npm `0.8.0-rc.1` under `next`); stable stays 0.7.0. `scripts/real_agy_check.py` against AGY 1.4.2 with `gemini-3.8-flash-high`: two consecutive full runs, 19/19 each; a foreground run with `gemini-4-argon-high` also passes.
+- Change: non-Flash Gemini High (today `gemini-4-argon-high`) replaces Pro High in strategies A and B. On the AGY 1.4.2 catalog, v0.7.0 could not propose Argon and B proposed `claude-opus-5-5-low`, because the Claude 5.5 variants share one version number.
+- Change: B planner and reviewer try non-Flash Gemini High, then Claude Opus, then Claude Sonnet; the routing reference asks the host to offer a per-role Argon/Opus choice when both are available. B scout now follows the implementer order (Flash first; Sonnet before Opus).
+- Change: Claude `-low`/`-medium` variants are left out of automatic proposals; they can still be pinned.
+- Fix: `scripts/real_agy_check.py --model` runs non-Flash-High models under strategy B instead of being refused by strategy C.
+
 ## 0.7.0 - 2026-10-13
 
 - Stable release of 0.7.0rc1. On rc1, one project ran 47 real jobs with no failures and no timeouts. `scripts/real_agy_check.py` against AGY 1.3.4 with `gemini-3.8-flash-high`: two consecutive full runs, 19/19 each (an earlier run on a bad network was 18/19; see the release notes).
