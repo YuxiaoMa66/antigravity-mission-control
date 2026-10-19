@@ -61,6 +61,11 @@ class Harness:
         path.write_text(text, encoding="utf-8")
         return path
 
+    @property
+    def strategy(self) -> str:
+        # C only accepts Gemini Flash High; any other --model runs under B.
+        return "C" if self.model.endswith("-flash-high") else "B"
+
     def amc(self, *args: str, timeout: float | None = None) -> subprocess.CompletedProcess:
         return subprocess.run(
             [sys.executable, str(CLI), *args],
@@ -69,7 +74,7 @@ class Harness:
 
     def run(self, prompt: Path, *extra: str, cwd: Path | None = None, mode: str = "plan",
             timeout_seconds: int | None = None) -> subprocess.CompletedProcess:
-        return self.amc("run", "--strategy", "C", "--role", "planner", "--model", self.model,
+        return self.amc("run", "--strategy", self.strategy, "--role", "planner", "--model", self.model,
                         "--roster-approved", "--cwd", str(cwd or self.workspace),
                         "--prompt-file", str(prompt), "--mode", mode,
                         "--timeout-seconds", str(timeout_seconds or self.timeout), *extra)
@@ -144,7 +149,7 @@ def non_high_gemini_needs_confirmation(h: Harness) -> str:
 @scenario("approval_binds_the_exact_prompt", live=False)
 def approval_binds_the_exact_prompt(h: Harness) -> str:
     prompt = h.prompt("bound", "Reply with exactly the word OK.")
-    created = h.amc("approve", "--strategy", "C", "--role", "planner", "--model", h.model,
+    created = h.amc("approve", "--strategy", h.strategy, "--role", "planner", "--model", h.model,
                     "--cwd", str(h.workspace), "--prompt-file", str(prompt), "--mode", "plan",
                     "--expires-minutes", "10", "--confirmed", "--three-rosters-presented")
     expect(created.returncode == 0, f"approve failed: {created.stderr[-300:]}")
