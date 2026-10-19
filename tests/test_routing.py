@@ -30,6 +30,23 @@ class RoutingTests(unittest.TestCase):
             "claude-opus-4-6-thinking",
         )
 
+    def test_agy_1_4_catalog_prefers_argon_high_and_claude_high(self):
+        models = [{"id": i} for i in (
+            "gemini-4-argon-medium", "gemini-4-argon-high", "gemini-4-argon-low",
+            "gemini-3.8-flash-high", "gemini-3.8-flash-medium", "gemini-3.8-flash-low",
+            "claude-opus-5-5-low", "claude-opus-5-5-medium", "claude-opus-5-5-high",
+            "claude-sonnet-5-5-low", "claude-sonnet-5-5-medium", "claude-sonnet-5-5-high",
+            "gpt-oss-120b-medium",
+        )]
+        for role in ("scout", "planner", "reviewer"):
+            with self.subTest(role=role):
+                self.assertEqual(routing.select_model(role, models, strategy="B"), "gemini-4-argon-high")
+                self.assertEqual(routing.select_model(role, models, avoid_family="gemini", strategy="B"), "claude-opus-5-5-high")
+        self.assertEqual(routing.select_model("implementer", models, strategy="B"), "gemini-3.8-flash-high")
+        self.assertEqual(routing.select_model("scout", models, avoid_family="gemini", strategy="A"), "claude-sonnet-5-5-high")
+        flashless = [m for m in models if "flash" not in m["id"]]
+        self.assertEqual(routing.select_model("implementer", flashless, strategy="A"), "gemini-4-argon-high")
+
     def test_c_routes_every_role_to_latest_flash_high(self):
         models = MODELS + [{"id": "gemini-3.9-flash-high"}, {"id": "gemini-3.10-flash-high"}]
         for role in routing.ROLES:

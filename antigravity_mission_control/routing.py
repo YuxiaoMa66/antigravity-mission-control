@@ -18,18 +18,22 @@ FLASH_MEDIUM = r"gemini-.*flash-medium$"
 FLASH_HIGH = r"gemini-.*flash-high$"
 
 
+# Non-Flash Gemini at High intensity, e.g. gemini-4-argon-high (formerly gemini-*-pro-high).
+GEMINI_HIGH = r"gemini-(?!.*flash).*-high$"
+
+
 STRATEGY_PATTERNS = {
     "A": {
-        "scout": [FLASH_LOW, FLASH_MEDIUM, FLASH_HIGH, r"claude.*sonnet", r"gemini-.*pro-high$", r"claude.*opus", r"gpt-oss"],
-        "planner": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, r"claude.*sonnet", r"gemini-.*pro-high$", r"claude.*opus", r"gpt-oss"],
-        "implementer": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, r"gemini-.*pro-high$", r"claude.*sonnet", r"claude.*opus", r"gpt-oss"],
-        "reviewer": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, r"gemini-.*pro-high$", r"claude.*sonnet", r"claude.*opus", r"gpt-oss"],
+        "scout": [FLASH_LOW, FLASH_MEDIUM, FLASH_HIGH, r"claude.*sonnet", GEMINI_HIGH, r"claude.*opus", r"gpt-oss"],
+        "planner": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, r"claude.*sonnet", GEMINI_HIGH, r"claude.*opus", r"gpt-oss"],
+        "implementer": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, GEMINI_HIGH, r"claude.*sonnet", r"claude.*opus", r"gpt-oss"],
+        "reviewer": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, GEMINI_HIGH, r"claude.*sonnet", r"claude.*opus", r"gpt-oss"],
     },
     "B": {
-        "scout": [r"claude.*opus", r"gemini-.*pro-high$", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],
-        "planner": [r"claude.*opus", r"gemini-.*pro-high$", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],
-        "implementer": [FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gemini-.*pro-high$", r"claude.*opus", r"claude.*sonnet", r"gpt-oss"],
-        "reviewer": [r"claude.*opus", r"gemini-.*pro-high$", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],
+        "scout": [GEMINI_HIGH, r"claude.*opus", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],
+        "planner": [GEMINI_HIGH, r"claude.*opus", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],
+        "implementer": [FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, GEMINI_HIGH, r"claude.*opus", r"claude.*sonnet", r"gpt-oss"],
+        "reviewer": [GEMINI_HIGH, r"claude.*opus", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],
     },
     "C": {
         "scout": [FLASH_HIGH],
@@ -83,10 +87,15 @@ def is_non_high_gemini(model_id: str) -> bool:
     return family(model_id) == "gemini" and not model_id.lower().endswith("-high")
 
 
+def is_reduced_claude(model_id: str) -> bool:
+    return family(model_id) == "claude" and re.search(r"-(low|medium)$", model_id, re.IGNORECASE) is not None
+
+
 def select_model(role: str, models: list[dict[str, str]], avoid_family: str | None = None, strategy: str = "A") -> str:
     candidates = [
         m for m in models
-        if not is_non_high_gemini(m["id"])
+        if not is_reduced_claude(m["id"])
+        and not is_non_high_gemini(m["id"])
         or re.search(FLASH_LOW, m["id"], re.IGNORECASE)
         or re.search(FLASH_MEDIUM, m["id"], re.IGNORECASE)
     ]
