@@ -30,7 +30,7 @@ STRATEGY_PATTERNS = {
         "reviewer": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, GEMINI_HIGH, r"claude.*sonnet", r"claude.*opus", r"gpt-oss"],
     },
     "B": {
-        "scout": [FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, GEMINI_HIGH, r"claude.*opus", r"claude.*sonnet", r"gpt-oss"],
+        "scout": [FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, GEMINI_HIGH, r"claude.*sonnet", r"claude.*opus", r"gpt-oss"],
         "planner": [GEMINI_HIGH, r"claude.*opus", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],
         "implementer": [FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, GEMINI_HIGH, r"claude.*opus", r"claude.*sonnet", r"gpt-oss"],
         "reviewer": [GEMINI_HIGH, r"claude.*opus", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],

@@ -41,9 +41,10 @@ class RoutingTests(unittest.TestCase):
         for role in ("planner", "reviewer"):
             with self.subTest(role=role):
                 self.assertEqual(routing.select_model(role, models, strategy="B"), "gemini-4-argon-high")
-        for role in routing.ROLES:
+        for role in ("planner", "implementer", "reviewer"):
             with self.subTest(role=role):
                 self.assertEqual(routing.select_model(role, models, avoid_family="gemini", strategy="B"), "claude-opus-5-5-high")
+        self.assertEqual(routing.select_model("scout", models, avoid_family="gemini", strategy="B"), "claude-sonnet-5-5-high")
         for role in ("scout", "implementer"):
             with self.subTest(role=role):
                 self.assertEqual(routing.select_model(role, models, strategy="B"), "gemini-3.8-flash-high")
