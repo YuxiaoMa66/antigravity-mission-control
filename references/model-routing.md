@@ -12,9 +12,9 @@ The wrapper uses strategy- and role-oriented preferences rather than assuming a 
 
 | Strategy | Objective | Routing behavior |
 | --- | --- | --- |
-| A — Lightweight Flash-first | Control cost with the smallest adequate team | Prefer Gemini Flash at role-appropriate intensity; let the host agent own roles where another AGY pass adds little value. |
-| B — Quality-first Flash implementer | Maximize correctness, depth, and independent checking | Prefer Gemini Flash for scouting and implementation and use stronger planning/review when needed. |
-| C — Quality-first Gemini Flash High | Keep B's quality objective while using one Gemini tier | Use the newest exact `gemini-.*flash-high` slug for every AGY role and follow-up; review separation comes from process and host verification. |
+| A — Lightweight | Use role-appropriate reasoning for the smallest adequate team | Scout tries Hydrogen Low, Medium, then High. Other roles try Medium, High, then Low. |
+| B — Quality-first | Use faster workers for execution and deeper models for planning and review | Scout and implementer try Hydrogen High, Medium, then Low. Planner and reviewer prefer Argon High. |
+| C — Quality-first Gemini High | Use one execution model for every role | Use the newest Hydrogen High or, when unavailable, the newest Flash High. |
 
 Example proposal lookups:
 
@@ -24,15 +24,17 @@ agy-mc select --strategy B --role reviewer --avoid-family claude
 agy-mc select --strategy C --role planner
 ```
 
-These are routing heuristics, not benchmark claims. Increase capability only when task ambiguity, blast radius, or failed attempts justify it. The default A route uses lower Flash intensity for low-risk roles and a stronger Flash fallback for implementation; B puts Flash first for scouting and implementation and uses the strongest suitable models for planning and review. The host agent may pin another available Flash intensity in the approved roster when the task warrants it. B scout and implementer proposals try Flash High, then Medium, then Low as preceding tiers become unavailable, before non-Flash Gemini High (such as `gemini-4-argon-high`) or Claude (Sonnet before Opus for the scout); this is catalog-based fallback, not automatic task-risk assessment. B planner and reviewer proposals try non-Flash Gemini High, then Claude Opus, then Claude Sonnet.
+Where A and B propose Hydrogen, they try the listed effort order within Hydrogen first, then within Flash. B planners and reviewers try Argon High, other non-Hydrogen and non-Flash Gemini High models, Claude Opus, and Claude Sonnet before trying Hydrogen and Flash. Consider Carbon for complex work when the catalog lists its exact slug.
 
-When both non-Flash Gemini High and Claude Opus are available, present the B roster with an explicit choice for the planner and for the reviewer: non-Flash Gemini High (the default) or Claude Opus. Ask for each role separately; `agy-mc select --strategy B --role reviewer --avoid-family gemini` gives the Opus slug. A reviewer that must differ from the implementer's family follows the `--avoid-family` rule below.
+When the B planning or review proposal is a deep-reasoning Gemini and Claude Opus is also available, offer the Gemini proposal and Opus as a choice for each role. Use `agy-mc select --strategy B --role reviewer --avoid-family gemini` to look up the review alternative.
 
-The A and B proposals may surface Gemini Flash medium or low. Other non-High Gemini variants, such as Argon low/medium, remain excluded from automatic proposals, and so are Claude `-low`/`-medium` variants; pin one explicitly if the task warrants it. A proposal is not execution authority: approving a medium/low model still requires explicit confirmation and `--non-high-gemini-confirmed`; the exception is bound to that manifest and does not apply to later calls. C always requires High.
+A and B may propose Hydrogen or Flash Medium and Low. These variants require explicit confirmation and `--non-high-gemini-confirmed` on the manifest. Pin a catalog-listed Gemini XHigh model explicitly under A or B using normal roster approval. C uses High for every role.
+
+The selector reads the live catalog and orders versions numerically within each series and effort, so a slug such as `gemini-4.10-hydrogen-high` takes precedence over `gemini-4.9-hydrogen-high` regardless of catalog order. A new series name or slug format needs a routing review before joining the Hydrogen/Flash route. Use the exact discovered slug when pinning another available model. Existing approvals and follow-ups keep their pinned model while that slug remains available.
 
 For independent review, pass `--avoid-family` matching the implementer's family (`gemini`, `claude`, or `gpt`) when another suitable family is available. If no alternative exists, use a separate conversation with an adversarial review prompt and disclose that the review was same-family.
 
-`--avoid-family` does not apply to C because C requires Gemini for every AGY call. Gain independence there through separate conversations, adversarial prompts, and host verification. C is the quality-first B shape with the provider route fixed to Gemini Flash High.
+`--avoid-family` does not apply to C because C requires Gemini for every AGY call. Gain independence there through separate conversations, adversarial prompts, and host verification. C is the quality-first B shape with the provider route fixed to Gemini Hydrogen High with Flash High fallback.
 
 Do not select a model by its display label. Use the exact slug returned by `agy models`. A pinned unknown slug fails instead of silently falling back; preserve that behavior.
 
@@ -42,7 +44,7 @@ The official [Headless mode documentation](https://antigravity.google/docs/cli/h
 
 For compatibility, this skill pins only the exact `--model` slug and never passes `--effort`:
 
-- Gemini High is expressed by a slug ending in `-high`.
+- Gemini High and XHigh use exact slugs ending in `-high` and `-xhigh`, respectively.
 - Claude uses the exact advertised Sonnet/Opus Thinking slug without extra reasoning parameters.
 - GPT-OSS uses its exact advertised slug without extra reasoning parameters.
 

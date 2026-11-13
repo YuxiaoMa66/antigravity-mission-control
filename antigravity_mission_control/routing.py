@@ -9,38 +9,40 @@ import re
 from .common import AGY_BIN, command_data, run_capture
 
 
-FLASH_LOW = r"gemini-.*flash-low$"
+def execution_models(*efforts: str) -> list[str]:
+    return [
+        rf"^gemini-\d+(?:[.-]\d+)*-{series}-{effort}$"
+        for series in ("hydrogen", "flash")
+        for effort in efforts
+    ]
 
 
-FLASH_MEDIUM = r"gemini-.*flash-medium$"
-
-
-FLASH_HIGH = r"gemini-.*flash-high$"
-
-
-# Non-Flash Gemini at High intensity, e.g. gemini-4-argon-high (formerly gemini-*-pro-high).
-GEMINI_HIGH = r"gemini-(?!.*flash).*-high$"
+GEMINI_HIGH = r"^gemini-(?!.*-(?:flash|hydrogen)-).*-high$"
+ARGON_HIGH = r"^gemini-\d+(?:[.-]\d+)*-argon-high$"
+EXECUTION_HIGH = execution_models("high")
+EXECUTION_REDUCED = execution_models("low", "medium")
+A_SCOUT = execution_models("low", "medium", "high")
+A_WORK = execution_models("medium", "high", "low")
+B_WORK = execution_models("high", "medium", "low")
+SONNET = r"claude.*sonnet"
+OPUS = r"claude.*opus"
+GPT = r"gpt-oss"
 
 
 STRATEGY_PATTERNS = {
     "A": {
-        "scout": [FLASH_LOW, FLASH_MEDIUM, FLASH_HIGH, r"claude.*sonnet", GEMINI_HIGH, r"claude.*opus", r"gpt-oss"],
-        "planner": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, r"claude.*sonnet", GEMINI_HIGH, r"claude.*opus", r"gpt-oss"],
-        "implementer": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, GEMINI_HIGH, r"claude.*sonnet", r"claude.*opus", r"gpt-oss"],
-        "reviewer": [FLASH_MEDIUM, FLASH_HIGH, FLASH_LOW, GEMINI_HIGH, r"claude.*sonnet", r"claude.*opus", r"gpt-oss"],
+        "scout": [*A_SCOUT, SONNET, GEMINI_HIGH, OPUS, GPT],
+        "planner": [*A_WORK, SONNET, GEMINI_HIGH, OPUS, GPT],
+        "implementer": [*A_WORK, GEMINI_HIGH, SONNET, OPUS, GPT],
+        "reviewer": [*A_WORK, GEMINI_HIGH, SONNET, OPUS, GPT],
     },
     "B": {
-        "scout": [FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, GEMINI_HIGH, r"claude.*sonnet", r"claude.*opus", r"gpt-oss"],
-        "planner": [GEMINI_HIGH, r"claude.*opus", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],
-        "implementer": [FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, GEMINI_HIGH, r"claude.*opus", r"claude.*sonnet", r"gpt-oss"],
-        "reviewer": [GEMINI_HIGH, r"claude.*opus", r"claude.*sonnet", FLASH_HIGH, FLASH_MEDIUM, FLASH_LOW, r"gpt-oss"],
+        "scout": [*B_WORK, GEMINI_HIGH, SONNET, OPUS, GPT],
+        "planner": [ARGON_HIGH, GEMINI_HIGH, OPUS, SONNET, *B_WORK, GPT],
+        "implementer": [*B_WORK, GEMINI_HIGH, OPUS, SONNET, GPT],
+        "reviewer": [ARGON_HIGH, GEMINI_HIGH, OPUS, SONNET, *B_WORK, GPT],
     },
-    "C": {
-        "scout": [FLASH_HIGH],
-        "planner": [FLASH_HIGH],
-        "implementer": [FLASH_HIGH],
-        "reviewer": [FLASH_HIGH],
-    },
+    "C": dict.fromkeys(("scout", "planner", "implementer", "reviewer"), EXECUTION_HIGH),
 }
 
 
@@ -84,7 +86,7 @@ def family(model_id: str) -> str:
 
 
 def is_non_high_gemini(model_id: str) -> bool:
-    return family(model_id) == "gemini" and not model_id.lower().endswith("-high")
+    return family(model_id) == "gemini" and not model_id.lower().endswith(("-high", "-xhigh"))
 
 
 def is_reduced_claude(model_id: str) -> bool:
@@ -94,17 +96,16 @@ def is_reduced_claude(model_id: str) -> bool:
 def select_model(role: str, models: list[dict[str, str]], avoid_family: str | None = None, strategy: str = "A") -> str:
     candidates = [
         m for m in models
-        if not is_reduced_claude(m["id"])
-        and not is_non_high_gemini(m["id"])
-        or re.search(FLASH_LOW, m["id"], re.IGNORECASE)
-        or re.search(FLASH_MEDIUM, m["id"], re.IGNORECASE)
+        if (
+            not is_reduced_claude(m["id"])
+            and not is_non_high_gemini(m["id"])
+            and not (family(m["id"]) == "gemini" and m["id"].lower().endswith("-xhigh"))
+        )
+        or any(re.search(pattern, m["id"], re.IGNORECASE) for pattern in EXECUTION_REDUCED)
     ]
     if strategy == "C":
         if avoid_family:
             raise RuntimeError("Strategy C does not support --avoid-family; every AGY call must use Gemini")
-        candidates = [m for m in candidates if re.search(FLASH_HIGH, m["id"], re.IGNORECASE)]
-        if not candidates:
-            raise RuntimeError("Strategy C is unavailable: no Gemini Flash High model is currently available")
     if avoid_family:
         alternatives = [m for m in candidates if family(m["id"]) != avoid_family.lower()]
         if alternatives:
@@ -112,7 +113,9 @@ def select_model(role: str, models: list[dict[str, str]], avoid_family: str | No
     for pattern in STRATEGY_PATTERNS[strategy][role]:
         matches = [m["id"] for m in candidates if re.search(pattern, m["id"], re.IGNORECASE)]
         if matches:
-            return max(matches, key=version_key)
+            return max(matches, key=lambda slug: (version_key(slug), slug))
+    if strategy == "C":
+        raise RuntimeError("Strategy C is unavailable: no Gemini Hydrogen High or Flash High model is currently available")
     if candidates:
         return candidates[0]["id"]
     raise RuntimeError("No AGY models are available")

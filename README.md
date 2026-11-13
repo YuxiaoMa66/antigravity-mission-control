@@ -11,9 +11,9 @@
 
 Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota. Your coding agent (Codex or Claude Code) remains responsible for acceptance.
 
-<p align="center"><img src="assets/release-v0.8.0rc1.svg" width="920" alt="Antigravity Mission Control v0.8.0rc1 operational control board"></p>
+<p align="center"><img src="assets/release-v0.9.0.svg" width="920" alt="Antigravity Mission Control v0.9.0 operational control board"></p>
 
-> **v0.8.0rc1 (pre-release, npm `0.8.0-rc.1`):** Release candidate that routes to the models AGY 1.4.2 added. Non-Flash Gemini High (`gemini-4-argon-high`) takes Pro High's place; strategy B plans and reviews with Argon or Claude Opus, chosen per role, and scouts and implements with Gemini Flash; Claude 5.5 `-low`/`-medium` variants are no longer proposed automatically. Stable stays v0.7.0 until this is promoted. Try it with `npx antigravity-mission-control@next install`.
+> **v0.9.0** prefers Hydrogen on routes that previously preferred Flash. B planning and review prefer Argon High. See the [release notes](docs/releases/v0.9.0.md).
 >
 > Independent community project; not affiliated with Google or Antigravity.
 
@@ -26,7 +26,7 @@ Open and read https://github.com/YuxiaoMa66/antigravity-mission-control before m
 
 1. Check whether `agy` is installed and signed in.
 2. Show me the exact commands and target paths, then wait for my confirmation.
-3. If AGY is ready, install the stable npm package with `npx antigravity-mission-control@latest install`; use `@0.7.0` when you need a pinned release, or `@next` to try the v0.8.0rc1 pre-release. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
+3. If AGY is ready, install the stable npm package with `npx antigravity-mission-control@latest install`; use `@0.9.0` when you need a pinned release, or `@next` to try the v0.8.0rc1 pre-release. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
 4. Run `agy-mc doctor` and report the installed versions and paths.
 5. Before delegating project work, show me the A/B/C roster choices with exact available model slugs and wait for my selection.
 
@@ -39,7 +39,7 @@ The agent reads the same installation and security boundaries you see on this pa
 
 ## See the flight deck
 
-These v0.8.0rc1 illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
+These illustrations show command excerpts and workflow summaries. Paths, IDs and quota values are examples, not live screenshots.
 
 <table>
   <tr>
@@ -62,7 +62,7 @@ These v0.8.0rc1 illustrations show command excerpts and workflow summaries. Path
 
 ## Put the quota you already have to work
 
-If your account includes a Google One AI plan or an eligible student offer, you may already have a year of Gemini access. That quota can sit idle while Antigravity's desktop client breaks your rhythm and its CLI never quite becomes home. Your coding agent has become muscle memory, but its allowance can vanish before lunch and a slow turn may take the scenic route. Gemini Flash brings the speed you wanted to use.
+If your account includes a Google One AI plan or an eligible student offer, you may already have a year of Gemini access. That quota can sit idle while Antigravity's desktop client breaks your rhythm and its CLI never quite becomes home. Your coding agent has become muscle memory, but its allowance can vanish before lunch and a slow turn may take the scenic route. Hydrogen is the default for fast execution.
 
 Install Mission Control in the harness you already know, Codex or Claude Code. Let it act as product manager, supervising editor, and suspicious acceptance reviewer. Give the implementation tickets to Antigravity. The host agent defines scope, approves authority, inspects diffs, and runs the checks; AGY workers do the typing.
 
@@ -85,11 +85,11 @@ Mission Control discovers the current AGY model catalog before proposing a roste
 
 | Strategy | Team design | Best fit | Tradeoff |
 |---|---|---|---|
-| A: Lightweight Flash-first | Uses the smallest adequate team and prefers Gemini Flash at role-appropriate intensity. | Routine development, bounded changes and quota-aware work | Lower cost and latency, with fewer independent model passes |
-| B: Quality-first Flash implementer | Plans and reviews with non-Flash Gemini High or Claude Opus (your choice per role), and sends scouting and implementation to Gemini Flash first. | Ambiguous design, large changes, security-sensitive work and costly mistakes | More quota and time in exchange for deeper planning and independent checking |
-| C: Quality-first Gemini Flash High | Keeps B's quality objective while routing every AGY role to the newest exact `gemini-.*flash-high` slug. | Quality-focused Gemini work with consistent, fast routing | Review diversity comes from separate conversations and host verification because all AGY calls share one model family |
+| A: Lightweight | Prefers role-appropriate Hydrogen effort with Flash fallback. | Routine development, bounded changes and quota-aware work | Lower cost and latency, with fewer independent model passes |
+| B: Quality-first | Prefers Argon High for planning and review, with a Claude Opus option. Prefers Hydrogen High for scouting and implementation. | Ambiguous design, large changes, security-sensitive work and costly mistakes | More quota and time in exchange for deeper planning and independent checking |
+| C: Quality-first Gemini High | Uses the newest Hydrogen High for every AGY role, with Flash High fallback. | Quality-focused Gemini work with consistent, fast routing | Review diversity comes from separate conversations and host verification because all AGY calls share one model family |
 
-These strategies are routing rules, not permanent model lists or benchmark rankings. Mission Control reads `agy-mc models` at run time and pins the exact slug you approve. A and B may propose Gemini Flash medium or low for lower-intensity work; actual approval still requires the separate non-High Gemini confirmation. C always uses High. A changed model, role, write scope or permission profile requires confirmation again.
+These strategies are routing rules, not permanent model lists or benchmark rankings. Mission Control reads `agy-mc models` at run time and pins the exact slug you approve. A and B may propose Hydrogen or Flash Medium or Low for lower-intensity work; actual approval still requires the separate non-High Gemini confirmation. C always uses High. A changed model, role, write scope or permission profile requires confirmation again.
 
 The installed Skill uses the same field order shown in the roster selection and change-confirmation images above. A roster proposal ends with an explicit A/B/C choice. A modification pauses the affected entry and shows the approved value, proposed value, reason, scope impact and review-independence impact before asking again.
 
@@ -122,12 +122,10 @@ npx antigravity-mission-control@latest status
 Direct Python installation is also supported:
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.7.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.9.0"
 agy-mc skill install --host auto
 agy-mc doctor
 ```
-
-For the v0.8.0rc1 pre-release, use `@v0.8.0rc1` instead of `@v0.7.0`.
 
 Full setup, upgrade, uninstall, local-source and PATH notes: [Installation guide](docs/INSTALL.md).
 

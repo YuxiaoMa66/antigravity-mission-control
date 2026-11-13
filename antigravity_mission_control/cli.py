@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 import time
@@ -20,7 +19,7 @@ from .approvals import POLICY_NAMES, canonical_policy_name, cmd_approve, cmd_pol
 from .common import AGY_BIN, STATE_ROOT, VERSION, command_data, parse_duration, run_capture
 from .jobs import cmd_cancel, cmd_continue, cmd_prune, cmd_result, cmd_run, cmd_status, cmd_wait, cmd_worker
 from .jobstore import JOB_EXIT_CODES
-from .routing import FLASH_HIGH, MODELS_TIMEOUT_SECONDS, ROLES, STRATEGY_PATTERNS, cmd_models, cmd_select, version_key
+from .routing import MODELS_TIMEOUT_SECONDS, ROLES, STRATEGY_PATTERNS, cmd_models, cmd_select, select_model
 from .skill import HOSTS, cmd_skill, default_skill_target, skill_marker
 from .usage import cmd_usage
 from .workspace import cmd_workspace
@@ -80,11 +79,12 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
         state_ok, detail = False, str(exc)
     checks.append({"name": "private-state", "ok": state_ok, "detail": detail})
     if getattr(_args, "probe_latency", False):
-        flash_models = [m["id"] for m in models if isinstance(m, dict) and "id" in m and re.search(FLASH_HIGH, str(m["id"]), re.IGNORECASE)] if isinstance(models, list) else []
-        if not flash_models:
-            checks.append({"name": "agy-cold-start", "ok": True, "warning": "No Gemini Flash High model was found, so the latency probe was skipped."})
+        probe_models = [m for m in models if isinstance(m, dict) and isinstance(m.get("id"), str)] if session_ok else []
+        try:
+            model_id = select_model("scout", probe_models, strategy="C")
+        except RuntimeError as exc:
+            checks.append({"name": "agy-cold-start", "ok": True, "warning": str(exc)})
         else:
-            model_id = max(flash_models, key=version_key)
             try:
                 start = time.monotonic()
                 probe_bin = str(Path(AGY_BIN).resolve()) if os.sep in AGY_BIN and not Path(AGY_BIN).is_absolute() and Path(AGY_BIN).is_file() else AGY_BIN

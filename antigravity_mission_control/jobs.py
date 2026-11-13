@@ -151,11 +151,12 @@ def prepare_run(args: argparse.Namespace) -> dict:
     model = args.model
     if model not in model_ids:
         raise RuntimeError(f"Requested model is unavailable: {model}")
-    if args.strategy == "C":
+    # The catalog can change after a roster is approved or a conversation starts.
+    if args.strategy == "C" and approval is None and not getattr(args, "continuing_job", False):
         required_model = select_model(args.role, models, strategy="C")
         if model != required_model:
             raise RuntimeError(
-                f"Strategy C requires the latest Gemini Flash High model {required_model}; got {model}"
+                f"Strategy C requires the current proposed model {required_model}; got {model}"
             )
     non_high_allowed = bool(args.allow_non_high_gemini) if approval is None else bool(approval.get("allow_non_high_gemini"))
     if is_non_high_gemini(model) and not non_high_allowed:
@@ -836,5 +837,6 @@ def cmd_continue(args: argparse.Namespace) -> int:
         background=args.background,
         approval_file=args.approval_file,
         workspace_lock_held=False,
+        continuing_job=True,
     )
     return cmd_run(follow_up)

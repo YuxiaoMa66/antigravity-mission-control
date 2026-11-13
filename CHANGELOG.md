@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 - 2026-11-13
+
+- Prefer Hydrogen over Flash across A, B and C wherever Flash previously led. Keep Argon High first for B planning and review.
+- Use exact live slugs and numeric version ordering. Keep approved C jobs on their pinned model while that slug remains available.
+- Accept explicit Gemini XHigh selections under standard roster approval.
+
 ## 0.8.0rc1 - 2026-10-19
 
 - Pre-release (npm `0.8.0-rc.1` under `next`); stable stays 0.7.0. `scripts/real_agy_check.py` against AGY 1.4.2 with `gemini-3.8-flash-high`: two consecutive full runs, 19/19 each; a foreground run with `gemini-4-argon-high` also passes.

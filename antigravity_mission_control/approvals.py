@@ -128,10 +128,6 @@ def cmd_approve(args: argparse.Namespace) -> int:
     model_ids = {model["id"] for model in models}
     if args.model not in model_ids:
         raise RuntimeError(f"Requested model is unavailable: {args.model}")
-    if args.strategy == "C":
-        required_model = select_model(args.role, models, strategy="C")
-        if args.model != required_model:
-            raise RuntimeError(f"Strategy C requires {required_model}; got {args.model}")
     allow_non_high = bool(args.non_high_gemini_confirmed)
     if is_non_high_gemini(args.model) and not allow_non_high:
         raise RuntimeError("A Gemini medium/low approval requires --non-high-gemini-confirmed")
@@ -142,6 +138,10 @@ def cmd_approve(args: argparse.Namespace) -> int:
     if correction_id and follow_up_id:
         raise RuntimeError("Choose --correction-of or --follow-up-of, not both")
     parent_id = correction_id or follow_up_id
+    if args.strategy == "C" and not parent_id:
+        required_model = select_model(args.role, models, strategy="C")
+        if args.model != required_model:
+            raise RuntimeError(f"Strategy C requires {required_model}; got {args.model}")
     correction_round = 0
     if parent_id:
         parent, correction_round = correction_context(parent_id, policy, bool(correction_id))

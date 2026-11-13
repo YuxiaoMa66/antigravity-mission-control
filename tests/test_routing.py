@@ -58,6 +58,47 @@ class RoutingTests(unittest.TestCase):
             with self.subTest(role=role):
                 self.assertEqual(routing.select_model(role, models, strategy="C"), "gemini-3.10-flash-high")
 
+    def test_hydrogen_replaces_flash_across_strategies(self):
+        models = MODELS + [{"id": slug} for slug in (
+            "gemini-4-hydrogen-low", "gemini-4-hydrogen-medium", "gemini-4-hydrogen-high",
+            "gemini-4-hydrogen-xhigh", "gemini-4-argon-high", "gemini-4.9-hydrogen-high",
+            "gemini-4.10-hydrogen-high", "gemini-9-hydrogen-preview-high",
+        )]
+        expected = {
+            "A": ("gemini-4-hydrogen-low", *("gemini-4-hydrogen-medium",) * 3),
+            "B": ("gemini-4.10-hydrogen-high", "gemini-4-argon-high",
+                  "gemini-4.10-hydrogen-high", "gemini-4-argon-high"),
+            "C": ("gemini-4.10-hydrogen-high",) * 4,
+        }
+        for catalog in (models, models[::-1]):
+            for strategy, slugs in expected.items():
+                for role, slug in zip(routing.ROLES, slugs):
+                    with self.subTest(strategy=strategy, role=role):
+                        self.assertEqual(routing.select_model(role, catalog, strategy=strategy), slug)
+        self.assertEqual(routing.select_model("reviewer", models, "gemini", "B"), "claude-opus-4-6-thinking")
+        high_only = [{"id": "gemini-4-hydrogen-high"}, *MODELS]
+        self.assertEqual(routing.select_model("scout", high_only), "gemini-4-hydrogen-high")
+
+    def test_strategy_c_honors_approved_flash_after_catalog_upgrade(self):
+        hydrogen = {"id": "gemini-4-hydrogen-high"}
+        flash = MODELS[2]["id"]
+        with tempfile.TemporaryDirectory() as directory:
+            prompt = Path(directory) / "prompt.txt"
+            prompt.write_text("bounded task")
+            args = argparse.Namespace(
+                roster_approved=True, model=flash, unrestricted=False,
+                unrestricted_approved=False, cwd=directory, prompt_file=str(prompt),
+                mode="plan", strategy="C", role="implementer",
+                allow_non_high_gemini=False, json_schema=None,
+            )
+            with patch.object(jobs, "workspace_status", return_value={"trusted": True}), patch.object(
+                jobs, "available_models", return_value=[hydrogen, *MODELS],
+            ):
+                with self.assertRaisesRegex(RuntimeError, "requires the current proposed model"):
+                    jobs.prepare_run(args)
+                with patch.object(jobs, "validate_approval_binding", return_value={"model": flash}):
+                    self.assertEqual(jobs.prepare_run(args)["model"], flash)
+
     def test_implementer_fallback_order(self):
         for strategy, order in {
             "A": [1, 2, 0, 3, 4, 5, 6],
@@ -79,7 +120,7 @@ class RoutingTests(unittest.TestCase):
                     self.assertEqual(routing.select_model(role, excluded + [MODELS[-1]], strategy=strategy), MODELS[-1]["id"])
 
     def test_c_rejects_missing_high_and_family_exclusion(self):
-        with self.assertRaisesRegex(RuntimeError, "no Gemini Flash High"):
+        with self.assertRaisesRegex(RuntimeError, "no Gemini Hydrogen High or Flash High"):
             routing.select_model("reviewer", [MODELS[0]], strategy="C")
         with self.assertRaisesRegex(RuntimeError, "does not support --avoid-family"):
             routing.select_model("reviewer", MODELS, avoid_family="gemini", strategy="C")
@@ -99,6 +140,12 @@ class RoutingTests(unittest.TestCase):
                     jobs.prepare_run(args)
                 args.allow_non_high_gemini = True
                 self.assertEqual(jobs.prepare_run(args)["model"], args.model)
+                args.allow_non_high_gemini = False
+                args.model = "gemini-4-hydrogen-xhigh"
+                with patch.object(jobs, "available_models", return_value=[{"id": args.model}]):
+                    self.assertEqual(jobs.prepare_run(args)["model"], args.model)
+                    with self.assertRaisesRegex(RuntimeError, "No AGY models"):
+                        routing.select_model("implementer", [{"id": args.model}])
 
 
 if __name__ == "__main__":

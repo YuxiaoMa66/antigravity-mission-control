@@ -48,8 +48,9 @@ class Failure(AssertionError):
 
 
 class Harness:
-    def __init__(self, model: str, state_root: Path, timeout: int):
+    def __init__(self, model: str, state_root: Path, timeout: int, strategy: str):
         self.model = model
+        self.strategy = strategy
         self.state_root = state_root
         self.timeout = timeout
         self.workspace = ROOT.parent  # already-trusted project directory, read-only scenarios
@@ -60,11 +61,6 @@ class Harness:
         path = self.prompts / f"{name}.txt"
         path.write_text(text, encoding="utf-8")
         return path
-
-    @property
-    def strategy(self) -> str:
-        # C only accepts Gemini Flash High; any other --model runs under B.
-        return "C" if self.model.endswith("-flash-high") else "B"
 
     def amc(self, *args: str, timeout: float | None = None) -> subprocess.CompletedProcess:
         return subprocess.run(
@@ -487,22 +483,18 @@ class trusted_workspace:
         purge_check_workspace()
 
 
-def latest_flash_high(state_root: Path) -> str:
-    proc = subprocess.run([sys.executable, str(CLI), "models"],
+def default_model(state_root: Path) -> str:
+    proc = subprocess.run([sys.executable, str(CLI), "select", "--strategy", "C", "--role", "planner"],
                           env={**os.environ, "AGY_MC_STATE_ROOT": str(state_root)},
                           text=True, capture_output=True, timeout=120, check=False)
     if proc.returncode != 0:
-        raise SystemExit(f"cannot list AGY models: {proc.stderr[-300:]}")
-    ids = [m["id"] for m in json.loads(proc.stdout)["models"]]
-    flash_high = [i for i in ids if i.startswith("gemini-") and i.endswith("-flash-high")]
-    if not flash_high:
-        raise SystemExit(f"no Gemini Flash High model available: {ids}")
-    return sorted(flash_high, reverse=True)[0]
+        raise SystemExit(f"cannot select default AGY model: {proc.stderr[-300:]}")
+    return proc.stdout.strip()
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--model", help="AGY model slug (default: the latest Gemini Flash High)")
+    parser.add_argument("--model", help="AGY model slug (default: the Strategy C proposal)")
     parser.add_argument("--timeout-seconds", type=int, default=120, help="per-run AGY timeout")
     parser.add_argument("--offline-only", action="store_true", help="skip every scenario that calls AGY")
     parser.add_argument("-k", "--filter", help="run only scenarios whose name contains this text")
@@ -519,8 +511,8 @@ def main() -> int:
         return 0
 
     state_root = Path(tempfile.mkdtemp(prefix="amc-real-check-"))
-    model = args.model or latest_flash_high(state_root)
-    harness = Harness(model, state_root, args.timeout_seconds)
+    model = args.model or default_model(state_root)
+    harness = Harness(model, state_root, args.timeout_seconds, "B" if args.model else "C")
     print(f"model {model} · state {state_root} · workspace {harness.workspace}\n")
 
     results = []

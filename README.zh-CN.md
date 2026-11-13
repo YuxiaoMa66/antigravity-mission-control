@@ -11,9 +11,9 @@
 
 面向 Antigravity CLI（`agy`）的策略化任务控制层：将工作路由到精确模型，把批准绑定到具体任务，串行保护编辑 worker，确认取消结果并实时查看额度；最终验收始终由你的 coding agent（Codex 或 Claude Code）负责。
 
-<p align="center"><img src="assets/release-v0.8.0rc1.svg" width="920" alt="Antigravity Mission Control v0.8.0rc1 操作控制板"></p>
+<p align="center"><img src="assets/release-v0.9.0.svg" width="920" alt="Antigravity Mission Control v0.9.0 操作控制板"></p>
 
-> **v0.8.0rc1（预发布版，npm `0.8.0-rc.1`）：** 这个候选版的路由适配了 AGY 1.4.2 新增的模型。非 Flash 的 Gemini High（`gemini-4-argon-high`）接替原来 Pro High 的位置；策略 B 的规划与审核按角色在 Argon 和 Claude Opus 之间选择，scout 和 implementer 使用 Gemini Flash；Claude 5.5 的 `-low`/`-medium` 档不再自动推荐。在转为稳定版之前，稳定版仍是 v0.7.0。试用：`npx antigravity-mission-control@next install`。
+> **v0.9.0 正式版**：原来优先使用 Flash 的路由改为优先使用 Hydrogen。B 的规划和审核优先使用 Argon High。详见[版本说明](docs/releases/v0.9.0.zh-CN.md)。
 >
 > 本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
 
@@ -26,7 +26,7 @@
 
 1. 检查 `agy` 是否已经安装并完成登录。
 2. 向我展示将执行的精确命令和目标路径，等我确认后再继续。
-3. 如果 AGY 已经可用，使用 `npx antigravity-mission-control@latest install` 安装稳定版；需要固定版本时使用 `@0.7.0`，或使用 `@next` 试用 v0.8.0rc1 预发布版。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
+3. 如果 AGY 已经可用，使用 `npx antigravity-mission-control@latest install` 安装稳定版；需要固定版本时使用 `@0.9.0`。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
 4. 运行 `agy-mc doctor`，然后报告安装版本和路径。
 5. 开始委派项目任务前，使用当前可用的精确模型 slug 向我展示 A/B/C 三套阵容，等我选择后再执行。
 
@@ -39,7 +39,7 @@ Agent 会阅读本页的安装步骤和安全边界，完成检查后回报结�
 
 ## 看看实际操作界面
 
-以下为 v0.8.0rc1 命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
+以下为命令摘录与流程示意图。路径、任务 ID 和额度均为示例，并非实时运行截图。
 
 <table>
   <tr>
@@ -62,7 +62,7 @@ Agent 会阅读本页的安装步骤和安全边界，完成检查后回报结�
 
 ## 别让已经薅到的 Gemini 在账号里吃灰
 
-如果你手里正好有 Google One AI 订阅，或者拿到了符合条件的学生一年福利，账号里可能已经躺着一批 Gemini 额度。Antigravity 客户端像写到一半换键盘，CLI 也未必顺手；你的 coding agent 倒是已经用出肌肉记忆，可额度常常午饭前就见底，模型偶尔还爱走观光路线。Gemini Flash 跑得快，这份速度值得派上用场。
+如果你手里正好有 Google One AI 订阅，或者拿到了符合条件的学生一年福利，账号里可能已经躺着一批 Gemini 额度。Antigravity 客户端像写到一半换键盘，CLI 也未必顺手；你的 coding agent 倒是已经用出肌肉记忆，可额度常常午饭前就见底，模型偶尔还爱走观光路线。现在可以用 Hydrogen 承接日常执行。
 
 把 Mission Control 装进你熟悉的 harness，Codex 或 Claude Code 都行。让它当产品经理、总监和爱挑刺的验收官，把实现工单交给 Antigravity。宿主 agent 定范围、批权限、看 diff、跑测试；AGY worker 负责干活。
 
@@ -85,11 +85,11 @@ Mission Control 会先读取当前 AGY 模型目录，再提出阵容。每套�
 
 | 方案 | 阵容设计 | 适合场景 | 取舍 |
 |---|---|---|---|
-| A：轻量 Flash 优先 | 使用能够完成任务的最小团队，按角色风险优先选择合适强度的 Gemini Flash。 | 日常开发、边界明确的修改和需要节省额度的任务 | 成本和延迟较低，独立模型复核次数较少 |
-| B：质量优先，implementer 用 Flash | 规划和审核使用非 Flash 的 Gemini High 或 Claude Opus（按角色由你选择），scout 和 implementer 优先使用 Gemini Flash。 | 设计模糊、大范围修改、安全敏感任务和返工代价高的项目 | 使用更多额度和时间，换取更深入的规划与独立检查 |
-| C：质量优先，全部 Gemini Flash High | 沿用 B 的质量目标，但所有 AGY 角色都使用当前最新的 `gemini-.*flash-high` 精确 slug。 | 需要质量和速度，同时希望统一使用 Gemini 的任务 | 所有 AGY 调用属于同一模型家族，审核独立性主要依靠独立会话、对抗提示和宿主验收 |
+| A：轻量 | 按角色优先选择 Hydrogen 的推理档位，Flash 用于回退。 | 日常开发、边界明确的修改和需要节省额度的任务 | 成本和延迟较低，独立模型复核次数较少 |
+| B：质量优先 | 规划和审核优先选择 Argon High，保留 Claude Opus 选项。侦察和实现优先选择 Hydrogen High。 | 设计模糊、大范围修改、安全敏感任务和返工代价高的项目 | 使用更多额度和时间，换取更深入的规划与独立检查 |
+| C：质量优先，统一 Gemini High | 所有 AGY 角色使用同一个最新 Hydrogen High，缺失时回退到 Flash High。 | 需要质量和速度，同时希望统一使用 Gemini 的任务 | 所有 AGY 调用属于同一模型家族，审核独立性主要依靠独立会话、对抗提示和宿主验收 |
 
-这三套方案是动态路由规则，不是永久模型名单，也不是模型排行榜。Mission Control 在运行时读取 `agy-mc models`，并固定你批准的精确 slug。A、B 可以为低强度任务提出 Gemini Flash medium 或 low；实际批准仍需要单独确认非 High Gemini。C 始终使用 High。模型、角色、写入范围或权限配置发生变化时，需要重新确认。
+这三套方案是动态路由规则，不是永久模型名单，也不是模型排行榜。Mission Control 在运行时读取 `agy-mc models`，并固定你批准的精确 slug。A、B 可以为低强度任务提出 Hydrogen 或 Flash 的 Medium、Low 档；实际批准仍需要单独确认非 High Gemini。C 始终使用 High。模型、角色、写入范围或权限配置发生变化时，需要重新确认。
 
 安装后的 Skill 会按照上面“阵容选择”和“修改确认”图片中的相同字段顺序输出。阵容提案最后要求明确选择 A/B/C；修改时暂停受影响的条目，列出已批准值、拟修改值、原因、范围影响和审核独立性影响，然后重新请求确认。
 
@@ -122,12 +122,10 @@ npx antigravity-mission-control@latest status --lang zh
 也支持直接使用 Python：
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.7.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.9.0"
 agy-mc skill install --lang zh
 agy-mc doctor
 ```
-
-如需 v0.8.0rc1 预发布版，把 `@v0.7.0` 换成 `@v0.8.0rc1`。
 
 完整安装、更新、卸载、本地来源和 PATH 说明见[安装指南](docs/INSTALL.zh-CN.md)。
 
