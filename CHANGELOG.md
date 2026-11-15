@@ -5,6 +5,7 @@
 - Prefer Hydrogen over Flash across A, B and C wherever Flash previously led. Keep Argon High first for B planning and review.
 - Use exact live slugs and numeric version ordering. Keep approved C jobs on their pinned model while that slug remains available.
 - Accept explicit Gemini XHigh selections under standard roster approval.
+- Verified after release, on 2026-11-15: `scripts/real_agy_check.py` from the release commit against AGY 1.5.9 with `gemini-4-hydrogen-high`: one full run, 19/19.
 
 ## 0.8.0rc1 - 2026-10-19
 
