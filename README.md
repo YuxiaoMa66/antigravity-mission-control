@@ -217,4 +217,4 @@ python3 -m compileall -q antigravity_mission_control scripts tests
 
 ## License
 
-MIT. Role-contract patterns were adapted from [keli-wen/agy-staff](https://github.com/keli-wen/agy-staff) under its MIT license; see [NOTICE](NOTICE).
+MIT. See [NOTICE](NOTICE).

@@ -217,4 +217,4 @@ python3 -m compileall -q antigravity_mission_control scripts tests
 
 ## 许可证
 
-MIT。角色合同模式基于 MIT 许可参考了 [keli-wen/agy-staff](https://github.com/keli-wen/agy-staff)，详见 [NOTICE](NOTICE)。
+MIT。详见 [NOTICE](NOTICE)。

@@ -24,7 +24,8 @@ class ReleaseIntegrityTests(unittest.TestCase):
         self.assertEqual(package["version"], "0.9.0")
         self.assertIn("const VERSION = '0.9.0'", npm_cli)
         self.assertIn("const PYTHON_VERSION = '0.9.0'", npm_cli)
-        self.assertIn("assets/", package["files"])
+        # npm renders README images from the repository, so the tarball carries no assets.
+        self.assertNotIn("assets/", package["files"])
         self.assertIn('skill_bundle/**/__pycache__/*', pyproject)
 
     def test_skill_sources_are_host_neutral(self):
@@ -116,8 +117,7 @@ class ReleaseIntegrityTests(unittest.TestCase):
                     self.assertIn(f'assets/interfaces/{asset}', text)
 
     def test_current_release_assets_and_install_refs(self):
-        self.assertTrue((ROOT / "assets" / "release-v0.8.0rc1.svg").is_file())
-        self.assertTrue((ROOT / "docs" / "visual-design-v0.8.0rc1.md").is_file())
+        self.assertTrue((ROOT / "assets" / "release-v0.9.0.svg").is_file())
         for document_name in (
             "README.md",
             "README.zh-CN.md",
