@@ -18,7 +18,11 @@ def execution_models(*efforts: str) -> list[str]:
 
 
 GEMINI_HIGH = r"^gemini-(?!.*-(?:flash|hydrogen)-).*-high$"
-ARGON_HIGH = r"^gemini-\d+(?:[.-]\d+)*-argon-high$"
+# Planning/review Gemini order; the catch-all keeps an unreviewed series behind the named ones.
+GEMINI_DEEP = [
+    *(rf"^gemini-\d+(?:[.-]\d+)*-{series}-high$" for series in ("neon", "carbon", "argon")),
+    GEMINI_HIGH,
+]
 EXECUTION_HIGH = execution_models("high")
 EXECUTION_REDUCED = execution_models("low", "medium")
 A_SCOUT = execution_models("low", "medium", "high")
@@ -31,16 +35,16 @@ GPT = r"gpt-oss"
 
 STRATEGY_PATTERNS = {
     "A": {
-        "scout": [*A_SCOUT, SONNET, GEMINI_HIGH, OPUS, GPT],
-        "planner": [*A_WORK, SONNET, GEMINI_HIGH, OPUS, GPT],
-        "implementer": [*A_WORK, GEMINI_HIGH, SONNET, OPUS, GPT],
-        "reviewer": [*A_WORK, GEMINI_HIGH, SONNET, OPUS, GPT],
+        "scout": [*A_SCOUT, SONNET, *GEMINI_DEEP, OPUS, GPT],
+        "planner": [*A_WORK, SONNET, *GEMINI_DEEP, OPUS, GPT],
+        "implementer": [*A_WORK, *GEMINI_DEEP, SONNET, OPUS, GPT],
+        "reviewer": [*A_WORK, *GEMINI_DEEP, SONNET, OPUS, GPT],
     },
     "B": {
-        "scout": [*B_WORK, GEMINI_HIGH, SONNET, OPUS, GPT],
-        "planner": [ARGON_HIGH, GEMINI_HIGH, OPUS, SONNET, *B_WORK, GPT],
-        "implementer": [*B_WORK, GEMINI_HIGH, OPUS, SONNET, GPT],
-        "reviewer": [ARGON_HIGH, GEMINI_HIGH, OPUS, SONNET, *B_WORK, GPT],
+        "scout": [*B_WORK, *GEMINI_DEEP, SONNET, OPUS, GPT],
+        "planner": [*GEMINI_DEEP, OPUS, SONNET, *B_WORK, GPT],
+        "implementer": [*B_WORK, *GEMINI_DEEP, OPUS, SONNET, GPT],
+        "reviewer": [*GEMINI_DEEP, OPUS, SONNET, *B_WORK, GPT],
     },
     "C": dict.fromkeys(("scout", "planner", "implementer", "reviewer"), EXECUTION_HIGH),
 }

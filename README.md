@@ -11,9 +11,9 @@
 
 Policy-aware orchestration for the Antigravity CLI (`agy`): route work to exact models, bind approvals to the task, serialize editing workers, verify cancellation, and watch live quota. Your coding agent (Codex or Claude Code) remains responsible for acceptance.
 
-<p align="center"><img src="assets/release-v0.9.0.svg" width="920" alt="Antigravity Mission Control v0.9.0 operational control board"></p>
+<p align="center"><img src="assets/release-v0.9.1.svg" width="920" alt="Antigravity Mission Control v0.9.1 operational control board"></p>
 
-> **v0.9.0** prefers Hydrogen on routes that previously preferred Flash. B planning and review prefer Argon High. See the [release notes](docs/releases/v0.9.0.md).
+> **v0.9.1** routes B planning and review to Gemini 4 Neon High, then Carbon High, ahead of the Argon removal on 2026-11-30. Scouting and implementation stay on Hydrogen. See the [release notes](docs/releases/v0.9.1.md).
 >
 > Independent community project; not affiliated with Google or Antigravity.
 
@@ -26,7 +26,7 @@ Open and read https://github.com/YuxiaoMa66/antigravity-mission-control before m
 
 1. Check whether `agy` is installed and signed in.
 2. Show me the exact commands and target paths, then wait for my confirmation.
-3. If AGY is ready, install the stable npm package with `npx antigravity-mission-control@latest install`; use `@0.9.0` when you need a pinned release, or `@next` to try the v0.8.0rc1 pre-release. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
+3. If AGY is ready, install the stable npm package with `npx antigravity-mission-control@latest install`; use `@0.9.1` when you need a pinned release. If AGY is missing, explain the official `--install-agy` option and ask for separate approval before using it.
 4. Run `agy-mc doctor` and report the installed versions and paths.
 5. Before delegating project work, show me the A/B/C roster choices with exact available model slugs and wait for my selection.
 
@@ -86,7 +86,7 @@ Mission Control discovers the current AGY model catalog before proposing a roste
 | Strategy | Team design | Best fit | Tradeoff |
 |---|---|---|---|
 | A: Lightweight | Prefers role-appropriate Hydrogen effort with Flash fallback. | Routine development, bounded changes and quota-aware work | Lower cost and latency, with fewer independent model passes |
-| B: Quality-first | Prefers Argon High for planning and review, with a Claude Opus option. Prefers Hydrogen High for scouting and implementation. | Ambiguous design, large changes, security-sensitive work and costly mistakes | More quota and time in exchange for deeper planning and independent checking |
+| B: Quality-first | Prefers Neon High, then Carbon High, for planning and review, with a Claude Opus option. Prefers Hydrogen High for scouting and implementation. | Ambiguous design, large changes, security-sensitive work and costly mistakes | More quota and time in exchange for deeper planning and independent checking |
 | C: Quality-first Gemini High | Uses the newest Hydrogen High for every AGY role, with Flash High fallback. | Quality-focused Gemini work with consistent, fast routing | Review diversity comes from separate conversations and host verification because all AGY calls share one model family |
 
 These strategies are routing rules, not permanent model lists or benchmark rankings. Mission Control reads `agy-mc models` at run time and pins the exact slug you approve. A and B may propose Hydrogen or Flash Medium or Low for lower-intensity work; actual approval still requires the separate non-High Gemini confirmation. C always uses High. A changed model, role, write scope or permission profile requires confirmation again.
@@ -122,7 +122,7 @@ npx antigravity-mission-control@latest status
 Direct Python installation is also supported:
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.9.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.9.1"
 agy-mc skill install --host auto
 agy-mc doctor
 ```

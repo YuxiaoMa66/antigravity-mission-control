@@ -52,6 +52,26 @@ class RoutingTests(unittest.TestCase):
         flashless = [m for m in models if "flash" not in m["id"]]
         self.assertEqual(routing.select_model("implementer", flashless, strategy="A"), "gemini-4-argon-high")
 
+    def test_agy_1_5_9_catalog_prefers_neon_then_carbon_for_planning(self):
+        slugs = [f"gemini-4-{series}-{effort}" for series in ("neon", "carbon", "argon", "hydrogen")
+                 for effort in ("low", "medium", "high")]
+        slugs += ["gemini-4-neon-xhigh", "gemini-4-hydrogen-xhigh", "gemini-pro-orchestrator-neon",
+                  "gemini-pro-orchestrator", "gemini-pro-orchestrator-argon", "gemini-3.8-flash-high",
+                  "claude-opus-5-5-high", "claude-sonnet-5-5-high", "gpt-oss-120b-medium"]
+        models = [{"id": s} for s in slugs]
+        for catalog in (models, models[::-1]):
+            picks = {(st, r): routing.select_model(r, catalog, strategy=st) for st in "ABC" for r in routing.ROLES}
+            for role in ("planner", "reviewer"):
+                self.assertEqual(picks["B", role], "gemini-4-neon-high")
+            self.assertEqual(picks["B", "implementer"], "gemini-4-hydrogen-high")
+            self.assertFalse(any("orchestrator" in p or "xhigh" in p for p in picks.values()))
+        no_neon = [m for m in models if "neon-" not in m["id"]]
+        self.assertEqual(routing.select_model("reviewer", no_neon, strategy="B"), "gemini-4-carbon-high")
+        argon_only = [m for m in no_neon if "carbon-" not in m["id"]]
+        self.assertEqual(routing.select_model("planner", argon_only, strategy="B"), "gemini-4-argon-high")
+        no_execution = [m for m in models if not any(s in m["id"] for s in ("hydrogen", "flash"))]
+        self.assertEqual(routing.select_model("implementer", no_execution, strategy="A"), "gemini-4-neon-high")
+
     def test_c_routes_every_role_to_latest_flash_high(self):
         models = MODELS + [{"id": "gemini-3.9-flash-high"}, {"id": "gemini-3.10-flash-high"}]
         for role in routing.ROLES:

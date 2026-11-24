@@ -11,9 +11,9 @@
 
 面向 Antigravity CLI（`agy`）的策略化任务控制层：将工作路由到精确模型，把批准绑定到具体任务，串行保护编辑 worker，确认取消结果并实时查看额度；最终验收始终由你的 coding agent（Codex 或 Claude Code）负责。
 
-<p align="center"><img src="assets/release-v0.9.0.svg" width="920" alt="Antigravity Mission Control v0.9.0 操作控制板"></p>
+<p align="center"><img src="assets/release-v0.9.1.svg" width="920" alt="Antigravity Mission Control v0.9.1 操作控制板"></p>
 
-> **v0.9.0 正式版**：原来优先使用 Flash 的路由改为优先使用 Hydrogen。B 的规划和审核优先使用 Argon High。详见[版本说明](docs/releases/v0.9.0.zh-CN.md)。
+> **v0.9.1 正式版**：Argon 将于 2026-11-30 下线，B 的规划和审核改为优先使用 Gemini 4 Neon High，其次 Carbon High。侦察和实现仍使用 Hydrogen。详见[版本说明](docs/releases/v0.9.1.zh-CN.md)。
 >
 > 本项目为独立社区项目，与 Google 或 Antigravity 无官方隶属关系。
 
@@ -26,7 +26,7 @@
 
 1. 检查 `agy` 是否已经安装并完成登录。
 2. 向我展示将执行的精确命令和目标路径，等我确认后再继续。
-3. 如果 AGY 已经可用，使用 `npx antigravity-mission-control@latest install` 安装稳定版；需要固定版本时使用 `@0.9.0`。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
+3. 如果 AGY 已经可用，使用 `npx antigravity-mission-control@latest install` 安装稳定版；需要固定版本时使用 `@0.9.1`。如果没有 AGY，先解释官方 `--install-agy` 方案，并为安装 AGY 单独征得我的同意。
 4. 运行 `agy-mc doctor`，然后报告安装版本和路径。
 5. 开始委派项目任务前，使用当前可用的精确模型 slug 向我展示 A/B/C 三套阵容，等我选择后再执行。
 
@@ -86,7 +86,7 @@ Mission Control 会先读取当前 AGY 模型目录，再提出阵容。每套�
 | 方案 | 阵容设计 | 适合场景 | 取舍 |
 |---|---|---|---|
 | A：轻量 | 按角色优先选择 Hydrogen 的推理档位，Flash 用于回退。 | 日常开发、边界明确的修改和需要节省额度的任务 | 成本和延迟较低，独立模型复核次数较少 |
-| B：质量优先 | 规划和审核优先选择 Argon High，保留 Claude Opus 选项。侦察和实现优先选择 Hydrogen High。 | 设计模糊、大范围修改、安全敏感任务和返工代价高的项目 | 使用更多额度和时间，换取更深入的规划与独立检查 |
+| B：质量优先 | 规划和审核优先选择 Neon High，其次 Carbon High，保留 Claude Opus 选项。侦察和实现优先选择 Hydrogen High。 | 设计模糊、大范围修改、安全敏感任务和返工代价高的项目 | 使用更多额度和时间，换取更深入的规划与独立检查 |
 | C：质量优先，统一 Gemini High | 所有 AGY 角色使用同一个最新 Hydrogen High，缺失时回退到 Flash High。 | 需要质量和速度，同时希望统一使用 Gemini 的任务 | 所有 AGY 调用属于同一模型家族，审核独立性主要依靠独立会话、对抗提示和宿主验收 |
 
 这三套方案是动态路由规则，不是永久模型名单，也不是模型排行榜。Mission Control 在运行时读取 `agy-mc models`，并固定你批准的精确 slug。A、B 可以为低强度任务提出 Hydrogen 或 Flash 的 Medium、Low 档；实际批准仍需要单独确认非 High Gemini。C 始终使用 High。模型、角色、写入范围或权限配置发生变化时，需要重新确认。
@@ -122,7 +122,7 @@ npx antigravity-mission-control@latest status --lang zh
 也支持直接使用 Python：
 
 ```bash
-python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.9.0"
+python3 -m pip install "git+https://github.com/YuxiaoMa66/antigravity-mission-control.git@v0.9.1"
 agy-mc skill install --lang zh
 agy-mc doctor
 ```

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1 - 2026-11-24
+
+- B planning and review prefer Gemini 4 Neon High, then Carbon High, then Argon High; Argon, Gemini 3.8 Flash and GPT-OSS 120B leave AGY on 2026-11-30.
+- A and B fallbacks to non-Hydrogen Gemini High use the same Neon, Carbon, Argon order instead of slug order.
+- Orchestrator slugs are never proposed automatically.
+- Verified on 2026-11-24: `scripts/real_agy_check.py` from the release commit against AGY 1.5.16 with `gemini-4-hydrogen-high`: one full run, 19/19. A foreground run with `gemini-4-neon-high` also passes.
+
 ## 0.9.0 - 2026-11-13
 
 - Prefer Hydrogen over Flash across A, B and C wherever Flash previously led. Keep Argon High first for B planning and review.

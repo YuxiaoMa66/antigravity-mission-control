@@ -13,7 +13,7 @@ The wrapper uses strategy- and role-oriented preferences rather than assuming a 
 | Strategy | Objective | Routing behavior |
 | --- | --- | --- |
 | A — Lightweight | Use role-appropriate reasoning for the smallest adequate team | Scout tries Hydrogen Low, Medium, then High. Other roles try Medium, High, then Low. |
-| B — Quality-first | Use faster workers for execution and deeper models for planning and review | Scout and implementer try Hydrogen High, Medium, then Low. Planner and reviewer prefer Argon High. |
+| B — Quality-first | Use faster workers for execution and deeper models for planning and review | Scout and implementer try Hydrogen High, Medium, then Low. Planner and reviewer prefer Neon High, then Carbon High. |
 | C — Quality-first Gemini High | Use one execution model for every role | Use the newest Hydrogen High or, when unavailable, the newest Flash High. |
 
 Example proposal lookups:
@@ -24,7 +24,7 @@ agy-mc select --strategy B --role reviewer --avoid-family claude
 agy-mc select --strategy C --role planner
 ```
 
-Where A and B propose Hydrogen, they try the listed effort order within Hydrogen first, then within Flash. B planners and reviewers try Argon High, other non-Hydrogen and non-Flash Gemini High models, Claude Opus, and Claude Sonnet before trying Hydrogen and Flash. Consider Carbon for complex work when the catalog lists its exact slug.
+Where A and B propose Hydrogen, they try the listed effort order within Hydrogen first, then within Flash. B planners and reviewers try Neon High, Carbon High, Argon High, other non-Hydrogen and non-Flash Gemini High models, Claude Opus, and Claude Sonnet before trying Hydrogen and Flash. Where A or B falls back past Hydrogen and Flash to a Gemini High model, it uses the same Neon, Carbon, Argon order. Offer Carbon High in place of Neon for a planning or review role that needs the deepest long-horizon reasoning. Orchestrator slugs (`gemini-pro-orchestrator*`) pair a planner and an executor inside one AGY conversation with a fixed reasoning budget; they are never proposed automatically and are used only when the user pins one.
 
 When the B planning or review proposal is a deep-reasoning Gemini and Claude Opus is also available, offer the Gemini proposal and Opus as a choice for each role. Use `agy-mc select --strategy B --role reviewer --avoid-family gemini` to look up the review alternative.
 
